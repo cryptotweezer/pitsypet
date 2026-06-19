@@ -238,9 +238,16 @@
 - Runtime (curl): `/login` 200, `/register` 200, `/dashboard` with no session → 307 to `/login`.
 - **Live test by user (Andres):** register → magic-link email → /dashboard "Welcome, Andres felipe Henao"; **`profiles` row auto-created with name + state (confirms the `handle_new_user` trigger — the last deferred Phase 1 item)**; logout → /login; sign in → /dashboard; **re-register same email → "Email already registered"**; visiting `/login` while logged in → auto-redirect to /dashboard.
 
+### PRODUCTION VERIFICATION (Vercel)
+- Latest deployment = Phase 2 commit `9142517`, state READY, target production. Build passed.
+- `https://pitsypet.vercel.app/login` renders 200 with correct Tailwind v4 styling; `/dashboard` unauthenticated redirects to `/login` (proves Supabase env vars set in Production + middleware runs in prod).
+- Added `https://pitsypet.vercel.app/**` to Supabase Auth → URL Configuration → Redirect URLs (was empty; Site URL still localhost). Without this the prod magic link would fall back to localhost.
+- **Live prod test by user:** registered a new account on production → magic-link email → landed on the production /dashboard → new user + profiles row visible in Supabase. Phase 2 auth confirmed end to end in production.
+
 ### DEFERRED (not blocking Phase 3)
-- Production session test (expired-token auto-refresh) — requires the deployed app; per plan this is verified at Phase 11 deployment.
+- Production session test (expired-token auto-refresh) — per plan, verified at Phase 11 deployment.
 - Resend custom SMTP (Phase 1 task 1.5) — still using Supabase built-in email for dev.
+- **Vercel Deployment Protection is ON** (share-token gate). Fine while the Vercel owner tests, but it can block `/auth/callback` for non-team users — must be turned off before UAT (Phase 12).
 
 ### FILES MODIFIED
 - New: `src/lib/supabase/{client,server,middleware}.ts`, `src/app/(auth)/auth/callback/route.ts`, `src/components/auth/{register-form,login-form}.tsx`, `src/app/(auth)/{register,login}/page.tsx`, `src/components/shared/navbar.tsx`, `src/app/(app)/layout.tsx`, `src/app/(app)/dashboard/page.tsx`, `src/lib/constants.ts`.
