@@ -40,9 +40,9 @@
 
 ## STATUS
 
-**Current phase:** Phase 1 — IN PROGRESS
+**Current phase:** Phase 1 — COMPLETE FOR DEVELOPMENT
 **Active plan:** `dev_plan.md`
-**Next action:** Configure/test custom SMTP, then verify Phase 1 remaining checks.
+**Next action:** Start Phase 2 — Authentication.
 
 ---
 
@@ -126,14 +126,15 @@
 - Verification — User manually verified RLS in Supabase Table Editor for all public tables. App-readable tables have active policies; `knowledge_processing_audit` has RLS enabled with no policies by design, creating deny-all behavior through PostgREST.
 - Verification — `npm run lint` passes.
 - Verification — `npm run build` passes.
+- Decision — Supabase internal email is accepted temporarily for development so Phase 2 is not blocked.
+- Decision — Resend/custom SMTP is deferred until production readiness.
 
 ### IN PROGRESS (not finished)
-- [Task 1.4] — Custom SMTP still needs to be configured/tested in Supabase.
-- Phase 1 deferred verification: signup trigger creates a row in `profiles` after Phase 2 auth exists.
+- Phase 1 deferred production hardening: configure/test Resend custom SMTP before production/UAT.
+- Phase 1 deferred verification: signup trigger creates a row in `profiles` during Phase 2 auth testing.
 
 ### BLOCKED
-- Custom SMTP — BLOCKED until Resend/custom SMTP credentials are available/configured in Supabase.
-- Test signup profile trigger — BLOCKED until Phase 2 auth UI/flow exists.
+- None blocking development.
 
 ### FILES MODIFIED
 - `supabase/config.toml` — Supabase CLI local project configuration.
@@ -144,13 +145,14 @@
 - `docs/DEV_LOG.md` — Updated Phase 1 progress.
 
 ### NEXT SESSION MUST START WITH
-1. Decide/configure custom SMTP provider settings in Supabase Auth.
-2. Send a Supabase Auth SMTP test email and confirm delivery.
-3. Commit and push Phase 1 database setup once the current changes are reviewed.
+1. Start Phase 2, Task 2.1: install/create Supabase server, browser, and middleware helpers.
+2. Build the auth routes/pages from `dev_plan.md`.
+3. Verify signup creates a row in `profiles`.
 
 ### DECISIONS / NOTES
 - Supabase CLI commands in this environment require `NODE_TLS_REJECT_UNAUTHORIZED=0` because of local TLS/certificate verification failures.
 - The `supabase db push` warning about Docker/pg-delta cache did not block remote migration application.
 - `supabase/migrations/.gitkeep` was removed because real migration files now exist and the CLI warned about the placeholder filename.
 - RLS verified in all tables. The globe icon in Supabase's table list denotes the `public` schema. The `knowledge_processing_audit` dashboard warning is expected because it intentionally has no policies; this keeps internal RAG audit data inaccessible to normal `anon`/`authenticated` clients.
+- Resend/custom SMTP remains the production target from the plan, but Supabase internal email is acceptable for development and Phase 2 implementation.
 ---
