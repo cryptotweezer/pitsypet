@@ -40,9 +40,9 @@
 
 ## STATUS
 
-**Current phase:** Phase 0 + Phase 1 — REVIEWED, HARDENED, AND VERIFIED
+**Current phase:** Phase 2 — COMPLETE AND VERIFIED (live signup tested)
 **Active plan:** `dev_plan.md`
-**Next action:** Start Phase 2 — Authentication.
+**Next action:** Start Phase 3 — Pet Profile Management.
 
 ---
 
@@ -213,4 +213,44 @@
 - `lucide-react@1.21.0` and `@base-ui/react@1.6.0` resolved and build is green; left as-is. Worth a sanity check against the public registry if any icon/component import ever fails.
 - Supabase CLI still needs `NODE_TLS_REJECT_UNAUTHORIZED=0` in this environment; the Docker/pg-delta catalog warning on `db push` is non-blocking (local edge-runtime image only).
 - Still deferred from Phase 1 (unchanged, pre-production): Resend custom SMTP (task 1.5).
+---
+
+---
+## SESSION 4 — 2026-06-19 — Claude / Opus 4.8 (Phase 2: Authentication)
+
+### STARTED WITH
+- Last session left off at: Phase 0+1 reviewed/hardened; Phase 2 not started.
+- Blockers from last session: none.
+
+### COMPLETED THIS SESSION (all of Phase 2)
+- [Task 2.1] — Supabase client utilities: `src/lib/supabase/client.ts` (browser) and `server.ts` (cookie-scoped, RLS-enforced, no service-role).
+- [Task 2.2] — Session-refresh middleware: `src/lib/supabase/middleware.ts` (calls `getUser()` to refresh tokens + route guards) and real `src/middleware.ts` (replaced the no-op placeholder).
+- [Task 2.3] — Auth callback: `src/app/(auth)/auth/callback/route.ts` (`exchangeCodeForSession` → /dashboard, or /login?error on failure).
+- [Task 2.4] — Register page + `components/auth/register-form.tsx` (RHF + zod; name 2–100, email, password 8+ with upper/lower/number/special, optional AU state via Base UI Select). Handles Supabase's anti-enumeration duplicate case (empty `identities` array → "Email already registered").
+- [Task 2.5] — Login page + `components/auth/login-form.tsx` (signInWithPassword → /dashboard; "Invalid email or password").
+- [Task 2.6] — Protected layout `src/app/(app)/layout.tsx` (getUser guard) + `components/shared/navbar.tsx` (email + logout).
+- [Task 2.7] — Placeholder `src/app/(app)/dashboard/page.tsx` ("Welcome, [name]" reading `profiles`).
+- Added `src/lib/constants.ts` (AU_STATES, reused in Phase 6 for emergency contacts).
+- Removed redundant `.gitkeep` files from directories that now hold real files.
+
+### VERIFICATION — all Phase 2 "Done When" items PASS
+- `npm run lint` → 0 errors; `npm run build` → 0 TS errors.
+- Runtime (curl): `/login` 200, `/register` 200, `/dashboard` with no session → 307 to `/login`.
+- **Live test by user (Andres):** register → magic-link email → /dashboard "Welcome, Andres felipe Henao"; **`profiles` row auto-created with name + state (confirms the `handle_new_user` trigger — the last deferred Phase 1 item)**; logout → /login; sign in → /dashboard; **re-register same email → "Email already registered"**; visiting `/login` while logged in → auto-redirect to /dashboard.
+
+### DEFERRED (not blocking Phase 3)
+- Production session test (expired-token auto-refresh) — requires the deployed app; per plan this is verified at Phase 11 deployment.
+- Resend custom SMTP (Phase 1 task 1.5) — still using Supabase built-in email for dev.
+
+### FILES MODIFIED
+- New: `src/lib/supabase/{client,server,middleware}.ts`, `src/app/(auth)/auth/callback/route.ts`, `src/components/auth/{register-form,login-form}.tsx`, `src/app/(auth)/{register,login}/page.tsx`, `src/components/shared/navbar.tsx`, `src/app/(app)/layout.tsx`, `src/app/(app)/dashboard/page.tsx`, `src/lib/constants.ts`.
+- Changed: `src/middleware.ts` (real session middleware).
+
+### NEXT SESSION MUST START WITH
+1. Phase 3, Task 3.1: pets API routes (`src/app/api/pets/route.ts`, `[id]/route.ts`, `breeds/route.ts`) using the cookie-scoped server client.
+2. Then pet-form + breed-autocomplete components, dashboard pet list, create/edit pages.
+
+### DECISIONS / NOTES
+- A stale `next dev` from an earlier session was left running on port 3000 and corrupted `.next` (mixed dev/prod chunks → "Cannot find module './948.js'"). Fix: kill the port-3000 process, `rm -rf .next`, rebuild. Don't leave a dev server running across sessions.
+- Supabase Select for the State field uses the Base UI API (`value`/`onValueChange`/`SelectValue placeholder`), not Radix.
 ---
