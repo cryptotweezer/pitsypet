@@ -40,7 +40,7 @@
 
 ## STATUS
 
-**Current phase:** Phase 1 — COMPLETE FOR DEVELOPMENT
+**Current phase:** Phase 0 + Phase 1 — REVIEWED, HARDENED, AND VERIFIED
 **Active plan:** `dev_plan.md`
 **Next action:** Start Phase 2 — Authentication.
 
@@ -155,4 +155,62 @@
 - `supabase/migrations/.gitkeep` was removed because real migration files now exist and the CLI warned about the placeholder filename.
 - RLS verified in all tables. The globe icon in Supabase's table list denotes the `public` schema. The `knowledge_processing_audit` dashboard warning is expected because it intentionally has no policies; this keeps internal RAG audit data inaccessible to normal `anon`/`authenticated` clients.
 - Resend/custom SMTP remains the production target from the plan, but Supabase internal email is acceptable for development and Phase 2 implementation.
+---
+
+---
+## SESSION 3 — 2026-06-19 — Claude / Opus 4.8 (Software Engineering review + hardening)
+
+### STARTED WITH
+- Last session left off at: Phase 1 complete for development; Phase 2 not started.
+- Blockers from last session: none.
+- Task this session: exhaustive engineering review of Phase 0 and Phase 1 before proceeding, then fix the problems found.
+
+### REVIEW FINDINGS (Phase 0 + Phase 1)
+- **Phase 1 (database): solid and faithful to the plan.** All 12 migrations match the spec; verified applied on remote (types generated with `--linked`; remote smoke check: `breeds=53`, `emergency_contacts=8`, both RPCs respond). The FTS index expression is byte-identical to `search_assessments` (index will be used); HNSW uses `vector_cosine_ops` matching the `<=>` operator; `search_assessments` is `SECURITY INVOKER` + `auth.uid()` + parameterized (injection-safe); RLS enabled on all 8 tables. The `::text` casts added to `search_veterinary_knowledge` were a correct, necessary fix (VARCHAR columns vs. `text` return signature).
+- **Phase 0 (CRITICAL ISSUE FOUND): the shadcn UI kit was Tailwind v4 + Base UI, but the build ran Tailwind v3.** `shadcn@latest init` produced the "base-nova" style: every `src/components/ui/*` component imports `@base-ui/react` and uses v4-only class syntax (`gap-(--card-spacing)`, `--spacing(4)`, `max-h-(--available-height)`, `ring-3`, `data-open:`, `outline-hidden`, `@container`). Tailwind v3 silently ignores unknown utilities, so `npm run build` passed while most component styling produced **no CSS at all** — a false green. This would have surfaced as broken-looking forms/dialogs/selects in Phases 2/3/5.
+- Other gaps: `form` shadcn component missing (needed Phases 2/3); `react-hook-form`/`@hookform/resolvers` not installed; `updated_at` never auto-updated (no trigger); signup trigger could fail a registration on duplicate; `dev_plan.md` header stale.
+
+### COMPLETED THIS SESSION
+- **Migrated the build pipeline to Tailwind v4** to match the already-generated v4/Base UI component kit (the coherent fix vs. rewriting 12 components for v3):
+  - Installed `tailwindcss@4.3.1` + `@tailwindcss/postcss@4.3.1`; removed the `shadcn` runtime dependency (CLI only, used via `npx`).
+  - Rewrote `postcss.config.mjs` to use `@tailwindcss/postcss`.
+  - Rewrote `src/app/globals.css` to clean v4 structure: `@import "tailwindcss"` + `@import "tw-animate-css"`, `@custom-variant dark`, and an `@theme inline` block mapping all color/radius/font tokens to the existing oklch `:root`/`.dark` variables. Removed the `@import "shadcn/tailwind.css"` runtime-coupling hack.
+  - Deleted the v3 `tailwind.config.ts` (v4 is CSS-first) and set `components.json` `tailwind.config` to `""`.
+  - **Verified the fix:** inspected the compiled CSS in `.next/static/css` and confirmed component utilities now emit real rules (`bg-primary`, `text-muted-foreground`, `bg-popover`, `ring-foreground`, `border-input`, `animate-in`, `fade-in-0`, `zoom-in-95`, `slide-in-from-top-2`, `outline-hidden`).
+- **Added form infrastructure** for Phases 2/3: installed `react-hook-form@7.79.0` + `@hookform/resolvers@5.4.0`; created `src/components/ui/form.tsx` (self-contained, wraps RHF, uses the local `Label`, no extra primitive dependency).
+- **Database hardening (2 new migrations, applied to remote):**
+  - `20260619001300_updated_at_triggers.sql` — `set_updated_at()` BEFORE UPDATE trigger on `profiles` and `pets` (assessments has no `updated_at` column).
+  - `20260619001400_harden_new_user.sql` — `handle_new_user()` now uses `ON CONFLICT (id) DO NOTHING` so a duplicate profile cannot roll back a signup.
+  - `npx supabase migration list` confirms all 14 migrations applied local + remote.
+- **Docs:** updated `dev_plan.md` header (status + Tailwind v4 stack note) and this DEV_LOG.
+- **Verification:** `npm run lint` → 0 errors; `npm run build` → success, 0 TS errors.
+
+### IN PROGRESS (not finished)
+- None.
+
+### BLOCKED
+- None.
+
+### FILES MODIFIED
+- `package.json` / `package-lock.json` — +tailwindcss@4, +@tailwindcss/postcss, +react-hook-form, +@hookform/resolvers; -shadcn.
+- `postcss.config.mjs` — switched to `@tailwindcss/postcss`.
+- `src/app/globals.css` — rewritten for Tailwind v4 (@theme inline + tokens).
+- `components.json` — `tailwind.config` set to `""` (v4).
+- `tailwind.config.ts` — deleted (v4 is CSS-first).
+- `src/components/ui/form.tsx` — new form component.
+- `supabase/migrations/20260619001300_updated_at_triggers.sql` — new.
+- `supabase/migrations/20260619001400_harden_new_user.sql` — new.
+- `docs/dev_plan.md` — header/status + stack note.
+- `docs/DEV_LOG.md` — this entry.
+
+### NEXT SESSION MUST START WITH
+1. Begin Phase 2, Task 2.1: create `src/lib/supabase/{client,server,middleware}.ts`.
+2. Build the real `src/middleware.ts` (currently a no-op placeholder) per the canonical `@supabase/ssr` pattern.
+3. **First end-to-end check in Phase 2:** confirm a real signup creates a `profiles` row via the (now hardened) `handle_new_user` trigger — this is the one Phase 1 "Done When" item that can only be verified with a live signup.
+
+### DECISIONS / NOTES
+- **Stack decision:** committed to **Tailwind v4 + shadcn base-nova (Base UI)**. Rationale: the components were already authored for v4/Base UI and `shadcn@latest` keeps generating them that way, so aligning the build to v4 is lower-risk and forward-compatible than rewriting every component to v3/Radix. Do NOT add `tailwindcss-animate` or a v3 `tailwind.config.ts` back; this project is CSS-first v4.
+- `lucide-react@1.21.0` and `@base-ui/react@1.6.0` resolved and build is green; left as-is. Worth a sanity check against the public registry if any icon/component import ever fails.
+- Supabase CLI still needs `NODE_TLS_REJECT_UNAUTHORIZED=0` in this environment; the Docker/pg-delta catalog warning on `db push` is non-blocking (local edge-runtime image only).
+- Still deferred from Phase 1 (unchanged, pre-production): Resend custom SMTP (task 1.5).
 ---
