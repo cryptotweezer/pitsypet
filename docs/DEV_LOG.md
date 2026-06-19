@@ -123,12 +123,13 @@
 - Added `scripts/verify-phase1.mjs` for service-role schema smoke checks without printing secrets.
 - Verification — `npx supabase migration list` shows all 12 migrations applied locally and remotely.
 - Verification — Remote smoke check returned `breeds = 53`, `emergency_contacts = 8`, and both RPC functions responded successfully.
+- Verification — User manually verified RLS in Supabase Table Editor for all public tables: `profiles`, `pets`, `assessments`, `veterinary_knowledge`, `breeds`, `first_aid_recommendations`, `emergency_contacts`, and `knowledge_processing_audit`.
 - Verification — `npm run lint` passes.
 - Verification — `npm run build` passes.
 
 ### IN PROGRESS (not finished)
 - [Task 1.4] — Custom SMTP still needs to be configured/tested in Supabase.
-- Phase 1 manual checks still needed: Table Editor RLS lock icons, and signup trigger after Phase 2 auth exists.
+- Phase 1 deferred verification: signup trigger creates a row in `profiles` after Phase 2 auth exists.
 
 ### BLOCKED
 - Custom SMTP — BLOCKED until Resend/custom SMTP credentials are available/configured in Supabase.
@@ -144,11 +145,12 @@
 
 ### NEXT SESSION MUST START WITH
 1. Decide/configure custom SMTP provider settings in Supabase Auth.
-2. Run remaining Phase 1 verification checks that require dashboard/manual access.
+2. Send a Supabase Auth SMTP test email and confirm delivery.
 3. Commit and push Phase 1 database setup once the current changes are reviewed.
 
 ### DECISIONS / NOTES
 - Supabase CLI commands in this environment require `NODE_TLS_REJECT_UNAUTHORIZED=0` because of local TLS/certificate verification failures.
 - The `supabase db push` warning about Docker/pg-delta cache did not block remote migration application.
 - `supabase/migrations/.gitkeep` was removed because real migration files now exist and the CLI warned about the placeholder filename.
+- RLS verified in all tables. The globe icon in Supabase's table list denotes the `public` schema and does not contradict active RLS policies.
 ---
