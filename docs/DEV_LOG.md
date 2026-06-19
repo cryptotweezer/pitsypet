@@ -57,24 +57,27 @@
 - [Task 0.1] — Confirmed Git remote points to `https://github.com/cryptotweezer/pitsypet.git`.
 - [Task 0.2] — Created the Next.js 14 App Router project with TypeScript, Tailwind, ESLint, `src/`, and `@/*` alias.
 - [Task 0.3] — Updated `.gitignore` to block env files, RAG sources, Python leftovers, and local dev-server logs.
+- [Task 0.4] — Committed and pushed Phase 0 setup to `origin/main`.
 - [Task 0.5] — Installed core runtime dependencies, including Vercel AI SDK v4 packages. Verified `ai@4.3.19`.
 - [Task 0.6] — Installed Supabase CLI. Verified `supabase@2.107.0`.
 - [Task 0.7] — Initialized shadcn/ui and added required base components.
-- [Task 0.8] — Created `.env.example` with the required Phase 0 keys.
+- [Task 0.8] — Created `.env.example`; user confirmed all variables from the plan are saved locally in `.env.local`.
 - [Task 0.9] — Created planned folder structure, `src/middleware.ts`, and `.gitkeep` files for empty directories.
-- [Task 0.10] — Added root `DEV_LOG.md` pointer to the canonical `docs/DEV_LOG.md`.
+- [Task 0.10] — Removed duplicate root `DEV_LOG.md`; `docs/DEV_LOG.md` is the only canonical session log.
+- [Task 0.11] — User confirmed Vercel deployment is complete.
+- [Task 0.12] — User confirmed all Vercel environment variables were added for the deployment.
+- Verification — Confirmed `.env.local` is ignored by git and not tracked.
 - Verification — `npm run lint` passes.
-- Verification — `npm run build` passes.
+- Verification — `npm run build` passes with `.env.local` present.
 - Verification — `npm run dev` starts and listens on `http://localhost:3000`.
+- Verification — `npm ls ai @ai-sdk/anthropic @ai-sdk/openai @ai-sdk/react` confirms `ai@4.3.19`.
+- Verification — `npx supabase --version` confirms `2.107.0`.
 
 ### IN PROGRESS (not finished)
-- [Task 0.4] — Local repo is connected to GitHub, but commit/push still needs to be done after user review.
-- [Task 0.11] — Vercel deployment not done from this environment.
-- [Task 0.12] — Vercel environment variables not configured.
+- None for Phase 0.
 
 ### BLOCKED
-- [Task 0.11] — BLOCKED: Requires Vercel account/project access in the browser or Vercel CLI authentication.
-- [Task 0.12] — BLOCKED: Requires real secret values and Vercel project access.
+- None for Phase 0.
 
 ### FILES MODIFIED
 - `.gitignore` — Added secret/RAG/log ignore rules.
@@ -87,47 +90,8 @@
 - `src/middleware.ts` — Added no-op middleware placeholder.
 - `src/components/ui/*` — Added shadcn/ui base components.
 - `src/**/.gitkeep`, `scripts/.gitkeep`, `supabase/migrations/.gitkeep` — Added planned folder structure placeholders.
-- `DEV_LOG.md` — Root pointer to canonical session log.
-- `docs/DEV_LOG.md` — Appended this session entry.
-
-### NEXT SESSION MUST START WITH
-1. Review `git status --short` and confirm the initial project files are ready to commit.
-2. Commit and push Phase 0 local setup to `origin/main`.
-3. Deploy to Vercel and configure env vars for Production, Preview, and Development.
-
-### DECISIONS / NOTES
-- shadcn CLI latest generated Tailwind v4-style utilities; project remains on Tailwind v3 from `create-next-app@14`, so theme tokens were added manually and `outline-ring/50` was replaced with explicit CSS.
-- `docs/DEV_LOG.md` remains the canonical continuity log because prior project docs already point there.
-- Dev server process is currently listening on port 3000.
----
-
----
-## SESSION 2 — 2026-06-19 — Codex / GPT-5
-
-### STARTED WITH
-- Last session left off at: Phase 0 local setup complete, Vercel deployment and environment variables pending.
-- Blockers from last session: Vercel access and real environment variable values.
-
-### COMPLETED THIS SESSION
-- [Task 0.8] — User confirmed all variables from the plan are saved locally in `.env.local`.
-- [Task 0.11] — User confirmed Vercel deployment is complete.
-- [Task 0.12] — User confirmed all Vercel environment variables were added.
-- Verification — Confirmed `.env.local` is ignored by git and not tracked.
-- Verification — `npm run lint` passes.
-- Verification — `npm run build` passes with `.env.local` present.
-- Verification — `npm ls ai @ai-sdk/anthropic @ai-sdk/openai @ai-sdk/react` confirms `ai@4.3.19`.
-- Verification — `npx supabase --version` confirms `2.107.0`.
-- Cleanup — Removed duplicate root `DEV_LOG.md`; `docs/DEV_LOG.md` is the only canonical session log.
-
-### IN PROGRESS (not finished)
-- None for Phase 0.
-
-### BLOCKED
-- None for Phase 0.
-
-### FILES MODIFIED
 - `DEV_LOG.md` — Removed duplicate root log pointer.
-- `docs/DEV_LOG.md` — Updated status to Phase 0 complete and appended this session entry.
+- `docs/DEV_LOG.md` — Updated status to Phase 0 complete and consolidated Phase 0 into one session entry.
 
 ### NEXT SESSION MUST START WITH
 1. Start Phase 1, Task 1.1: create/configure the Supabase project if not already done.
@@ -137,4 +101,5 @@
 ### DECISIONS / NOTES
 - Phase 0 is complete based on local verification plus user-confirmed Vercel deployment and Vercel env var configuration.
 - `.env.local` remains local only and is correctly ignored.
+- shadcn CLI latest generated Tailwind v4-style utilities; project remains on Tailwind v3 from `create-next-app@14`, so theme tokens were added manually and `outline-ring/50` was replaced with explicit CSS.
 ---
