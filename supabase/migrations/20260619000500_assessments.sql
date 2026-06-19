@@ -1,0 +1,23 @@
+CREATE TABLE assessments (
+  assessment_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  pet_id              UUID NOT NULL REFERENCES pets(pet_id) ON DELETE CASCADE,
+  user_id             UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  conversation_log    JSONB NOT NULL DEFAULT '[]',
+  extracted_symptoms  JSONB NOT NULL DEFAULT '[]',
+  risk_classification VARCHAR(20) CHECK (risk_classification IN ('Low','Medium','High')),
+  confidence_score    DECIMAL(3,2) CHECK (confidence_score >= 0 AND confidence_score <= 1),
+  primary_concern     TEXT,
+  clinical_reasoning  TEXT,
+  recommended_action  TEXT,
+  about_symptoms      TEXT,
+  red_flags           JSONB NOT NULL DEFAULT '[]',
+  rag_chunks_used     JSONB NOT NULL DEFAULT '[]',
+  fallback_used       BOOLEAN NOT NULL DEFAULT FALSE,
+  model_version       VARCHAR(100),
+  tokens_used         INTEGER NOT NULL DEFAULT 0,
+  processing_time_ms  INTEGER,
+  user_saved          BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at        TIMESTAMPTZ,
+  deleted_at          TIMESTAMPTZ
+);

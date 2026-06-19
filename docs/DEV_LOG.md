@@ -40,9 +40,9 @@
 
 ## STATUS
 
-**Current phase:** Phase 0 — COMPLETE
+**Current phase:** Phase 1 — IN PROGRESS
 **Active plan:** `dev_plan.md`
-**Next action:** Start Phase 1, Task 1.1 — create/configure the Supabase project and begin CLI migrations.
+**Next action:** Configure/test custom SMTP, then verify Phase 1 remaining checks.
 
 ---
 
@@ -102,4 +102,53 @@
 - Phase 0 is complete based on local verification plus user-confirmed Vercel deployment and Vercel env var configuration.
 - `.env.local` remains local only and is correctly ignored.
 - shadcn CLI latest generated Tailwind v4-style utilities; project remains on Tailwind v3 from `create-next-app@14`, so theme tokens were added manually and `outline-ring/50` was replaced with explicit CSS.
+---
+
+---
+## SESSION 2 — 2026-06-19 — Codex / GPT-5
+
+### STARTED WITH
+- Last session left off at: Phase 0 complete.
+- Blockers from last session: none.
+
+### COMPLETED THIS SESSION
+- [Task 1.1] — User confirmed Supabase project exists in Oceania/Sydney (`ap-southeast-2`).
+- [Task 1.2] — User confirmed `.env.local` includes Supabase URL, anon key, and service role key.
+- [Task 1.3] — Ran `npx supabase init` and linked the CLI to project ref `xaepzvxrqnqenspnanej`.
+- [Task 1.4] — Created and applied all Phase 1 migrations to the remote Supabase project:
+  `enable_extensions`, `profiles`, `breeds`, `pets`, `assessments`, `veterinary_knowledge`,
+  `first_aid_and_emergency`, `knowledge_audit`, `indexes`, `vector_search_function`,
+  `assessment_search_function`, and `rls_policies`.
+- Generated `src/types/database.ts` from the linked remote schema.
+- Added `scripts/verify-phase1.mjs` for service-role schema smoke checks without printing secrets.
+- Verification — `npx supabase migration list` shows all 12 migrations applied locally and remotely.
+- Verification — Remote smoke check returned `breeds = 53`, `emergency_contacts = 8`, and both RPC functions responded successfully.
+- Verification — `npm run lint` passes.
+- Verification — `npm run build` passes.
+
+### IN PROGRESS (not finished)
+- [Task 1.4] — Custom SMTP still needs to be configured/tested in Supabase.
+- Phase 1 manual checks still needed: Table Editor RLS lock icons, and signup trigger after Phase 2 auth exists.
+
+### BLOCKED
+- Custom SMTP — BLOCKED until Resend/custom SMTP credentials are available/configured in Supabase.
+- Test signup profile trigger — BLOCKED until Phase 2 auth UI/flow exists.
+
+### FILES MODIFIED
+- `supabase/config.toml` — Supabase CLI local project configuration.
+- `supabase/.gitignore` — Supabase local ignore rules for `.temp` and local env files.
+- `supabase/migrations/*.sql` — Phase 1 schema, indexes, functions, seeds, and RLS policies.
+- `src/types/database.ts` — Generated Supabase database types.
+- `scripts/verify-phase1.mjs` — Remote schema smoke-check helper.
+- `docs/DEV_LOG.md` — Updated Phase 1 progress.
+
+### NEXT SESSION MUST START WITH
+1. Decide/configure custom SMTP provider settings in Supabase Auth.
+2. Run remaining Phase 1 verification checks that require dashboard/manual access.
+3. Commit and push Phase 1 database setup once the current changes are reviewed.
+
+### DECISIONS / NOTES
+- Supabase CLI commands in this environment require `NODE_TLS_REJECT_UNAUTHORIZED=0` because of local TLS/certificate verification failures.
+- The `supabase db push` warning about Docker/pg-delta cache did not block remote migration application.
+- `supabase/migrations/.gitkeep` was removed because real migration files now exist and the CLI warned about the placeholder filename.
 ---
