@@ -123,7 +123,7 @@
 - Added `scripts/verify-phase1.mjs` for service-role schema smoke checks without printing secrets.
 - Verification — `npx supabase migration list` shows all 12 migrations applied locally and remotely.
 - Verification — Remote smoke check returned `breeds = 53`, `emergency_contacts = 8`, and both RPC functions responded successfully.
-- Verification — User manually verified RLS in Supabase Table Editor for all public tables: `profiles`, `pets`, `assessments`, `veterinary_knowledge`, `breeds`, `first_aid_recommendations`, `emergency_contacts`, and `knowledge_processing_audit`.
+- Verification — User manually verified RLS in Supabase Table Editor for all public tables. App-readable tables have active policies; `knowledge_processing_audit` has RLS enabled with no policies by design, creating deny-all behavior through PostgREST.
 - Verification — `npm run lint` passes.
 - Verification — `npm run build` passes.
 
@@ -152,5 +152,5 @@
 - Supabase CLI commands in this environment require `NODE_TLS_REJECT_UNAUTHORIZED=0` because of local TLS/certificate verification failures.
 - The `supabase db push` warning about Docker/pg-delta cache did not block remote migration application.
 - `supabase/migrations/.gitkeep` was removed because real migration files now exist and the CLI warned about the placeholder filename.
-- RLS verified in all tables. The globe icon in Supabase's table list denotes the `public` schema and does not contradict active RLS policies.
+- RLS verified in all tables. The globe icon in Supabase's table list denotes the `public` schema. The `knowledge_processing_audit` dashboard warning is expected because it intentionally has no policies; this keeps internal RAG audit data inaccessible to normal `anon`/`authenticated` clients.
 ---
