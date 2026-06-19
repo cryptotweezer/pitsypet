@@ -247,7 +247,7 @@
 ### DEFERRED (not blocking Phase 3)
 - Production session test (expired-token auto-refresh) — per plan, verified at Phase 11 deployment.
 - Resend custom SMTP (Phase 1 task 1.5) — still using Supabase built-in email for dev.
-- **Vercel Deployment Protection is ON** (share-token gate). Fine while the Vercel owner tests, but it can block `/auth/callback` for non-team users — must be turned off before UAT (Phase 12).
+- **Vercel Deployment Protection: DISABLED this session.** The production site is now publicly accessible (verified: `https://pitsypet.vercel.app/login` returns the app's "Welcome back" page to anonymous visitors, not the Vercel auth gate).
 
 ### FILES MODIFIED
 - New: `src/lib/supabase/{client,server,middleware}.ts`, `src/app/(auth)/auth/callback/route.ts`, `src/components/auth/{register-form,login-form}.tsx`, `src/app/(auth)/{register,login}/page.tsx`, `src/components/shared/navbar.tsx`, `src/app/(app)/layout.tsx`, `src/app/(app)/dashboard/page.tsx`, `src/lib/constants.ts`.
