@@ -6,11 +6,54 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 PitsyPet is an AI-powered veterinary symptom-triage web app for Australian dog/cat owners. A user registers, creates pet profiles, then runs a conversational assessment: the AI extracts symptoms from chat, retrieves veterinary knowledge (RAG over pgvector), classifies risk **Low / Medium / High**, and shows clinical reasoning plus risk-appropriate recommendations (first-aid for Low, vet referral + emergency contacts for High). It is an educational triage tool, **not** a diagnosis — a missed emergency is treated as far worse than an unnecessary vet visit, so the whole system is biased to escalate when uncertain.
 
-## The three docs — read these first, in this order of authority
+## Session bootstrap — DO THIS FIRST, EVERY SESSION
 
-1. **`docs/dev_plan.md`** — the SOURCE OF TRUTH for what we build and how. Phased (0→12), each phase has a "✅ Done When" checklist. Work phases in order; do not start a phase until the previous one's checklist passes.
+**This file (`CLAUDE.md`) loads automatically into every session — you are reading it now. It is your map. Do not read the whole `dev_plan.md` at startup; that costs ~47K tokens and most of it is for phases you are not building this session.** Instead, bootstrap like this:
+
+1. **Read the latest `docs/DEV_LOG.md` entry + the `## STATUS` block at the top.** That tells you what's done, what's deferred, and the exact next action. (You may skip older entries — read only the most recent session, plus STATUS.)
+2. **Find the current phase** in the **Project roadmap** table below (and confirm against the DEV_LOG STATUS line).
+3. **Read ONLY the current phase's section of `docs/dev_plan.md`.** Use Grep to find the `## Phase N` heading line, then Read just that range (typically ~3–5K tokens) — including its **✅ Done When** checklist. Do not read other phases unless a task explicitly depends on them.
+4. The **cross-cutting invariants** (safety, RLS, AI SDK pins, the stack) are already in this file — you do not need the plan for those.
+
+**Then, before doing any work, reply to the user with a 2–3 line bootstrap summary** so they have confidence we're aligned:
+> **Phase N — <name>.** This session: <one line on what we build>. Watch: <one thing to keep in mind / a deferred item / a Done-When gate>.
+
+Keep it to a couple of lines — it's a sanity check, not a report. Then proceed (or ask the user for the go-ahead if the next step is ambiguous).
+
+**Closing a session:** append a new `DEV_LOG.md` entry (template at the top of that file) **and** update the **Project roadmap** status below + the `## STATUS` block in DEV_LOG if the current phase changed. Keep these two in sync — they are the entire continuity mechanism.
+
+## Project roadmap — the long arc (so we never drift)
+
+The full build is 12 phases, each gated by its own **✅ Done When** checklist in `dev_plan.md`. Work them **in order**; never start a phase until the previous one's checklist passes. This table is the at-a-glance map — read the phase's section in `dev_plan.md` for the actual tasks.
+
+| Phase | Name | Status |
+|---|---|---|
+| 0 | Environment & Repository Setup | ✅ Done (verified) |
+| 1 | Database Schema & Supabase Config (tables, RLS, RPCs, indexes) | ✅ Done (reviewed + hardened) |
+| 2 | Authentication (register, login, session middleware, protected routes) | ✅ Done (live-tested in prod) |
+| 3 | Pet Profile Management (CRUD pets, breed autocomplete, dashboard) | ✅ Done (live-tested) |
+| 4 | **RAG Knowledge Base Ingestion** (TypeScript `scripts/ingest.ts`) | ⏳ **CURRENT — next up** |
+| 5 | **AI Triage Engine** — the core (stream extract → RAG → classify → safety override) | ⬜ Not started |
+| 6 | Results Page & Recommendations (risk badge, first-aid, emergency contacts) | ⬜ Not started |
+| 7 | Assessment History & Search (`search_assessments` RPC) | ⬜ Not started |
+| 8 | UI/UX Polish & Accessibility (responsive 320–1920px, WCAG 2.1 AA) | ⬜ Not started |
+| 9 | Error Handling, Fallbacks & Security (RLS/injection/cost-guard audit) | ⬜ Not started |
+| 10 | Testing (Vitest; triage regression set from 5.14) | ⬜ Not started |
+| 11 | Monitoring & Production Deployment (Sentry, PostHog, UptimeRobot health check) | ⬜ Not started |
+| 12 | User Acceptance Testing + README | ⬜ Not started |
+
+**Things to keep in mind across phases (so early work doesn't paint us into a corner):**
+- **Everything funnels into the Phase 5 triage engine.** Pet fields built in Phase 3 (species, breed, age, weight, medical_conditions) are consumed verbatim by `formatPet` and the RAG query in Phase 5 — keep their shape stable.
+- **Phase 4 (RAG ingest) and Phase 3 are independent** and can be done in parallel; Phase 5 needs *both* done.
+- **The safety override, rule-based fallback, and "confidence is logged-only" rules are non-negotiable** and appear as explicit Done-When tests in Phases 5/9/10. Don't soften them.
+- **Schema changes** → always regenerate `src/types/database.ts` (`npx supabase gen types ... --linked`) and commit it.
+- **Deferred items currently outstanding:** Resend custom SMTP (Phase 1 task 1.5, pre-production); expired-token session refresh test (Phase 2, verified at Phase 11). Don't lose these — they're tracked in the DEV_LOG.
+
+## The three docs — order of authority
+
+1. **`docs/dev_plan.md`** — the SOURCE OF TRUTH for what we build and how. Phased (0→12), each phase has a "✅ Done When" checklist. Per the bootstrap protocol above, read it **one phase section at a time**, not whole.
 2. **`docs/DEV_LOG.md`** — the continuity mechanism. **Read the latest entry before doing anything**, and **append a new session entry when you finish** (template is at the top of the file). It records what's done, what's deferred, and what the next session must start with.
-3. **`docs/PROPOSAL.md`** — the original academic capstone proposal. **Historical context only.** It is a starting guide, not the build spec. Where it conflicts with `dev_plan.md`, the plan wins, always. This is *real software development now, not an academic deliverable* — there is no report to hand in.
+3. **`docs/PROPOSAL.md`** — the original academic capstone proposal. **Historical context only — do not read at startup.** It is a starting guide, not the build spec. Where it conflicts with `dev_plan.md`, the plan wins, always. This is *real software development now, not an academic deliverable* — there is no report to hand in.
 
 ### PROPOSAL.md is outdated — do NOT implement these parts of it
 
@@ -98,10 +141,10 @@ This project is **CSS-first Tailwind v4**, not v3. The `src/components/ui/*` kit
 
 ## Status & workflow
 
-- **Done:** Phase 0 (setup) and Phase 1 (DB schema + RLS + RPCs), reviewed and hardened. **Next:** Phase 2 (Authentication).
-- Routes are grouped: `src/app/(auth)/*` (login/register/callback) and `src/app/(app)/*` (protected: dashboard, pets, assessment, history). `src/middleware.ts` is currently a no-op placeholder — Phase 2 replaces it with the canonical `@supabase/ssr` session-refresh middleware (must call `supabase.auth.getUser()` to refresh tokens).
+- **Done:** Phase 0 (setup), Phase 1 (DB schema + RLS + RPCs, reviewed + hardened), Phase 2 (auth, live-tested in prod), Phase 3 (pet CRUD + breed autocomplete + dashboard, live-tested). **Current:** Phase 4 (RAG Knowledge Base Ingestion). See the **Project roadmap** table above for the authoritative status — keep it current.
+- Routes are grouped: `src/app/(auth)/*` (login/register/callback) and `src/app/(app)/*` (protected: dashboard, pets, assessment, history). `src/middleware.ts` is the real `@supabase/ssr` session-refresh middleware (calls `supabase.auth.getUser()` to refresh tokens + guards routes); the Supabase clients live in `src/lib/supabase/{client,server,middleware}.ts`.
 - After any schema change, regenerate `src/types/database.ts` and keep it committed.
-- Commit/push only when asked. Update `docs/DEV_LOG.md` at the end of each working session.
+- Commit/push only when asked. Update `docs/DEV_LOG.md` **and** the roadmap status at the end of each working session.
 
 ## Environment variables (`.env.local`, never committed)
 
