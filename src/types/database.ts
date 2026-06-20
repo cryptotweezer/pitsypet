@@ -224,6 +224,68 @@ export type Database = {
         }
         Relationships: []
       }
+      medications: {
+        Row: {
+          active: boolean
+          created_at: string
+          deleted_at: string | null
+          dosage: string | null
+          ended_at: string | null
+          frequency: string | null
+          medication_id: string
+          name: string
+          notes: string | null
+          pet_id: string
+          prescribed_by: string | null
+          quantity: string | null
+          started_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          deleted_at?: string | null
+          dosage?: string | null
+          ended_at?: string | null
+          frequency?: string | null
+          medication_id?: string
+          name: string
+          notes?: string | null
+          pet_id: string
+          prescribed_by?: string | null
+          quantity?: string | null
+          started_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          deleted_at?: string | null
+          dosage?: string | null
+          ended_at?: string | null
+          frequency?: string | null
+          medication_id?: string
+          name?: string
+          notes?: string | null
+          pet_id?: string
+          prescribed_by?: string | null
+          quantity?: string | null
+          started_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medications_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["pet_id"]
+          },
+        ]
+      }
       pets: {
         Row: {
           age_months: number | null
@@ -292,6 +354,56 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      vet_contacts: {
+        Row: {
+          clinic_name: string | null
+          created_at: string
+          deleted_at: string | null
+          doctor_name: string | null
+          email: string | null
+          notes: string | null
+          pet_id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+          vet_contact_id: string
+        }
+        Insert: {
+          clinic_name?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          doctor_name?: string | null
+          email?: string | null
+          notes?: string | null
+          pet_id: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+          vet_contact_id?: string
+        }
+        Update: {
+          clinic_name?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          doctor_name?: string | null
+          email?: string | null
+          notes?: string | null
+          pet_id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+          vet_contact_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vet_contacts_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["pet_id"]
+          },
+        ]
       }
       veterinary_knowledge: {
         Row: {

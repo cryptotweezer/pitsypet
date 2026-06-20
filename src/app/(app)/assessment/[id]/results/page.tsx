@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, petHref } from "@/lib/utils";
 import {
   RiskBadge,
   type RiskLevel,
@@ -15,6 +15,7 @@ import {
   type EmergencyContact,
 } from "@/components/assessment/results/recommendations";
 import { Disclaimer } from "@/components/assessment/results/disclaimer";
+import { DeleteButton } from "@/components/assessment/results/delete-button";
 
 export const metadata = { title: "Assessment results · PitsyPet" };
 
@@ -39,9 +40,14 @@ function symptomNames(raw: unknown): string[] {
 
 export default async function ResultsPage({
   params,
+  searchParams,
 }: {
   params: { id: string };
+  searchParams: { from?: string };
 }) {
+  // Delete is offered only when opening a past assessment from history, not on
+  // the just-completed results view.
+  const fromHistory = searchParams.from === "history";
   const supabase = createClient();
   const {
     data: { user },
@@ -125,11 +131,21 @@ export default async function ResultsPage({
       }));
   }
 
+  const recordHref = petHref(assessment.pet_id, pet?.pet_name ?? "pet");
+
   return (
     <section className="mx-auto grid max-w-2xl gap-5">
-      <h1 className="font-heading text-2xl font-semibold">
-        {pet?.pet_name ? `${pet.pet_name}'s results` : "Assessment results"}
-      </h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="font-heading text-2xl font-semibold">
+          {pet?.pet_name ? `${pet.pet_name}'s results` : "Assessment results"}
+        </h1>
+        {fromHistory && (
+          <DeleteButton
+            assessmentId={assessment.assessment_id}
+            returnHref={recordHref}
+          />
+        )}
+      </div>
 
       <RiskBadge risk={risk} />
 
@@ -149,13 +165,16 @@ export default async function ResultsPage({
 
       <Disclaimer />
 
-      <div className="flex items-center gap-3">
-        <Link href="/dashboard" className={cn(buttonVariants({ variant: "outline" }))}>
-          Back to dashboard
+      <div className="flex flex-wrap items-center gap-2">
+        <Link href={recordHref} className={cn(buttonVariants())}>
+          ← Back to {pet?.pet_name ? `${pet.pet_name}'s` : "the"} record
         </Link>
-        <span className="text-sm text-muted-foreground">
-          Saved to your history automatically.
-        </span>
+        <Link
+          href="/dashboard"
+          className={cn(buttonVariants({ variant: "outline" }))}
+        >
+          Dashboard
+        </Link>
       </div>
     </section>
   );

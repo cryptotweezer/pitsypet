@@ -1385,6 +1385,38 @@ Rules:
 
 ---
 
+## Phase 7.5: Pet Clinical History Hub (user-directed expansion)
+
+**Added 2026-06-20, beyond the original plan.** Each pet's card opens a **detail page that is its living clinical history**. Built in parts; update `CLAUDE.md` + `DEV_LOG.md` per part.
+
+**Core rules:**
+- **Assessments are immutable snapshots** — the contextual chat reads them but never edits them. New assessments accumulate as the clinical timeline.
+- **Per-pet records:** `medications` + `vet_contacts`, entered via **forms AND the AI chat** (AI writes with confirmation).
+- **Contextual AI chat per pet** always has full context (profile + all assessments + meds + vet + RAG): answers questions, writes records via tools, can start a new assessment. Keeps disclaimers; on new/worsening symptoms suggests a NEW assessment rather than re-classifying silently.
+- **Export:** printable/downloadable clinical history (PDF) incl. an AI-generated clinical summary for the vet. Direct email-send deferred (Resend, pre-production).
+- **URL:** `/pets/[id]/[name]` — id authoritative, name is a cosmetic slug.
+
+### Part 1 — Pet detail page + per-pet history + meds/vet (forms)
+- New tables `medications` (pet_id, name, dosage, quantity, frequency, notes, prescribed_by, started_at, ended_at, active) and `vet_contacts` (pet_id, doctor_name, clinic_name, phone, email) — RLS owner-scoped via pets; regen `database.ts`.
+- `/pets/[id]/[name]/page.tsx`: pet profile, that pet's assessment history (reuse `<AssessmentCard>`), medications list, vet contacts, "Start new assessment".
+- CRUD API routes + forms for medications and vet contacts.
+- Dashboard pet card → links to the pet page.
+
+### Part 2 — Contextual chat with write tools
+- **Per-pet chat** embedded on the pet page (`/pets/[id]/[name]`), always available. Persistent thread (separate table from assessments). Full context for THAT pet (profile + all its assessments + meds + vet) + RAG; can also see the user's other pets but stays focused on the current one. Tools: `add_medication`, `add_vet_contact` (confirm before write), `start_assessment`. Safety disclaimers retained; assessments stay immutable (chat reads, never edits).
+- **Dashboard chat** — a general assistant on the dashboard with access to ALL of the user's pets, so the user can ask about any pet ("what meds is Firulais on?"). Same write tools, scoped to the pet referenced.
+- Global `/history` page + navbar link + `/api/search` route were REMOVED (history now lives per-pet on the pet page). The `search_assessments` RPC remains in the DB for possible reuse.
+
+### Part 3 — Export / print + AI clinical summary
+- Print-optimised clinical history view; "Generate clinical summary" (AI) included in the printout. Download as PDF (browser print). Email-send noted as future.
+
+### ✅ Done When (per part, verified live by user)
+- [ ] Part 1: pet page shows profile + that pet's assessments + meds + vet; can add/edit meds & vet via forms; start a new assessment from the page.
+- [ ] Part 2: chat answers from the pet's records, adds a medication/vet via chat (with confirmation), and assessments remain unchanged.
+- [ ] Part 3: a printable clinical history with an AI summary downloads cleanly.
+
+---
+
 ## Phase 8: UI/UX Polish & Accessibility
 
 **Goal:** Professional, responsive (320px–1920px), WCAG 2.1 AA, with proper loading/error states.

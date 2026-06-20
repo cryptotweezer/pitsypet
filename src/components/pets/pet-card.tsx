@@ -25,7 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import { cn, petHref } from "@/lib/utils";
 
 export type PetCardData = {
   pet_id: string;
@@ -75,7 +75,14 @@ export function PetCard({ pet }: { pet: PetCardData }) {
             <Icon className="size-4" />
           </span>
           <div className="grid">
-            <CardTitle>{pet.pet_name}</CardTitle>
+            <CardTitle>
+              <Link
+                href={petHref(pet.pet_id, pet.pet_name)}
+                className="hover:underline"
+              >
+                {pet.pet_name}
+              </Link>
+            </CardTitle>
             <CardDescription>
               {pet.breed} · {pet.species}
             </CardDescription>
@@ -101,16 +108,16 @@ export function PetCard({ pet }: { pet: PetCardData }) {
 
       <CardFooter className="flex-wrap gap-2">
         <Link
-          href={`/assessment/${pet.pet_id}`}
+          href={petHref(pet.pet_id, pet.pet_name)}
           className={cn(buttonVariants({ size: "sm" }))}
         >
-          Start Assessment
+          Open record
         </Link>
         <Link
-          href={`/pets/${pet.pet_id}/edit`}
+          href={`/assessment/${pet.pet_id}`}
           className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
         >
-          Edit
+          New assessment
         </Link>
         <Button
           variant="ghost"

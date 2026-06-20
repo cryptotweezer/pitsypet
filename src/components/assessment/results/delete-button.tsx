@@ -18,7 +18,13 @@ import {
 
 // Assessments are saved automatically when they complete; this lets the owner
 // remove one from their history (soft delete).
-export function DeleteButton({ assessmentId }: { assessmentId: string }) {
+export function DeleteButton({
+  assessmentId,
+  returnHref = "/dashboard",
+}: {
+  assessmentId: string;
+  returnHref?: string;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -35,7 +41,7 @@ export function DeleteButton({ assessmentId }: { assessmentId: string }) {
     }
     setOpen(false);
     toast.success("Assessment deleted");
-    router.push("/dashboard");
+    router.push(returnHref);
     router.refresh();
   }
 

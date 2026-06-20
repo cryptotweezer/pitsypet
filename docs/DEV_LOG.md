@@ -40,9 +40,9 @@
 
 ## STATUS
 
-**Current phase:** Phase 6 COMPLETE + live-tested (results page, risk-appropriate recommendations, redirect-on-complete, reload-safe). Auto-save replaced the Save button; assessment delete deferred to Phase 7; pets gained Restore + Delete-permanently. **Next: Phase 7 (Assessment History & Search).**
-**Active plan:** `dev_plan.md`
-**Next action:** Start Phase 7 — `/api/search` route (rate-limited `search_assessments` RPC), `/history` page listing COMPLETED assessments (`completed_at NOT NULL`, NOT `user_saved`), `<AssessmentCard>` (click → `/assessment/[id]/results`), and the assessment **delete** action shown when opening a past assessment (component `delete-button.tsx` + `DELETE /api/assessment/[id]` already exist). Add a "History" link on the dashboard.
+**Current phase:** Phase 7.5 — Pet Clinical History Hub. **Part 1 COMPLETE + live-tested by user (committed).** Pet page `/pets/[id]/[name]` with profile + per-pet assessment history + meds (start/end/indefinite) + vet contacts, all with confirm-before-delete. Global history removed (lives per-pet now). Assessment-chat text regression fixed. "Back to [pet]'s record" navigation from results.
+**Active plan:** `dev_plan.md` (Phase 7.5 section)
+**Next action:** **Part 2** — TWO chats: per-pet chat embedded on the pet page (focused on that pet, can see others) + a dashboard chat across ALL pets; persistent thread table; write tools (`add_medication`, `add_vet_contact` confirm-before-write, `start_assessment`); full context + RAG; **assessments stay immutable (chat reads, never edits)**. Then Part 3 (export/print + AI clinical summary).
 
 ---
 
@@ -485,4 +485,35 @@ Open risks / things to check (priority order):
 ### DECISIONS / NOTES
 - `user_saved` column left in the DB (harmless) but is now dead — history keys off `completed_at`.
 - Permanent pet delete is intentionally a two-step flow (soft-delete first, then purge from "Recently deleted") to make irreversible deletion deliberate.
+---
+
+---
+## SESSION 11 — 2026-06-20 — Claude / Opus 4.8 (Phase 7 + pivot to Phase 7.5 Pet Clinical History Hub; Part 1)
+
+### STARTED WITH
+- Phase 6 committed. Built Phase 7 (global history + search), but on testing the user redirected the product: each pet's card should open a **per-pet clinical history hub** (assessments + meds + vet + AI chat + export). Big expansion beyond the plan.
+
+### DESIGN DECISIONS (user-directed, via AskUserQuestion)
+- URL `/pets/[id]/[name]` (id authoritative, name cosmetic slug). Meds/vet entered via **forms AND chat**. Export = **printable/downloadable PDF** now, email-send deferred (note left). Build in **parts**, update docs per part.
+- **Assessments are immutable** snapshots; the contextual chat reads but never edits them. New assessments accumulate as the clinical timeline. Recorded as Phase 7.5 in `dev_plan.md`; memories saved (`pitsypet-clinical-history-hub`, `pitsypet-ask-before-big-features`).
+
+### COMPLETED THIS SESSION
+- **Phase 7 (global history, uncommitted, will commit with 7.5-P1):** `search_assessments` RPC migration `…000200` now gates on `completed_at IS NOT NULL` (not `user_saved`; tsvector kept byte-identical to the GIN index). `/api/search` (rate-limited), `/history` page, `<AssessmentCard>`, `<HistorySearch>` (300ms debounce, empty/loading states), navbar Dashboard/History links. Assessment **delete** shown only when opening a past assessment from history (`?from=history`).
+- **Phase 7.5 Part 1:** migration `…000300` adds `medications` + `vet_contacts` (user_id + pet_id CASCADE, RLS owner-scoped, updated_at triggers, soft-delete). Types regenerated **via the Supabase MCP** (`gen types --linked` fails under Norton TLS — `LegacyGenTypesNetworkError`; MCP runs server-side and works — use it for type regen going forward). New: validations (`medication.ts`, `vet-contact.ts`), CRUD API routes (`/api/pets/[id]/medications[/[medId]]`, `/api/pets/[id]/vet-contacts[/[vetId]]`), client sections (`medications-section.tsx`, `vet-contacts-section.tsx`), pet page `/pets/[id]/[name]/page.tsx` (profile + meds + vet + that pet's assessment history via `<AssessmentCard>` + "Start new assessment" + "Edit profile"). `petSlug`/`petHref` helpers in `utils.ts`. Dashboard pet card now → "Open record" (pet page) + "New assessment"; title links to the pet page.
+- `tsc` + `lint` + `npm run build` all clean.
+
+### REFINEMENTS FROM USER TESTING (same session, all live-tested OK)
+- **Removed the global history** (it was the "old" approach): deleted `/history` page, `history-search.tsx`, `/api/search`, and the navbar History link. History now lives only on each pet page. `search_assessments` RPC kept in DB for reuse.
+- **Medications form** now has start date + end date + an "Ongoing / indefinite" checkbox (default on, disables end date). List shows "From … to …" or "… · ongoing".
+- **FIXED assessment-chat regression** (user-reported): the AI was replying with ONLY the tool/quick-replies and no visible text. Root cause = Session 9 prompt forcing the tool "every turn", so Haiku led with the tool and dropped text. Prompt rewritten to ALWAYS write the visible reply first, tool as a background channel (maxSteps still 1).
+- **Confirm-before-delete** dialogs added to medications AND vet contacts (were deleting on a single click).
+- **Navigation fix:** results page footer is now "← Back to [pet]'s record" → the pet page (with a secondary Dashboard link); `DeleteButton` takes a `returnHref` so deleting a past assessment returns to that pet's record, not the dashboard.
+
+### NEXT SESSION MUST START WITH
+1. **Part 2** — TWO chats: per-pet chat embedded on the pet page (focused on that pet, can see the user's other pets) + a dashboard chat across ALL pets. New persistent thread table (separate from assessments). Full pet context + RAG; write tools (`add_medication`, `add_vet_contact` with confirm-before-write, `start_assessment`); keep disclaimers; suggest a NEW assessment on new/worsening symptoms (don't re-classify silently). Assessments remain immutable.
+2. **Part 3** — printable/downloadable clinical history + AI clinical summary for the vet (email-send deferred).
+
+### DECISIONS / NOTES
+- **Type regen workaround:** use Supabase MCP `generate_typescript_types` (project `xaepzvxrqnqenspnanej`); the CLI `gen types --linked` is blocked by Norton TLS interception even though `db push` works (pg connection vs management API).
+- Route layering: `/pets/[id]/edit` (static) coexists with `/pets/[id]/[name]` (dynamic) — Next.js allows a static segment beside a dynamic one at the same level.
 ---

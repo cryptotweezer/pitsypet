@@ -26,6 +26,12 @@ export function Navbar({ email }: { email: string }) {
           PitsyPet
         </Link>
         <div className="flex items-center gap-3">
+          <Link
+            href="/dashboard"
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            Dashboard
+          </Link>
           <span className="hidden text-sm text-muted-foreground sm:inline">
             {email}
           </span>

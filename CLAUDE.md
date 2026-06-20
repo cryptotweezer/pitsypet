@@ -35,7 +35,8 @@ The full build is 12 phases, each gated by its own **✅ Done When** checklist i
 | 4 | **RAG Knowledge Base Ingestion** (TypeScript `scripts/ingest.ts`) | 🟡 **CURRENT — pipeline built; ingestion run pending source docs** |
 | 5 | AI Triage Engine — the core (stream extract → RAG → classify → safety override) | ✅ Done (live-tested: GDV emergency → High, persisted) |
 | 6 | **Results Page & Recommendations** (risk badge, first-aid, emergency contacts) | ✅ Done (live-tested; auto-save replaced the Save button — see note) |
-| 7 | Assessment History & Search (`search_assessments` RPC) | ⏳ **CURRENT — next up** |
+| 7 | Assessment History & Search (`search_assessments` RPC) | ✅ Done (global history + search built) |
+| 7.5 | **Pet Clinical History Hub** (user-directed expansion: pet page + meds/vet + contextual chat + export) | ⏳ **CURRENT — Part 1 ✅ done (pet page + per-pet history + meds/vet); next Part 2 (per-pet + dashboard chats w/ write tools), Part 3 (export/print + AI summary)** |
 | 8 | UI/UX Polish & Accessibility (responsive 320–1920px, WCAG 2.1 AA) | ⬜ Not started |
 | 9 | Error Handling, Fallbacks & Security (RLS/injection/cost-guard audit) | ⬜ Not started |
 | 10 | Testing (Vitest; triage regression set from 5.14) | ⬜ Not started |
@@ -142,7 +143,7 @@ This project is **CSS-first Tailwind v4**, not v3. The `src/components/ui/*` kit
 
 ## Status & workflow
 
-- **Done:** Phase 0–3; Phase 5 (AI triage engine, live-tested end-to-end); Phase 6 (results page + recommendations, live-tested — auto-save replaced the Save button; see the design-changes note above). **Phase 4 pipeline built but ingestion run pending user PDFs** (RAG runs empty meanwhile; classification works on model knowledge). **Current:** Phase 7 (Assessment History & Search — list completed assessments, open a past one, delete from the card). See the **Project roadmap** table above for the authoritative status — keep it current.
+- **Done:** Phase 0–3; Phase 5 (AI triage engine); Phase 6 (results page + recommendations, auto-save); Phase 7 (global history + search). **Phase 4 pipeline built but ingestion run pending user PDFs** (RAG runs empty meanwhile; classification works on model knowledge). **Current:** Phase 7.5 — **Pet Clinical History Hub** (user-directed expansion; see Phase 7.5 in `dev_plan.md`). Building in **parts**, updating `CLAUDE.md` + `DEV_LOG.md` per part. **Part 1 ✅ done + live-tested** (pet page `/pets/[id]/[name]` + per-pet history + `medications`/`vet_contacts` with confirm-before-delete; global `/history` removed — history lives per-pet; meds have start/end/indefinite; assessment-chat text regression fixed; "Back to [pet]'s record" nav). **Next: Part 2** = per-pet chat (on the pet page, focused on that pet) + dashboard chat (across all pets), both with write tools + full context + RAG; **Part 3** = export/print + AI clinical summary. **Assessments are immutable snapshots — the chat reads them, never edits them.** See the **Project roadmap** table above for authoritative status — keep it current.
 - Routes are grouped: `src/app/(auth)/*` (login/register/callback) and `src/app/(app)/*` (protected: dashboard, pets, assessment, history). `src/middleware.ts` is the real `@supabase/ssr` session-refresh middleware (calls `supabase.auth.getUser()` to refresh tokens + guards routes); the Supabase clients live in `src/lib/supabase/{client,server,middleware}.ts`.
 - After any schema change, regenerate `src/types/database.ts` and keep it committed.
 - Commit/push only when asked. Update `docs/DEV_LOG.md` **and** the roadmap status at the end of each working session.
