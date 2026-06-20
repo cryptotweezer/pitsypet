@@ -40,9 +40,9 @@
 
 ## STATUS
 
-**Current phase:** Phase 2 — COMPLETE AND VERIFIED (live signup tested)
+**Current phase:** Phase 3 — COMPLETE AND VERIFIED (live-tested: create/edit/delete, validation, duplicate-name 409, breed autocomplete)
 **Active plan:** `dev_plan.md`
-**Next action:** Start Phase 3 — Pet Profile Management.
+**Next action:** Start Phase 4 — RAG Knowledge Base Ingestion (TypeScript). Phase 3 and 4 are independent; Phase 5 needs both.
 
 ---
 
@@ -260,4 +260,48 @@
 ### DECISIONS / NOTES
 - A stale `next dev` from an earlier session was left running on port 3000 and corrupted `.next` (mixed dev/prod chunks → "Cannot find module './948.js'"). Fix: kill the port-3000 process, `rm -rf .next`, rebuild. Don't leave a dev server running across sessions.
 - Supabase Select for the State field uses the Base UI API (`value`/`onValueChange`/`SelectValue placeholder`), not Radix.
+---
+
+---
+## SESSION 5 — 2026-06-20 — Claude / Opus 4.8 (Phase 3: Pet Profile Management + token-budget protocol)
+
+### STARTED WITH
+- Last session left off at: Phase 2 complete/verified; Phase 3 not started.
+- Blockers from last session: none.
+
+### COMPLETED THIS SESSION
+- **Session-startup token budget (workflow change):** rewrote `CLAUDE.md` with a "Session bootstrap" protocol — read only the latest DEV_LOG entry + the *current phase's* section of `dev_plan.md` (Grep + ranged Read), NOT the whole plan (~47K tokens via the real tokenizer; `chars/4` underestimates badly because of SQL/code/tables). Added a 12-phase **Project roadmap** table with live status + cross-phase "keep in mind" notes, and a requirement to reply with a 2–3 line bootstrap summary each session. Arranque ~57K → ~7–9K tokens. No content lost: cross-cutting invariants already live in CLAUDE.md (auto-loaded).
+- **Placeholder landing page** (`src/app/page.tsx`): replaced the Next.js boilerplate with a minimal PitsyPet home (name + tagline + Register/Login buttons + footer disclaimer). Marked in-code as a placeholder; Phase 8 task 8.1 polishes it.
+- **Phase 3 — all tasks:**
+  - [3.1] Pets API (cookie-scoped client, RLS): `api/pets/route.ts` (GET list non-deleted, POST create → **409 on `UNIQUE(user_id, pet_name)` / pg code 23505**), `api/pets/[id]/route.ts` (PATCH update, DELETE = **soft delete** `deleted_at = now()`), `api/pets/breeds/route.ts` (autocomplete via trigram index, authenticated-read).
+  - [3.2] `components/pets/pet-form.tsx` — RHF + Zod (`mode: onChange`, submit disabled until valid), Dog/Cat toggle, numeric inputs, medical-conditions tag input (max 10). Serves both create and edit.
+  - [3.3] `components/pets/breed-autocomplete.tsx` — 200ms debounce, keyboard nav (↑↓/Enter/Esc), custom-breed option, clears on species change.
+  - [3.4] `components/pets/pet-card.tsx` — species icon, age/weight, condition badges, Start Assessment / Edit / Delete (confirm Dialog).
+  - [3.5] Dashboard rewritten: pet grid + empty state.
+  - [3.6/3.7] `pets/new` and `pets/[id]/edit` pages (edit pre-fetches with ownership via RLS, `notFound()` otherwise).
+  - Shared `src/lib/validations/pet.ts` — single source of truth for weight bounds (Dog 0.5–120, Cat 0.3–15), age limits, max conditions; exports both a string-based form schema and a coerced API schema + a `formValuesToApiInput` mapper.
+  - Mounted the sonner `<Toaster />` in `(app)/layout.tsx` (was never mounted).
+
+### VERIFICATION — Phase 3 "Done When" PASS (live-tested by user)
+- `npm run lint` → 0; `npx tsc --noEmit` → 0; `npm run build` → success (all new routes compiled).
+- Live: empty state → add pet → card appears + row in Supabase; second pet (cat) added (2 pets under one user_id); **cat weight 100kg rejected** by species validation; **duplicate name → 409**; delete → disappears from dashboard, row remains in Supabase with `deleted_at` set (soft delete confirmed).
+
+### DEFERRED (not blocking Phase 4)
+- **[Phase 3 Done-When] "first pet → /assessment/[petId]" redirect** deferred to Phase 5: that route doesn't exist yet, so create currently redirects to /dashboard. `TODO(Phase 5)` left in `pet-form.tsx`.
+- **Soft-delete vs UNIQUE constraint edge case:** a soft-deleted pet name still trips the 409 on re-create (the row persists). Would need a partial unique index excluding `deleted_at IS NOT NULL`. Logged for later; not in Phase 3 scope.
+- Resend custom SMTP (Phase 1 task 1.5); expired-token session refresh test (Phase 2 → Phase 11). Unchanged.
+
+### FILES MODIFIED
+- New: `src/lib/validations/pet.ts`, `src/app/api/pets/{route.ts,[id]/route.ts,breeds/route.ts}`, `src/components/pets/{pet-form,breed-autocomplete,pet-card}.tsx`, `src/app/(app)/pets/new/page.tsx`, `src/app/(app)/pets/[id]/edit/page.tsx`.
+- Changed: `src/app/page.tsx` (placeholder landing), `src/app/(app)/dashboard/page.tsx` (pet list), `src/app/(app)/layout.tsx` (+Toaster), `CLAUDE.md` (bootstrap protocol + roadmap + status), `docs/dev_plan.md` (header status).
+
+### NEXT SESSION MUST START WITH
+1. Phase 4, Task 4.1: `src/lib/ai/embed.ts` (shared OpenAI `text-embedding-3-small` helper — used by both ingestion and the Phase 5 runtime).
+2. Then `scripts/chunk.ts` (token chunker), collect openly-licensed sources into `scripts/sources/` (gitignored), write + run `scripts/ingest.ts`.
+3. Remember: ingestion is the ONLY place `SUPABASE_SERVICE_ROLE_KEY` is used; never import it into `src/`.
+
+### DECISIONS / NOTES
+- Soft delete is intentional (assessments FK `pet_id ON DELETE CASCADE` — a hard delete would cascade-wipe history). Dashboard and all queries filter `deleted_at IS NULL`.
+- Pet field shape (species/breed/age_years/age_months/weight_kg/medical_conditions) is consumed verbatim by Phase 5 `formatPet` + RAG query — kept stable.
+- Numeric form fields are kept as strings in the RHF schema (matches the existing register-form style) and coerced at the API boundary via `petApiSchema`, avoiding RHF/Zod number-generic friction.
 ---

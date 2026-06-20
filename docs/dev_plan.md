@@ -1,7 +1,7 @@
 # PitsyPet — Development Plan
 
-> **Status:** Phases 0–2 complete and verified (auth live-tested). Ready to start Phase 3 (Pet Profile Management).
-> **Current phase:** PHASE 3 — NOT STARTED
+> **Status:** Phases 0–3 complete and verified (pet CRUD live-tested). Ready to start Phase 4 (RAG Knowledge Base Ingestion).
+> **Current phase:** PHASE 4 — NOT STARTED
 > **Stack note:** The UI layer resolved to **Tailwind CSS v4 + shadcn "base-nova" (Base UI) components**, not the Tailwind v3 / Radix setup originally implied by `create-next-app@14`. `shadcn@latest` now generates Base UI + Tailwind v4 components, so the build pipeline was migrated to v4 to match. See DEV_LOG Session 3.
 
 ---
