@@ -32,7 +32,7 @@ The full build is 12 phases, each gated by its own **✅ Done When** checklist i
 | 1 | Database Schema & Supabase Config (tables, RLS, RPCs, indexes) | ✅ Done (reviewed + hardened) |
 | 2 | Authentication (register, login, session middleware, protected routes) | ✅ Done (live-tested in prod) |
 | 3 | Pet Profile Management (CRUD pets, breed autocomplete, dashboard) | ✅ Done (live-tested) |
-| 4 | **RAG Knowledge Base Ingestion** (TypeScript `scripts/ingest.ts`) | ⏳ **CURRENT — next up** |
+| 4 | **RAG Knowledge Base Ingestion** (TypeScript `scripts/ingest.ts`) | 🟡 **CURRENT — pipeline built; ingestion run pending source docs** |
 | 5 | **AI Triage Engine** — the core (stream extract → RAG → classify → safety override) | ⬜ Not started |
 | 6 | Results Page & Recommendations (risk badge, first-aid, emergency contacts) | ⬜ Not started |
 | 7 | Assessment History & Search (`search_assessments` RPC) | ⬜ Not started |
@@ -102,7 +102,7 @@ npx tsx scripts/ingest.ts
 node scripts/verify-phase1.mjs
 ```
 
-**Environment caveat:** the Supabase CLI and any supabase-js script that hits the remote currently need `NODE_TLS_REJECT_UNAUTHORIZED=0` prefixed (local TLS cert issue) — e.g. `NODE_TLS_REJECT_UNAUTHORIZED=0 npx supabase db push`. This is a local-dev workaround only; never bake it into committed code or CI. The Docker/pg-delta catalog warning on `db push` is non-blocking (it only affects the local edge-runtime image, which we don't use).
+**Environment caveat (TLS):** the dev machine runs **Norton**, whose Web/Mail Shield does HTTPS interception — it re-signs TLS with `Norton Web/Mail Shield Root`, which Node doesn't trust by default (`UNABLE_TO_VERIFY_LEAF_SIGNATURE`). **Fix (secure, already applied):** the user-level env var `NODE_OPTIONS=--use-system-ca` makes Node v22 trust the Windows cert store (where Norton's root already lives) — no verification is disabled. New terminals pick it up automatically; supabase-js scripts and `npm run ingest` then work with no flag. **Do NOT use `NODE_TLS_REJECT_UNAUTHORIZED=0`** (it disables all TLS verification → MITM risk). The Docker/pg-delta catalog warning on `db push` is non-blocking (it only affects the local edge-runtime image, which we don't use).
 
 Tests (Vitest) are introduced in Phase 10 — not set up yet.
 

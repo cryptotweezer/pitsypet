@@ -40,9 +40,9 @@
 
 ## STATUS
 
-**Current phase:** Phase 3 — COMPLETE AND VERIFIED (live-tested: create/edit/delete, validation, duplicate-name 409, breed autocomplete)
+**Current phase:** Phase 4 — IN PROGRESS. Ingestion pipeline (embed/chunk/ingest) built + type-checks; **the actual ingestion run is BLOCKED on the user supplying veterinary source PDFs** into `scripts/sources/`.
 **Active plan:** `dev_plan.md`
-**Next action:** Start Phase 4 — RAG Knowledge Base Ingestion (TypeScript). Phase 3 and 4 are independent; Phase 5 needs both.
+**Next action:** When source docs are ready: `npm run ingest` (TLS now fixed securely — see below), then verify Phase 4 "Done When" (>500 rows, ≥3 sources). Phase 5 (triage engine) can start in parallel — RAG degrades gracefully with 0 chunks.
 
 ---
 
@@ -304,4 +304,40 @@
 - Soft delete is intentional (assessments FK `pet_id ON DELETE CASCADE` — a hard delete would cascade-wipe history). Dashboard and all queries filter `deleted_at IS NULL`.
 - Pet field shape (species/breed/age_years/age_months/weight_kg/medical_conditions) is consumed verbatim by Phase 5 `formatPet` + RAG query — kept stable.
 - Numeric form fields are kept as strings in the RHF schema (matches the existing register-form style) and coerced at the API boundary via `petApiSchema`, avoiding RHF/Zod number-generic friction.
+---
+
+---
+## SESSION 6 — 2026-06-20 — Claude / Opus 4.8 (Phase 4: RAG ingestion pipeline)
+
+### STARTED WITH
+- Last session left off at: Phase 3 complete/verified.
+- Blockers from last session: none. User does NOT yet have veterinary source documents.
+
+### COMPLETED THIS SESSION (Phase 4 pipeline — code only; ingestion run deferred)
+- [Task 4.1] `src/lib/ai/embed.ts` — shared OpenAI `text-embedding-3-small` helper (`embedText`, `embedBatch`, `buildRagQuery`), per the plan verbatim. Imported by ingestion now and the Phase 5 runtime later (one code path, no skew).
+- [Task 4.2] `scripts/chunk.ts` — `cleanText` (de-noises PDF extraction) + `chunkText` (~400-token windows, ~50 overlap) via `js-tiktoken` `cl100k_base`.
+- [Task 4.4] `scripts/ingest.ts` — reads `scripts/sources/` (PDF/txt/md), extracts text (PDF via `pdf-parse/lib/pdf-parse.js`), chunks, assigns metadata heuristically (species default 'Both'; urgency 3/6/9 by keyword; body_system keyword map; breed_specific flag), embeds in batches of 96, inserts into `veterinary_knowledge` in batches of 100 (embedding stored as pgvector string literal `[...]`), writes one `knowledge_processing_audit` row per file, logs progress. Manual `.env.local` loader into `process.env` (no dotenv dep). Service-role client typed with `Database`.
+- Added `pdf-parse` (devDependency) + `scripts/pdf-parse.d.ts` ambient types for the `/lib` subpath (avoids the package's debug-on-import wrapper). Added `npm run ingest`.
+- Created `scripts/sources/` (gitignored) with a local-only README telling the user where to drop docs.
+
+### VERIFICATION
+- `npx tsc --noEmit` → 0 errors (scripts ARE type-checked: tsconfig `include: **/*.ts`); `npm run lint` → 0; `npm run build` → success.
+- NOT yet verified: an actual ingestion run (needs source PDFs + an OpenAI call + writes to remote Supabase). The Phase 4 "Done When" data checks (>500 rows, ≥3 sources, body_system spread, audit rows) remain OPEN until the user supplies documents and we run `npm run ingest`.
+
+### BLOCKED
+- [Task 4.3 / 4.5] Collecting openly-licensed veterinary sources and running ingestion — BLOCKED on the user. Drop PDFs/.txt into `scripts/sources/`, then run `npm run ingest`.
+
+### FILES MODIFIED
+- New: `src/lib/ai/embed.ts`, `scripts/chunk.ts`, `scripts/ingest.ts`, `scripts/pdf-parse.d.ts`.
+- Changed: `package.json`/`package-lock.json` (+pdf-parse, +ingest script), `docs/DEV_LOG.md`, `docs/dev_plan.md` (header), `CLAUDE.md` (roadmap status).
+- Local-only (gitignored): `scripts/sources/` + README.
+
+### NEXT SESSION MUST START WITH
+1. If docs are ready: drop them in `scripts/sources/`, run ingestion, verify the Phase 4 "Done When" data checks, then mark Phase 4 ✅.
+2. Otherwise, Phase 4 can stay open and Phase 5 (AI triage engine) can begin — RAG degrades gracefully on 0 chunks (classification proceeds without context).
+
+### DECISIONS / NOTES
+- Metadata labels (species/urgency/body_system) are re-rank signals ONLY, never retrieval gates — heuristics are deliberately conservative (species defaults to 'Both' so a chunk is never hidden by a mislabel).
+- `pdf-parse` pulls in old transitive deps with audit warnings; it's a dev-only ingestion tool (never bundled/deployed), so acceptable. PDF text extraction can be messy for multi-column layouts — `cleanText` mitigates, but curated `.txt` gives the cleanest chunks.
+- **TLS issue SOLVED this session (properly, no longer disabling verification).** Diagnosed the root cause: **Norton** Web/Mail Shield intercepts HTTPS and re-signs with `Norton Web/Mail Shield Root`, which Node didn't trust (`UNABLE_TO_VERIFY_LEAF_SIGNATURE`). Fix: set user-level `NODE_OPTIONS=--use-system-ca` (Node v22 → trusts the Windows cert store, where Norton's root already lives). Verified `scripts/verify-phase1.mjs` (real supabase-js → remote) passes with NO `NODE_TLS_REJECT_UNAUTHORIZED=0`. New terminals inherit it automatically. The old insecure flag should no longer be used anywhere. (Supabase CLI is a separate Go binary that uses the Windows store natively; re-check only if a future `db push` complains.)
 ---
