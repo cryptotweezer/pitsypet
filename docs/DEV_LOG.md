@@ -40,9 +40,9 @@
 
 ## STATUS
 
-**Current phase:** Phase 5 — COMPLETE AND LIVE-TESTED (full GDV emergency flow → High Risk, persisted to Supabase). Phase 4 ingestion run still pending user PDFs (RAG runs empty for now; classification works on model knowledge). **Next: Phase 6 (Results page + Save to History).**
+**Current phase:** Phase 6 COMPLETE + live-tested (results page, risk-appropriate recommendations, redirect-on-complete, reload-safe). Auto-save replaced the Save button; assessment delete deferred to Phase 7; pets gained Restore + Delete-permanently. **Next: Phase 7 (Assessment History & Search).**
 **Active plan:** `dev_plan.md`
-**Next action:** Start Phase 6 — build `/assessment/[id]/results` (risk badge, first-aid, emergency contacts by state, disclaimer) + the "Save to History" button (sets `user_saved`). Then Phase 7 surfaces saved assessments on the dashboard/history.
+**Next action:** Start Phase 7 — `/api/search` route (rate-limited `search_assessments` RPC), `/history` page listing COMPLETED assessments (`completed_at NOT NULL`, NOT `user_saved`), `<AssessmentCard>` (click → `/assessment/[id]/results`), and the assessment **delete** action shown when opening a past assessment (component `delete-button.tsx` + `DELETE /api/assessment/[id]` already exist). Add a "History" link on the dashboard.
 
 ---
 
@@ -412,4 +412,77 @@ Open risks / things to check (priority order):
 ### FILES MODIFIED
 - New: `supabase/migrations/20260620000000_pets_unique_active_name.sql` (applied to remote).
 - Changed: `docs/DEV_LOG.md` (this entry).
+---
+
+---
+## SESSION 9 — 2026-06-20 — Claude / Opus 4.8 (pre-Phase-6 adjustments from user testing)
+
+### STARTED WITH
+- Phase 5 complete + live-tested. User ran manual tests of built features and reported 4 observations; we triaged each (by-design vs bug vs which-phase) before starting Phase 6.
+
+### TRIAGE OF USER OBSERVATIONS
+1. **Pet still in DB after delete** — BY DESIGN (soft-delete; Phase 3 Done-When `dev_plan.md:832`). BUT recreate-same-name made a brand-new pet_id, orphaning old assessments (the "history is kept" promise was hollow). User chose **Option B: explicit Restore**.
+2. **Quick-reply chips didn't match the question** — real bug: chips were client-side regex guesses (`quickReplies()`), only covered 4 cases. Phase 5 polish.
+3. **Assessment launched after ~3 Qs, no confirmation** — enhancement: add a pre-launch "anything else?" gate, EXCEPT for emergencies. Phase 5 enhancement.
+4. **Reload mid-chat loses conversation** — clarified design: create-row-on-visit IS in plan (`dev_plan.md:1243`); mid-chat recovery ("recoverable OR cleanly incomplete") is a **Phase 9** Done-When (`dev_plan.md:1431`). Orphan empty rows = unaddressed side effect, deferred to Phase 9. NOT Phase 6.
+
+### COMPLETED THIS SESSION (all live-tested by user)
+- **Pet Restore (Option B).** `POST /api/pets/[id]/restore` revives the soft-deleted row (same pet_id → assessment history reconnects). Name-collision with an active pet → friendly 409 ("You already have an active pet with this name…"). Dashboard gained a "Recently deleted" section with Restore cards. User verified: restore works incl. history; collision message shows correctly.
+- **AI-emitted quick replies (#2).** Added `suggestedReplies: string[].max(4)` to `RecordSymptomsSchema`; the model now emits 2–4 tappable answers matching its own question, streamed via the `symptoms` data part. Removed the regex `quickReplies()`. User verified chips now match the question.
+- **Pre-launch confirmation (#3).** Prompt rule 3 now asks "is there anything else…, or should I assess now?" before completing; rule 4 (emergencies) explicitly OVERRIDES it → critical symptom still completes immediately. Prompt also now instructs calling record_symptoms every turn. (Safety invariant preserved.)
+
+### IN PROGRESS / DEFERRED
+- **Phase 9:** orphan empty assessment rows (create-on-visit) + mid-chat reload recovery. Documented, not yet built.
+- **Phase 5 Done-When still unrun:** disconnect/onFinish-persistence test + fallback (fake ANTHROPIC key) test. Carry forward.
+
+### FILES MODIFIED
+- New: `src/app/api/pets/[id]/restore/route.ts`, `src/components/pets/deleted-pet-card.tsx`.
+- Changed: `src/app/(app)/dashboard/page.tsx` (Recently deleted section), `src/lib/ai/schemas.ts` (suggestedReplies), `src/app/api/assessment/chat/route.ts` (prompt + stream suggestedReplies), `src/components/assessment/chat-interface.tsx` (read suggestions from stream, drop regex).
+- `npx tsc --noEmit` clean; `next lint` clean.
+
+### NEXT SESSION MUST START WITH
+1. Phase 6 — `/assessment/[id]/results` page (Server Component, verify ownership, redirect to chat if `risk_classification` null) + risk badge + clinical reasoning + recommendations (Low first-aid by symptom+age / Medium 24h / High emergency contacts by `profiles.state`) + disclaimer.
+2. Redirect chat → results on completion (replace the inline panel TODO in `chat-interface.tsx:166`).
+3. Seed `first_aid_recommendations` as a CLI migration (task 6.7), then `db push` + regenerate types.
+
+### DECISIONS / NOTES
+- Soft-delete stays; "delete" is now reversible via Restore (Option B), not permanent.
+- Confirmation gate is prompt-only and must never apply to emergencies — if a future prompt edit weakens rule 4, the Phase 5 spike set is the regression guard.
+---
+
+---
+## SESSION 10 — 2026-06-20 — Claude / Opus 4.8 (Phase 6: Results Page & Recommendations + user-directed design changes)
+
+### STARTED WITH
+- Phase 5 + pre-Phase-6 adjustments done. Built Phase 6, then iterated on three user requests from live testing.
+
+### COMPLETED THIS SESSION (all live-tested by user)
+- **Phase 6 results page.** `src/app/(app)/assessment/[id]/results/page.tsx` (Server Component): RLS-scoped fetch, redirect to chat if `risk_classification` null, 404 if missing. Components in `src/components/assessment/results/`: `risk-badge` (colour+text+icon, never colour alone), `clinical-reasoning` (primaryConcern + clinicalReasoning + "About These Symptoms", all levels), `recommendations` (Low → first-aid by symptom+age band w/ age-specific override of 'Any'; Medium → 24h guidance; High → emergency contacts by `profiles.state` + 'ALL', `tel:` links, Google Maps fallback; red flags shown for M/H), `disclaimer` (amber, all levels).
+- **Seed.** `supabase/migrations/20260620000100_seed_first_aid.sql` applied to remote (generic 'Any' rows + puppy/senior variants so a puppy shows different first-aid than a senior). Data-only, no type regen.
+- **Redirect-on-complete.** chat-interface now `router.push`es to `/results` once `classification && !isLoading` (onFinish has persisted by then → results read from DB). Removed the inline classification panel + its `TODO(Phase 6)`. Fixes the "reload mid-result loses it" report — the results page is reload-safe.
+- **Route slug conflict fix.** Next.js forbids two slug names at one path level (`[petId]` vs `[id]`). Renamed chat route `(app)/assessment/[petId]/` → `[id]/` (value still a pet id; `params.petId`→`params.id`). Now `[id]/page.tsx` (chat) and `[id]/results/page.tsx` (results) coexist. Links unchanged (values are the same).
+- **USER DESIGN CHANGE — auto-save.** Assessments already persist in onFinish, so the explicit save was redundant. Removed `SaveButton`, `/api/assessment/[id]/save/route.ts`, and stopped using `user_saved` as a gate. Results page shows "Saved to your history automatically."
+- **USER DESIGN CHANGE — delete moved to Phase 7.** Removed the Delete button from the just-completed results view. Kept `delete-button.tsx` + added `DELETE /api/assessment/[id]` (soft delete) for Phase 7 to surface when opening a past assessment card.
+- **USER DESIGN CHANGE — permanent pet delete.** "Recently deleted" cards now have **Restore** AND **Delete permanently**. New `DELETE /api/pets/[id]/purge` hard-deletes (restricted to already-soft-deleted rows); pets→assessments FK is ON DELETE CASCADE so assessments go too.
+
+### DEFERRED / CARRY FORWARD
+- **Phase 7 must filter to `completed_at NOT NULL`** so abandoned/orphan empty assessment rows never show in history (user_saved is no longer the gate).
+- **Phase 9:** physical cleanup of orphan empty assessment rows + mid-chat reload recovery.
+- **Phase 5 Done-When still unrun:** disconnect/onFinish-persistence test + fallback (fake ANTHROPIC key) test.
+
+### FILES MODIFIED
+- New: `src/app/(app)/assessment/[id]/page.tsx` (renamed from `[petId]`), `src/app/(app)/assessment/[id]/results/page.tsx`, `src/components/assessment/results/{risk-badge,clinical-reasoning,recommendations,disclaimer,delete-button}.tsx`, `src/app/api/pets/[id]/restore/route.ts`, `src/app/api/pets/[id]/purge/route.ts`, `src/components/pets/deleted-pet-card.tsx`, `supabase/migrations/20260620000100_seed_first_aid.sql`.
+- Changed: `src/app/(app)/dashboard/page.tsx` (Recently deleted section), `src/app/api/assessment/[id]/route.ts` (+DELETE), `src/components/assessment/chat-interface.tsx` (redirect, AI suggestedReplies), `src/lib/ai/schemas.ts`, `src/app/api/assessment/chat/route.ts` (prompt + stream suggestions).
+- Removed: `src/app/(app)/assessment/[petId]/`, `src/app/api/assessment/[id]/save/`, `src/components/assessment/results/save-button.tsx`.
+- `npx tsc --noEmit` clean; `next lint` clean.
+
+### NEXT SESSION MUST START WITH
+1. Phase 7 — `/api/search` (rate-limited `search_assessments` RPC, returns `{ results }`).
+2. `/history` page: server-fetch last 20 COMPLETED assessments (`completed_at NOT NULL`), overlay client search w/ 300ms debounce.
+3. `<AssessmentCard>` (pet name, small risk badge, primary concern, date; click → results) + wire the assessment **delete** into the past-assessment view.
+4. Add a "History" nav link from the dashboard/navbar.
+
+### DECISIONS / NOTES
+- `user_saved` column left in the DB (harmless) but is now dead — history keys off `completed_at`.
+- Permanent pet delete is intentionally a two-step flow (soft-delete first, then purge from "Recently deleted") to make irreversible deletion deliberate.
 ---

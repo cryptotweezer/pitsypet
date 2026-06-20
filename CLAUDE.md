@@ -34,8 +34,8 @@ The full build is 12 phases, each gated by its own **✅ Done When** checklist i
 | 3 | Pet Profile Management (CRUD pets, breed autocomplete, dashboard) | ✅ Done (live-tested) |
 | 4 | **RAG Knowledge Base Ingestion** (TypeScript `scripts/ingest.ts`) | 🟡 **CURRENT — pipeline built; ingestion run pending source docs** |
 | 5 | AI Triage Engine — the core (stream extract → RAG → classify → safety override) | ✅ Done (live-tested: GDV emergency → High, persisted) |
-| 6 | **Results Page & Recommendations** (risk badge, first-aid, emergency contacts) | ⏳ **CURRENT — next up** |
-| 7 | Assessment History & Search (`search_assessments` RPC) | ⬜ Not started |
+| 6 | **Results Page & Recommendations** (risk badge, first-aid, emergency contacts) | ✅ Done (live-tested; auto-save replaced the Save button — see note) |
+| 7 | Assessment History & Search (`search_assessments` RPC) | ⏳ **CURRENT — next up** |
 | 8 | UI/UX Polish & Accessibility (responsive 320–1920px, WCAG 2.1 AA) | ⬜ Not started |
 | 9 | Error Handling, Fallbacks & Security (RLS/injection/cost-guard audit) | ⬜ Not started |
 | 10 | Testing (Vitest; triage regression set from 5.14) | ⬜ Not started |
@@ -47,7 +47,8 @@ The full build is 12 phases, each gated by its own **✅ Done When** checklist i
 - **Phase 4 (RAG ingest) and Phase 3 are independent** and can be done in parallel; Phase 5 needs *both* done.
 - **The safety override, rule-based fallback, and "confidence is logged-only" rules are non-negotiable** and appear as explicit Done-When tests in Phases 5/9/10. Don't soften them.
 - **Schema changes** → always regenerate `src/types/database.ts` (`npx supabase gen types ... --linked`) and commit it.
-- **Deferred items currently outstanding:** Resend custom SMTP (Phase 1 task 1.5, pre-production); expired-token session refresh test (Phase 2, verified at Phase 11). Don't lose these — they're tracked in the DEV_LOG.
+- **Deferred items currently outstanding:** Resend custom SMTP (Phase 1 task 1.5, pre-production); expired-token session refresh test (Phase 2, verified at Phase 11); orphan empty `assessments` rows + mid-chat reload recovery (Phase 9). Don't lose these — they're tracked in the DEV_LOG.
+- **Phase 6 design changes vs the plan (user-directed):** assessments **auto-save on completion** — the `user_saved` flag + "Save to History" button + `/api/assessment/[id]/save` were removed. Assessment **delete** (soft) moved to Phase 7 (shown when opening a past assessment, not on the just-completed results view). Pets gained **Restore** + **Delete permanently** (hard, CASCADEs assessments) in a "Recently deleted" dashboard section. The chat route slug is **`/assessment/[id]`** (was `[petId]`) so it can share the path level with `[id]/results` (Next.js requires one slug name per level). Phase 7 history must list **completed** assessments (`completed_at NOT NULL`), not `user_saved`.
 
 ## The three docs — order of authority
 
@@ -141,7 +142,7 @@ This project is **CSS-first Tailwind v4**, not v3. The `src/components/ui/*` kit
 
 ## Status & workflow
 
-- **Done:** Phase 0–3; Phase 5 (AI triage engine, live-tested end-to-end). **Phase 4 pipeline built but ingestion run pending user PDFs** (RAG runs empty meanwhile; classification works on model knowledge). **Current:** Phase 6 (Results page + Save to History). See the **Project roadmap** table above for the authoritative status — keep it current.
+- **Done:** Phase 0–3; Phase 5 (AI triage engine, live-tested end-to-end); Phase 6 (results page + recommendations, live-tested — auto-save replaced the Save button; see the design-changes note above). **Phase 4 pipeline built but ingestion run pending user PDFs** (RAG runs empty meanwhile; classification works on model knowledge). **Current:** Phase 7 (Assessment History & Search — list completed assessments, open a past one, delete from the card). See the **Project roadmap** table above for the authoritative status — keep it current.
 - Routes are grouped: `src/app/(auth)/*` (login/register/callback) and `src/app/(app)/*` (protected: dashboard, pets, assessment, history). `src/middleware.ts` is the real `@supabase/ssr` session-refresh middleware (calls `supabase.auth.getUser()` to refresh tokens + guards routes); the Supabase clients live in `src/lib/supabase/{client,server,middleware}.ts`.
 - After any schema change, regenerate `src/types/database.ts` and keep it committed.
 - Commit/push only when asked. Update `docs/DEV_LOG.md` **and** the roadmap status at the end of each working session.

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { buttonVariants } from "@/components/ui/button";
 import { PetCard } from "@/components/pets/pet-card";
+import { DeletedPetCard } from "@/components/pets/deleted-pet-card";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard · PitsyPet" };
@@ -27,8 +28,16 @@ export default async function DashboardPage() {
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
+  // Soft-deleted pets — restorable, with their assessment history intact.
+  const { data: deletedPets } = await supabase
+    .from("pets")
+    .select("pet_id, pet_name, species, breed")
+    .not("deleted_at", "is", null)
+    .order("deleted_at", { ascending: false });
+
   const displayName = profile?.name ?? user?.email ?? "there";
   const hasPets = (pets?.length ?? 0) > 0;
+  const hasDeletedPets = (deletedPets?.length ?? 0) > 0;
 
   return (
     <section className="grid gap-6">
@@ -66,6 +75,24 @@ export default async function DashboardPage() {
           <Link href="/pets/new" className={cn(buttonVariants())}>
             Add your first pet
           </Link>
+        </div>
+      )}
+
+      {hasDeletedPets && (
+        <div className="grid gap-3">
+          <div className="grid gap-1">
+            <h2 className="font-heading text-lg font-semibold">
+              Recently deleted
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Restore a pet to bring back its profile and assessment history.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {deletedPets!.map((pet) => (
+              <DeletedPetCard key={pet.pet_id} pet={pet} />
+            ))}
+          </div>
         </div>
       )}
     </section>

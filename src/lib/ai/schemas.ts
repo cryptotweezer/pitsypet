@@ -14,6 +14,9 @@ export const RecordSymptomsSchema = z.object({
   extractedSymptoms: z.array(ExtractedSymptomSchema),
   isComplete: z.boolean(),
   confidenceScore: z.number().min(0).max(1), // logged only — never a gate
+  // 2–4 short tappable answers that directly fit THIS turn's question, or an
+  // empty array when the owner should type freely (e.g. describing a symptom).
+  suggestedReplies: z.array(z.string()).max(4).default([]),
 });
 
 export const RiskClassificationSchema = z.object({

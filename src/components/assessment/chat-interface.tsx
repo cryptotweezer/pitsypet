@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 
 import { Button } from "@/components/ui/button";
@@ -12,46 +13,37 @@ import { ProgressIndicator } from "@/components/assessment/progress-indicator";
 
 type RiskResult = RiskClassification & { fallbackUsed?: boolean };
 
-// Pull the latest symptoms + classification out of the useChat data stream.
+// Pull the latest symptoms + suggested replies + classification out of the
+// useChat data stream. suggestedReplies come from the model itself, so the
+// tappable buttons always match the question it just asked.
 function readStream(data: unknown[] | undefined): {
   symptoms: ExtractedSymptom[];
+  suggestedReplies: string[];
   classification: RiskResult | null;
 } {
   let symptoms: ExtractedSymptom[] = [];
+  let suggestedReplies: string[] = [];
   let classification: RiskResult | null = null;
   for (const part of data ?? []) {
     if (part && typeof part === "object" && "type" in part) {
       const p = part as {
         type: string;
         symptoms?: ExtractedSymptom[];
+        suggestedReplies?: string[];
         classification?: RiskResult;
       };
-      if (p.type === "symptoms" && Array.isArray(p.symptoms)) symptoms = p.symptoms;
+      if (p.type === "symptoms") {
+        if (Array.isArray(p.symptoms)) symptoms = p.symptoms;
+        suggestedReplies = Array.isArray(p.suggestedReplies)
+          ? p.suggestedReplies
+          : [];
+      }
       if (p.type === "classification" && p.classification)
         classification = p.classification;
     }
   }
-  return { symptoms, classification };
+  return { symptoms, suggestedReplies, classification };
 }
-
-function quickReplies(text: string): string[] {
-  const t = text.toLowerCase();
-  if (/\b(when|start|began|begin|how long)\b/.test(t))
-    return ["Today", "Yesterday", "A few days ago", "Over a week ago"];
-  if (/how often|how many times|frequency|times (a day|today)/.test(t))
-    return ["Once", "2–3 times", "5+ times"];
-  if (/how (severe|bad)|severity|mild, moderate/.test(t))
-    return ["Mild", "Moderate", "Severe"];
-  if (/any other|anything else|other symptom/.test(t))
-    return ["No other symptoms", "Yes, there's more"];
-  return [];
-}
-
-const RISK_STYLES: Record<string, string> = {
-  High: "border-destructive/30 bg-destructive/10 text-destructive",
-  Medium: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  Low: "border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400",
-};
 
 export function ChatInterface({
   petId,
@@ -75,15 +67,27 @@ export function ChatInterface({
       ],
     });
 
-  const { symptoms, classification } = useMemo(() => readStream(data), [data]);
+  const { symptoms, suggestedReplies, classification } = useMemo(
+    () => readStream(data),
+    [data],
+  );
   const lastMessage = messages[messages.length - 1];
   const replies =
     !isLoading && !classification && lastMessage?.role === "assistant"
-      ? quickReplies(lastMessage.content)
+      ? suggestedReplies
       : [];
 
   const stage: 0 | 1 | 2 = classification ? 2 : isLoading && symptoms.length > 0 ? 1 : 0;
   const analyzing = isLoading && symptoms.length > 0 && !classification;
+
+  // Once classified and the stream has closed (onFinish persisted the row),
+  // hand off to the results page, which reads everything back from the DB.
+  const router = useRouter();
+  useEffect(() => {
+    if (classification && !isLoading) {
+      router.push(`/assessment/${assessmentId}/results`);
+    }
+  }, [classification, isLoading, assessmentId, router]);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -127,45 +131,8 @@ export function ChatInterface({
         </div>
 
         {classification && (
-          <div className="grid gap-3">
-            <div
-              className={cn(
-                "rounded-xl border px-4 py-3",
-                RISK_STYLES[classification.riskLevel] ?? "border-border",
-              )}
-            >
-              <p className="font-heading font-semibold">
-                {classification.riskLevel} Risk
-              </p>
-              <p className="mt-1 text-sm">{classification.primaryConcern}</p>
-            </div>
-            <div className="rounded-xl border p-4 text-sm">
-              <p className="font-medium">What this means</p>
-              <p className="mt-1 text-muted-foreground">
-                {classification.clinicalReasoning}
-              </p>
-              <p className="mt-3 font-medium">Recommended action</p>
-              <p className="mt-1 text-muted-foreground">
-                {classification.recommendedAction}
-              </p>
-              {classification.redFlags.length > 0 && (
-                <>
-                  <p className="mt-3 font-medium">When to seek care</p>
-                  <ul className="mt-1 list-inside list-disc text-muted-foreground">
-                    {classification.redFlags.map((f, i) => (
-                      <li key={i}>{f}</li>
-                    ))}
-                  </ul>
-                </>
-              )}
-              <p className="mt-3 text-xs text-muted-foreground">
-                PitsyPet is an educational tool, not a diagnosis. In a suspected
-                emergency, contact a vet immediately.
-              </p>
-            </div>
-            {/* TODO(Phase 6): replace this inline panel with a redirect to the
-                full /assessment/[id]/results page (risk badge, first-aid,
-                emergency contacts, save-to-history). */}
+          <div className="justify-self-start rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+            Preparing {petName}&apos;s results…
           </div>
         )}
 

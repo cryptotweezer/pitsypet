@@ -28,3 +28,34 @@ export async function GET(
 
   return NextResponse.json({ assessment });
 }
+
+// DELETE — soft delete an assessment (deleted_at = now()). RLS scopes the row
+// to the owner; we also pin user_id explicitly as defence in depth.
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { error } = await supabase
+    .from("assessments")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("assessment_id", params.id)
+    .eq("user_id", user.id)
+    .is("deleted_at", null);
+
+  if (error) {
+    return NextResponse.json(
+      { error: "Failed to delete assessment" },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({ ok: true });
+}
