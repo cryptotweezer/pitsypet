@@ -1,7 +1,7 @@
 # PitsyPet — Development Plan
 
-> **Status:** Phases 0–3 complete and verified. Phase 4 pipeline (embed/chunk/ingest) built and type-checks; ingestion run pending user source documents.
-> **Current phase:** PHASE 4 — IN PROGRESS (pipeline built; awaiting source docs to run `npm run ingest`)
+> **Status:** Phases 0–3 + 5 complete (Phase 5 live-tested: GDV emergency → High). Phase 4 pipeline built; ingestion run pending user source docs (RAG runs empty meanwhile).
+> **Current phase:** PHASE 6 — NOT STARTED (Results page + Save to History)
 > **Stack note:** The UI layer resolved to **Tailwind CSS v4 + shadcn "base-nova" (Base UI) components**, not the Tailwind v3 / Radix setup originally implied by `create-next-app@14`. `shadcn@latest` now generates Base UI + Tailwind v4 components, so the build pipeline was migrated to v4 to match. See DEV_LOG Session 3.
 
 ---

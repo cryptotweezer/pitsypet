@@ -33,8 +33,8 @@ The full build is 12 phases, each gated by its own **✅ Done When** checklist i
 | 2 | Authentication (register, login, session middleware, protected routes) | ✅ Done (live-tested in prod) |
 | 3 | Pet Profile Management (CRUD pets, breed autocomplete, dashboard) | ✅ Done (live-tested) |
 | 4 | **RAG Knowledge Base Ingestion** (TypeScript `scripts/ingest.ts`) | 🟡 **CURRENT — pipeline built; ingestion run pending source docs** |
-| 5 | **AI Triage Engine** — the core (stream extract → RAG → classify → safety override) | 🟡 In progress — engine core (5.1–5.7) + spike (5.14) built & validated; chat route + UI (5.8–5.13) next |
-| 6 | Results Page & Recommendations (risk badge, first-aid, emergency contacts) | ⬜ Not started |
+| 5 | AI Triage Engine — the core (stream extract → RAG → classify → safety override) | ✅ Done (live-tested: GDV emergency → High, persisted) |
+| 6 | **Results Page & Recommendations** (risk badge, first-aid, emergency contacts) | ⏳ **CURRENT — next up** |
 | 7 | Assessment History & Search (`search_assessments` RPC) | ⬜ Not started |
 | 8 | UI/UX Polish & Accessibility (responsive 320–1920px, WCAG 2.1 AA) | ⬜ Not started |
 | 9 | Error Handling, Fallbacks & Security (RLS/injection/cost-guard audit) | ⬜ Not started |
@@ -141,7 +141,7 @@ This project is **CSS-first Tailwind v4**, not v3. The `src/components/ui/*` kit
 
 ## Status & workflow
 
-- **Done:** Phase 0 (setup), Phase 1 (DB schema + RLS + RPCs, reviewed + hardened), Phase 2 (auth, live-tested in prod), Phase 3 (pet CRUD + breed autocomplete + dashboard, live-tested). **Current:** Phase 4 (RAG Knowledge Base Ingestion). See the **Project roadmap** table above for the authoritative status — keep it current.
+- **Done:** Phase 0–3; Phase 5 (AI triage engine, live-tested end-to-end). **Phase 4 pipeline built but ingestion run pending user PDFs** (RAG runs empty meanwhile; classification works on model knowledge). **Current:** Phase 6 (Results page + Save to History). See the **Project roadmap** table above for the authoritative status — keep it current.
 - Routes are grouped: `src/app/(auth)/*` (login/register/callback) and `src/app/(app)/*` (protected: dashboard, pets, assessment, history). `src/middleware.ts` is the real `@supabase/ssr` session-refresh middleware (calls `supabase.auth.getUser()` to refresh tokens + guards routes); the Supabase clients live in `src/lib/supabase/{client,server,middleware}.ts`.
 - After any schema change, regenerate `src/types/database.ts` and keep it committed.
 - Commit/push only when asked. Update `docs/DEV_LOG.md` **and** the roadmap status at the end of each working session.

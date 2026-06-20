@@ -40,9 +40,9 @@
 
 ## STATUS
 
-**Current phase:** Phase 4 — IN PROGRESS. Ingestion pipeline (embed/chunk/ingest) built + type-checks; **the actual ingestion run is BLOCKED on the user supplying veterinary source PDFs** into `scripts/sources/`.
+**Current phase:** Phase 5 — COMPLETE AND LIVE-TESTED (full GDV emergency flow → High Risk, persisted to Supabase). Phase 4 ingestion run still pending user PDFs (RAG runs empty for now; classification works on model knowledge). **Next: Phase 6 (Results page + Save to History).**
 **Active plan:** `dev_plan.md`
-**Next action:** When source docs are ready: `npm run ingest` (TLS now fixed securely — see below), then verify Phase 4 "Done When" (>500 rows, ≥3 sources). Phase 5 (triage engine) can start in parallel — RAG degrades gracefully with 0 chunks.
+**Next action:** Start Phase 6 — build `/assessment/[id]/results` (risk badge, first-aid, emergency contacts by state, disclaimer) + the "Save to History" button (sets `user_saved`). Then Phase 7 surfaces saved assessments on the dashboard/history.
 
 ---
 
@@ -340,4 +340,46 @@
 - Metadata labels (species/urgency/body_system) are re-rank signals ONLY, never retrieval gates — heuristics are deliberately conservative (species defaults to 'Both' so a chunk is never hidden by a mislabel).
 - `pdf-parse` pulls in old transitive deps with audit warnings; it's a dev-only ingestion tool (never bundled/deployed), so acceptable. PDF text extraction can be messy for multi-column layouts — `cleanText` mitigates, but curated `.txt` gives the cleanest chunks.
 - **TLS issue SOLVED this session (properly, no longer disabling verification).** Diagnosed the root cause: **Norton** Web/Mail Shield intercepts HTTPS and re-signs with `Norton Web/Mail Shield Root`, which Node didn't trust (`UNABLE_TO_VERIFY_LEAF_SIGNATURE`). Fix: set user-level `NODE_OPTIONS=--use-system-ca` (Node v22 → trusts the Windows cert store, where Norton's root already lives). Verified `scripts/verify-phase1.mjs` (real supabase-js → remote) passes with NO `NODE_TLS_REJECT_UNAUTHORIZED=0`. New terminals inherit it automatically. The old insecure flag should no longer be used anywhere. (Supabase CLI is a separate Go binary that uses the Windows store natively; re-check only if a future `db push` complains.)
+---
+
+---
+## SESSION 7 — 2026-06-20 — Claude / Opus 4.8 (Phase 5: AI Triage Engine — the core)
+
+### STARTED WITH
+- Last session left off at: Phase 4 pipeline built (ingestion pending docs).
+- Decision: build Phase 5 in parallel (RAG degrades gracefully with 0 chunks).
+
+### COMPLETED THIS SESSION (all of Phase 5)
+- **Engine core (committed first as part 1):** `schemas.ts` (5.1), `safety.ts` (5.2, escalate-only override), `rag.ts` (5.3, embed→vector search→quality filter→urgency re-rank→source-diverse top 5, returns [] on failure), `classifier.ts` (5.4, Sonnet generateObject → parse-retry → rule fallback → safety override last), `fallback.ts` (5.5, severity scoring, rounds up, conf 0.65), `format.ts` (5.7), `rate-limit.ts` + `cost-guard.ts` (5.6).
+- **Validation (5.14):** `scripts/spike-triage.ts` (`npm run spike`) — 10 scenarios, all 5 emergencies → High; uncertain cases round up. Ran live against Sonnet: PASS.
+- **Streaming + routes + UI (part 2):**
+  - [5.8] `api/assessment/chat/route.ts` — `createDataStreamResponse` + `streamText` Haiku, one `record_symptoms` tool, `maxSteps:1`; symptoms streamed to client via `writeData`; `onFinish` runs RAG + Sonnet classify + safety override and persists everything in one write (survives client disconnect). Cost-guard (503) + per-user rate-limit (429) + pet re-fetch via RLS.
+  - [5.9] `api/assessment/route.ts` (POST create), `[id]/route.ts` (GET), `[id]/save/route.ts` (POST set user_saved).
+  - [5.10] `(app)/assessment/[petId]/page.tsx` — creates a fresh assessment row, renders chat.
+  - [5.11–5.13] `chat-interface.tsx` (useChat, bubbles, quick-replies, inline result), `symptom-sidebar.tsx`, `progress-indicator.tsx`.
+
+### VERIFICATION
+- `tsc` 0, `lint` 0, `build` success. Spike: all emergencies High.
+- **LIVE TEST (user):** new pet → Start Assessment → AI greets by name → multi-turn extraction with one follow-up/turn + quick-reply buttons (user liked these) → full GDV scenario (vomiting/weakness/swollen belly + retching) → **High Risk** with detailed clinical reasoning → row saved in Supabase. Core product works end to end.
+
+### NOT YET VERIFIED (optional Done-When robustness checks — deferred, not blocking)
+- Disconnect test (close tab mid-analysis → row still classified via onFinish).
+- Fallback test (fake ANTHROPIC_API_KEY → completes via rule-based fallback).
+
+### DEFERRED TO LATER PHASES (by design)
+- **Phase 6:** inline result panel in chat is a placeholder — replace with `/assessment/[id]/results` page + "Save to History" button (`TODO(Phase 6)` in `chat-interface.tsx`). Symptom sidebar is a persistent panel, not a Sheet (minor, intentional).
+- **Phase 7:** no way to browse a past assessment from the dashboard yet (history list + search). User noticed this — it's the next-next phase.
+
+### FILES MODIFIED
+- New: `src/app/api/assessment/{route.ts,chat/route.ts,[id]/route.ts,[id]/save/route.ts}`, `src/app/(app)/assessment/[petId]/page.tsx`, `src/components/assessment/{chat-interface,symptom-sidebar,progress-indicator}.tsx`. (Engine libs landed in the part-1 commit.)
+- Changed: `CLAUDE.md` (roadmap), `docs/dev_plan.md` (header), `docs/DEV_LOG.md`.
+
+### NEXT SESSION MUST START WITH
+1. Phase 6, Task 6.1: `(app)/assessment/[id]/results/page.tsx` + risk-badge / clinical-reasoning / recommendations / disclaimer components; switch the chat to redirect there on completion.
+2. Seed `first_aid_recommendations` (migration 6.7), regenerate types.
+
+### DECISIONS / NOTES
+- `maxSteps:1` + one tool: Haiku reliably emits BOTH the follow-up question (streamed text) AND the `record_symptoms` tool call per turn — verified live, follow-ups appear as expected.
+- RAG ran empty (KB not ingested); classification still produced strong results from model knowledge — confirms the graceful-degradation design. Quality should improve once Phase 4 ingestion runs.
+- Result is shown inline for now so Phase 5 is testable without the Phase 6 results page (mirrors the Phase 3 first-pet-redirect deferral).
 ---
