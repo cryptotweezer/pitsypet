@@ -383,3 +383,33 @@
 - RAG ran empty (KB not ingested); classification still produced strong results from model knowledge — confirms the graceful-degradation design. Quality should improve once Phase 4 ingestion runs.
 - Result is shown inline for now so Phase 5 is testable without the Phase 6 results page (mirrors the Phase 3 first-pet-redirect deferral).
 ---
+
+---
+## SESSION 8 — 2026-06-20 — Claude / Opus 4.8 (soft-delete fix + lightweight audit)
+
+### STARTED WITH
+- Phase 5 complete/live-tested. Low on session tokens — scoped to one concrete fix + an audit recorded for continuity.
+
+### COMPLETED THIS SESSION
+- **FIXED the soft-delete vs unique-name bug** (user-reported): deleting a pet then re-creating one with the same name failed with the 409 because the soft-deleted row kept the name. Migration `20260620000000_pets_unique_active_name.sql` drops the table `UNIQUE(user_id, pet_name)` constraint and replaces it with a **partial unique index** `idx_pets_user_name_active ON pets(user_id, pet_name) WHERE deleted_at IS NULL`. **Applied to remote via `supabase db push` (succeeded; ran with no insecure TLS flag — confirms the CLI is also covered by the Norton/system-CA fix).** No API change needed (partial-index violation still raises 23505 → existing 409 path). No type regen needed (no column change). NOT yet live-verified by the user (delete+recreate same name) — verify next session.
+
+### AUDIT (lightweight, from build knowledge — NOT a full re-read; verify these next session)
+Strengths confirmed: Phases 0–3 + 5 live-tested; RLS on all tables; service-role key only in `scripts/` (never imported into `src/` — keep enforcing in Phase 9); safety net validated (spike + live GDV → High); TLS fixed securely.
+
+Open risks / things to check (priority order):
+1. **Assessment row created on EVERY visit** to `(app)/assessment/[petId]/page.tsx` (it inserts on render). Refreshing/abandoning creates orphan empty `assessments` rows. Fix later: create lazily on first user message, OR reuse the latest incomplete row, OR a cleanup job. (Phase 6/7 candidate.) MEDIUM.
+2. **Phase 5 Done-When not yet run:** disconnect test (onFinish persistence) + fallback test (fake ANTHROPIC key → rule-based). Should run before calling Phase 5 fully closed. MEDIUM.
+3. **`maxSteps:1` streaming** depends on Haiku emitting follow-up text + `record_symptoms` tool together — verified live but fragile to prompt edits; the spike set is the regression guard. LOW.
+4. **RAG runs empty** until Phase 4 ingestion — classification quality will improve once `npm run ingest` runs with real PDFs. (Pending user docs.) INFO.
+5. **Weight upper bound is generous** (dogs ≤120kg) — accepted an 85kg Golden in testing; intentional but could tighten if desired. LOW.
+6. **Phase 9 formal security checks** (SQL-injection via search, cross-tenant RLS GET, `grep -r SERVICE_ROLE_KEY src/` = empty) not yet run — scheduled for Phase 9; no red flags seen so far. INFO.
+
+### NEXT SESSION MUST START WITH
+1. Verify the soft-delete fix live (delete a pet → recreate same name → should succeed).
+2. Then Phase 6 (Results page + Save to History) — see Session 7 "next session" notes.
+3. Consider addressing audit risk #1 (orphan assessment rows) opportunistically during Phase 6.
+
+### FILES MODIFIED
+- New: `supabase/migrations/20260620000000_pets_unique_active_name.sql` (applied to remote).
+- Changed: `docs/DEV_LOG.md` (this entry).
+---
