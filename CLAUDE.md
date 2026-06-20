@@ -33,7 +33,7 @@ The full build is 12 phases, each gated by its own **✅ Done When** checklist i
 | 2 | Authentication (register, login, session middleware, protected routes) | ✅ Done (live-tested in prod) |
 | 3 | Pet Profile Management (CRUD pets, breed autocomplete, dashboard) | ✅ Done (live-tested) |
 | 4 | **RAG Knowledge Base Ingestion** (TypeScript `scripts/ingest.ts`) | 🟡 **CURRENT — pipeline built; ingestion run pending source docs** |
-| 5 | **AI Triage Engine** — the core (stream extract → RAG → classify → safety override) | ⬜ Not started |
+| 5 | **AI Triage Engine** — the core (stream extract → RAG → classify → safety override) | 🟡 In progress — engine core (5.1–5.7) + spike (5.14) built & validated; chat route + UI (5.8–5.13) next |
 | 6 | Results Page & Recommendations (risk badge, first-aid, emergency contacts) | ⬜ Not started |
 | 7 | Assessment History & Search (`search_assessments` RPC) | ⬜ Not started |
 | 8 | UI/UX Polish & Accessibility (responsive 320–1920px, WCAG 2.1 AA) | ⬜ Not started |

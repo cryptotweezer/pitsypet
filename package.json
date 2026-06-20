@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "ingest": "tsx scripts/ingest.ts"
+    "ingest": "tsx scripts/ingest.ts",
+    "spike": "tsx scripts/spike-triage.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",
