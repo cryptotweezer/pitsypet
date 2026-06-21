@@ -7,6 +7,9 @@ export type AssessmentSummary = {
   pet_name: string;
   risk_classification: string | null;
   primary_concern: string | null;
+  recommended_action: string | null;
+  symptoms: string[];
+  follow_up_count: number;
   created_at: string;
 };
 
@@ -30,7 +33,7 @@ export function AssessmentCard({ item }: { item: AssessmentSummary }) {
   return (
     <Link
       href={`/assessment/${item.assessment_id}/results?from=history`}
-      className="grid gap-2 rounded-xl border p-4 transition-colors hover:bg-muted/50"
+      className="grid content-start gap-2 rounded-xl border p-4 transition-colors hover:bg-muted/50"
     >
       <div className="flex items-center justify-between gap-3">
         <span className="font-medium">{item.pet_name}</span>
@@ -43,14 +46,33 @@ export function AssessmentCard({ item }: { item: AssessmentSummary }) {
           {risk}
         </span>
       </div>
+
       {item.primary_concern && (
-        <p className="line-clamp-2 text-sm text-muted-foreground">
-          {item.primary_concern}
+        <p className="line-clamp-2 text-sm">{item.primary_concern}</p>
+      )}
+
+      {item.symptoms.length > 0 && (
+        <p className="line-clamp-1 text-xs text-muted-foreground">
+          <span className="font-medium">Symptoms:</span>{" "}
+          {item.symptoms.join(", ")}
         </p>
       )}
-      <span className="text-xs text-muted-foreground">
-        {formatDate(item.created_at)}
-      </span>
+
+      {item.recommended_action && (
+        <p className="line-clamp-2 text-xs text-muted-foreground">
+          <span className="font-medium">Next:</span> {item.recommended_action}
+        </p>
+      )}
+
+      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span>{formatDate(item.created_at)}</span>
+        {item.follow_up_count > 0 && (
+          <span>
+            +{item.follow_up_count} follow-up
+            {item.follow_up_count > 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
     </Link>
   );
 }

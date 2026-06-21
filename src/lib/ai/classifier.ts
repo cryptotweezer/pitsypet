@@ -11,8 +11,12 @@ export async function classifyRisk(
   symptomsText: string,
   petSummary: string,
   knowledge: string,
+  clinicalContext = "",
 ): Promise<RiskClassification & { fallbackUsed: boolean }> {
-  const prompt = `${petSummary}\n\nSymptoms:\n${symptomsText}\n\nRelevant veterinary guidance:\n${knowledge}`;
+  const contextBlock = clinicalContext
+    ? `\n\nClinical context (medications & history):\n${clinicalContext}`
+    : "";
+  const prompt = `${petSummary}${contextBlock}\n\nSymptoms:\n${symptomsText}\n\nRelevant veterinary guidance:\n${knowledge}`;
   const system =
     `You are a veterinary triage assistant. Classify risk as Low, Medium, or High. ` +
     `Triage is asymmetric: a missed emergency is far worse than an unnecessary vet visit, ` +

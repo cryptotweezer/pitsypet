@@ -8,7 +8,10 @@ import {
   RiskBadge,
   type RiskLevel,
 } from "@/components/assessment/results/risk-badge";
-import { ClinicalReasoning } from "@/components/assessment/results/clinical-reasoning";
+import {
+  ClinicalReasoning,
+  type SymptomItem,
+} from "@/components/assessment/results/clinical-reasoning";
 import {
   Recommendations,
   type FirstAid,
@@ -36,6 +39,59 @@ function symptomNames(raw: unknown): string[] {
         : null,
     )
     .filter((n): n is string => !!n);
+}
+
+function parseSymptoms(raw: unknown): SymptomItem[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((s): s is Record<string, unknown> => !!s && typeof s === "object")
+    .map((s) => ({
+      name: String(s.name ?? ""),
+      severity: s.severity ? String(s.severity) : undefined,
+      onset: s.onset ? String(s.onset) : undefined,
+      frequency: s.frequency ? String(s.frequency) : undefined,
+    }))
+    .filter((s) => s.name.length > 0);
+}
+
+type FollowUpSection = {
+  created_at: string;
+  risk_classification: RiskLevel | null;
+  primary_concern: string | null;
+  clinical_reasoning: string | null;
+  recommended_action: string | null;
+  about_symptoms: string | null;
+  symptoms: SymptomItem[];
+};
+
+function parseFollowUps(raw: unknown): FollowUpSection[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((s): s is Record<string, unknown> => !!s && typeof s === "object")
+    .map((s) => ({
+      created_at: String(s.created_at ?? ""),
+      risk_classification: (s.risk_classification ?? null) as RiskLevel | null,
+      primary_concern: s.primary_concern ? String(s.primary_concern) : null,
+      clinical_reasoning: s.clinical_reasoning
+        ? String(s.clinical_reasoning)
+        : null,
+      recommended_action: s.recommended_action
+        ? String(s.recommended_action)
+        : null,
+      about_symptoms: s.about_symptoms ? String(s.about_symptoms) : null,
+      symptoms: parseSymptoms(s.extracted_symptoms),
+    }));
+}
+
+function formatDateTime(iso: string): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 export default async function ResultsPage({
@@ -72,6 +128,8 @@ export default async function ResultsPage({
   const redFlags = Array.isArray(assessment.red_flags)
     ? (assessment.red_flags as unknown[]).map(String)
     : [];
+  const symptoms = parseSymptoms(assessment.extracted_symptoms);
+  const followUps = parseFollowUps(assessment.follow_ups);
 
   const { data: pet } = await supabase
     .from("pets")
@@ -140,10 +198,18 @@ export default async function ResultsPage({
           {pet?.pet_name ? `${pet.pet_name}'s results` : "Assessment results"}
         </h1>
         {fromHistory && (
-          <DeleteButton
-            assessmentId={assessment.assessment_id}
-            returnHref={recordHref}
-          />
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/assessment/${assessment.pet_id}?followup=${assessment.assessment_id}`}
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+            >
+              + Follow-up
+            </Link>
+            <DeleteButton
+              assessmentId={assessment.assessment_id}
+              returnHref={recordHref}
+            />
+          </div>
         )}
       </div>
 
@@ -153,6 +219,7 @@ export default async function ResultsPage({
         primaryConcern={assessment.primary_concern}
         clinicalReasoning={assessment.clinical_reasoning}
         aboutSymptoms={assessment.about_symptoms}
+        symptoms={symptoms}
       />
 
       <Recommendations
@@ -162,6 +229,39 @@ export default async function ResultsPage({
         firstAid={firstAid}
         emergencyContacts={emergencyContacts}
       />
+
+      {followUps.length > 0 && (
+        <div className="grid gap-4">
+          <h2 className="font-heading text-lg font-semibold">
+            Follow-ups ({followUps.length})
+          </h2>
+          {followUps.map((f, i) => (
+            <div
+              key={i}
+              className="grid gap-3 rounded-xl border border-dashed p-4"
+            >
+              <span className="text-sm font-medium text-muted-foreground">
+                Follow-up · {formatDateTime(f.created_at)}
+              </span>
+              {f.risk_classification && <RiskBadge risk={f.risk_classification} />}
+              <ClinicalReasoning
+                primaryConcern={f.primary_concern}
+                clinicalReasoning={f.clinical_reasoning}
+                aboutSymptoms={f.about_symptoms}
+                symptoms={f.symptoms}
+              />
+              {f.recommended_action && (
+                <div className="grid gap-1 text-sm">
+                  <p className="font-medium">Recommended next steps</p>
+                  <p className="text-muted-foreground">
+                    {f.recommended_action}
+                  </p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       <Disclaimer />
 

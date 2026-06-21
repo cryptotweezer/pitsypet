@@ -16,7 +16,7 @@ const optionalDate = z
   .optional()
   .or(z.literal("").transform(() => undefined));
 
-export const medicationSchema = z.object({
+const medicationBase = z.object({
   name: z.string().trim().min(1, "Name is required").max(200),
   dosage: optionalText(100),
   quantity: optionalText(100),
@@ -28,6 +28,23 @@ export const medicationSchema = z.object({
   active: z.boolean().optional(),
 });
 
-export const medicationUpdateSchema = medicationSchema.partial();
+// When both dates are present, the end must not precede the start.
+const endNotBeforeStart = (v: {
+  started_at?: string;
+  ended_at?: string;
+}) => !(v.started_at && v.ended_at) || v.ended_at >= v.started_at;
+const dateError = {
+  message: "End date can't be before the start date",
+  path: ["ended_at"] as (string | number)[],
+};
+
+export const medicationSchema = medicationBase.refine(
+  endNotBeforeStart,
+  dateError,
+);
+
+export const medicationUpdateSchema = medicationBase
+  .partial()
+  .refine(endNotBeforeStart, dateError);
 
 export type MedicationInput = z.infer<typeof medicationSchema>;

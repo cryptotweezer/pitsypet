@@ -17,7 +17,17 @@ import {
 import {
   VetContactsSection,
   type VetContact,
+  type VetDoctor,
 } from "@/components/pets/vet-contacts-section";
+import {
+  AppointmentsSection,
+  type Appointment,
+} from "@/components/pets/appointments-section";
+import {
+  ActiveSymptomsSection,
+  type ActiveSymptom,
+} from "@/components/pets/active-symptoms-section";
+import type { ServiceHour } from "@/lib/validations/vet-contact";
 
 export const metadata = { title: "Pet · PitsyPet" };
 
@@ -44,41 +54,128 @@ export default async function PetPage({
     .maybeSingle();
   if (!pet) notFound();
 
-  const [{ data: assessmentRows }, { data: medRows }, { data: vetRows }] =
-    await Promise.all([
-      supabase
-        .from("assessments")
-        .select("assessment_id, risk_classification, primary_concern, created_at")
-        .eq("pet_id", pet.pet_id)
-        .not("completed_at", "is", null)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("medications")
-        .select(
-          "medication_id, name, dosage, quantity, frequency, prescribed_by, started_at, ended_at, notes, active",
-        )
-        .eq("pet_id", pet.pet_id)
-        .is("deleted_at", null)
-        .order("active", { ascending: false })
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("vet_contacts")
-        .select("vet_contact_id, doctor_name, clinic_name, phone, email, notes")
-        .eq("pet_id", pet.pet_id)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false }),
-    ]);
+  const [
+    { data: assessmentRows },
+    { data: medRows },
+    { data: vetRows },
+    { data: doctorRows },
+    { data: apptRows },
+    { data: symptomRows },
+  ] = await Promise.all([
+    supabase
+      .from("assessments")
+      .select(
+        "assessment_id, risk_classification, primary_concern, recommended_action, extracted_symptoms, follow_ups, created_at",
+      )
+      .eq("pet_id", pet.pet_id)
+      .not("completed_at", "is", null)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("medications")
+      .select(
+        "medication_id, name, dosage, quantity, frequency, prescribed_by, started_at, ended_at, notes, active",
+      )
+      .eq("pet_id", pet.pet_id)
+      .is("deleted_at", null)
+      .order("active", { ascending: false })
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("vet_contacts")
+      .select(
+        "vet_contact_id, clinic_name, phone, email, address, service_hours, notes",
+      )
+      .eq("pet_id", pet.pet_id)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("vet_doctors")
+      .select(
+        "doctor_id, vet_contact_id, name, specialty, phone, email, notes",
+      )
+      .eq("pet_id", pet.pet_id)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("appointments")
+      .select(
+        "appointment_id, title, scheduled_at, reason, notes, outcome, vet_contact_id",
+      )
+      .eq("pet_id", pet.pet_id)
+      .is("deleted_at", null)
+      .order("scheduled_at", { ascending: true }),
+    supabase
+      .from("active_symptoms")
+      .select(
+        "symptom_id, name, severity, status, detected_at, resolved_at, notes",
+      )
+      .eq("pet_id", pet.pet_id)
+      .is("deleted_at", null)
+      // Active/worsened first, resolved last; then most recent.
+      .order("status", { ascending: true })
+      .order("detected_at", { ascending: false }),
+  ]);
 
   const assessments: AssessmentSummary[] = (assessmentRows ?? []).map((a) => ({
     assessment_id: a.assessment_id,
     pet_name: pet.pet_name,
     risk_classification: a.risk_classification,
     primary_concern: a.primary_concern,
+    recommended_action: a.recommended_action,
+    symptoms: Array.isArray(a.extracted_symptoms)
+      ? (a.extracted_symptoms as unknown[])
+          .map((s) =>
+            s && typeof s === "object" && "name" in s
+              ? String((s as { name: unknown }).name)
+              : null,
+          )
+          .filter((n): n is string => !!n)
+      : [],
+    follow_up_count: Array.isArray(a.follow_ups) ? a.follow_ups.length : 0,
     created_at: a.created_at,
   }));
   const medications = (medRows ?? []) as Medication[];
-  const vetContacts = (vetRows ?? []) as VetContact[];
+
+  // Group doctors under their clinic.
+  const doctorsByClinic = new Map<string, VetDoctor[]>();
+  for (const d of doctorRows ?? []) {
+    const list = doctorsByClinic.get(d.vet_contact_id) ?? [];
+    list.push({
+      doctor_id: d.doctor_id,
+      name: d.name,
+      specialty: d.specialty,
+      phone: d.phone,
+      email: d.email,
+      notes: d.notes,
+    });
+    doctorsByClinic.set(d.vet_contact_id, list);
+  }
+  const vetContacts: VetContact[] = (vetRows ?? []).map((c) => ({
+    vet_contact_id: c.vet_contact_id,
+    clinic_name: c.clinic_name,
+    phone: c.phone,
+    email: c.email,
+    address: c.address,
+    service_hours: (Array.isArray(c.service_hours)
+      ? c.service_hours
+      : []) as unknown as ServiceHour[],
+    notes: c.notes,
+    doctors: doctorsByClinic.get(c.vet_contact_id) ?? [],
+  }));
+  const appointments = (apptRows ?? []) as Appointment[];
+  const activeSymptoms = (symptomRows ?? []) as ActiveSymptom[];
+  const clinicOptions = vetContacts.map((c) => ({
+    vet_contact_id: c.vet_contact_id,
+    clinic_name: c.clinic_name,
+  }));
+  // Doctor names from saved clinics → "Prescribed by" suggestions on meds.
+  const doctorOptions = Array.from(
+    new Set(
+      (doctorRows ?? [])
+        .map((d) => d.name)
+        .filter((n): n is string => !!n && n.trim().length > 0),
+    ),
+  ).sort();
 
   const conditions = Array.isArray(pet.medical_conditions)
     ? pet.medical_conditions.filter((c): c is string => typeof c === "string")
@@ -129,9 +226,21 @@ export default async function PetPage({
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <MedicationsSection petId={pet.pet_id} medications={medications} />
+      <ActiveSymptomsSection petId={pet.pet_id} symptoms={activeSymptoms} />
+
+      <div className="grid gap-4">
         <VetContactsSection petId={pet.pet_id} contacts={vetContacts} />
+        <AppointmentsSection
+          petId={pet.pet_id}
+          appointments={appointments}
+          clinics={clinicOptions}
+          nowIso={new Date().toISOString()}
+        />
+        <MedicationsSection
+          petId={pet.pet_id}
+          medications={medications}
+          doctorOptions={doctorOptions}
+        />
       </div>
 
       <div className="grid gap-3">

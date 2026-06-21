@@ -40,9 +40,13 @@
 
 ## STATUS
 
-**Current phase:** Phase 7.5 — Pet Clinical History Hub. **Part 1 COMPLETE + live-tested by user (committed).** Pet page `/pets/[id]/[name]` with profile + per-pet assessment history + meds (start/end/indefinite) + vet contacts, all with confirm-before-delete. Global history removed (lives per-pet now). Assessment-chat text regression fixed. "Back to [pet]'s record" navigation from results.
+**Current phase:** Phase 7.5 — Pet Clinical History Hub. **Part 1 ✅ committed.** **Part 2 in progress** — building in groups A→B→C→D (user-directed via AskUserQuestion). **Groups A, B, C ✅ done + live-tested (uncommitted).**
+- **A (bugs):** orphan-assessment fixed (no DB row until COMPLETE — chat route persists only on completion via upsert; page mints a UUID, no pre-insert); chat box fixed-height + scroll, symptom sidebar sticky.
+- **B (pet record):** vet model = **clinic + doctors** (`vet_contacts`→clinic w/ `service_hours` JSONB + `address`; new `vet_doctors`; new `appointments`); meds **editable + labeled** (Dosage/Quantity/Frequency); vet **editable**, structured **opening-hours picker**, clickable **Hours dialog w/ live Open/Closed**, **collapsible doctors**; **Next appointments** section; pet page relaid Vet → Appointments → Medications.
+- **C (assessment context/history):** AI now gets current **meds + last 3 assessments** in extraction + classification (conditions already via formatPet); results page lists **detected symptoms**; history cards show an **abstract** (concern + symptoms + next steps + follow-up count); **follow-ups** = dated sections appended to the same assessment (`follow_ups` JSONB), with a **+ Follow-up** button + timeline on results.
 **Active plan:** `dev_plan.md` (Phase 7.5 section)
-**Next action:** **Part 2** — TWO chats: per-pet chat embedded on the pet page (focused on that pet, can see others) + a dashboard chat across ALL pets; persistent thread table; write tools (`add_medication`, `add_vet_contact` confirm-before-write, `start_assessment`); full context + RAG; **assessments stay immutable (chat reads, never edits)**. Then Part 3 (export/print + AI clinical summary).
+**Next action:** Backlog #2–#6 ✅ done. **Start next session with NEXT-BATCH items #8–#12** (Session 12) — quick fixes #8 (sidebar meds active-flag bug + dosage unit), #9 (outcome editable only when appt past), #10 (follow-ups newest-first) — then **#11/#12 + Group D** together (AI must update/reconcile active_symptoms; dedup; the two chat surfaces). Then **Email/Resend** + **Part 3**. (#1 confirmed NOT a bug.) Do NOT lose any backlog item.
+**Deferred (explicit):** **Email/Resend** — user has **no Resend account or domain yet** (gets one at the end). The manual "request appointment → email doctor" button AND the AI-sent appointment email (with last-assessment summary) are deferred to a dedicated step **after Group D** (the valuable version needs D's chat tools + C's summary). Build email once, reuse for the deferred custom-SMTP auth too.
 
 ---
 
@@ -516,4 +520,65 @@ Open risks / things to check (priority order):
 ### DECISIONS / NOTES
 - **Type regen workaround:** use Supabase MCP `generate_typescript_types` (project `xaepzvxrqnqenspnanej`); the CLI `gen types --linked` is blocked by Norton TLS interception even though `db push` works (pg connection vs management API).
 - Route layering: `/pets/[id]/edit` (static) coexists with `/pets/[id]/[name]` (dynamic) — Next.js allows a static segment beside a dynamic one at the same level.
+---
+
+---
+## SESSION 12 — 2026-06-21 — Claude / Opus 4.8 (Phase 7.5 Part 2 — Groups A, B, C)
+
+### STARTED WITH
+- Part 1 committed. User returned with a large test-feedback list. Agreed (via AskUserQuestion) to tackle it in groups **A→B→C→D**; vet model = **clinic + doctors**; follow-ups = **dated sections in the same assessment**. Build per group, test per group.
+
+### COMPLETED THIS SESSION (all groups: `tsc` + `lint` + `npm run build` clean; live-tested by user; UNCOMMITTED)
+- **Group A — bugs.**
+  - **A1 orphan assessments:** `assessment/[id]/page.tsx` no longer pre-inserts a row; it mints `crypto.randomUUID()`. The chat route `onFinish` persists **only when `complete`** (upsert with `onConflict: assessment_id`), so abandoning/refreshing mid-chat leaves NO row. (This supersedes the Phase 9 "orphan cleanup" item for the create path.)
+  - **A2 chat layout:** conversation box is `max-h-[55vh] overflow-y-auto`; symptom sidebar wrapped `lg:sticky lg:top-6` so it stays visible.
+- **Group B — pet record (migration `20260621000000_vet_doctors_appointments`).**
+  - `vet_contacts` is now a **CLINIC**: added `service_hours JSONB` + `address`; **dropped `doctor_name`** (migrated existing values into the new table).
+  - New **`vet_doctors`** (clinic→many doctors) and **`appointments`** tables (RLS owner-scoped, updated_at triggers, soft-delete, indexes). Types regenerated **via Supabase MCP** (CLI blocked by Norton TLS).
+  - Validations: `vet-contact.ts` rewritten (clinic + `serviceHourSchema`), new `vet-doctor.ts`, new `appointment.ts`.
+  - API: `…/vet-contacts/[vetId]/doctors[/[doctorId]]` (POST/PATCH/DELETE), `…/appointments[/[apptId]]` (POST/PATCH/DELETE).
+  - Components: **medications-section** (edit + labeled Dosage/Quantity/Frequency, 2-col), **vet-contacts-section** (clinic CRUD, collapsible doctors CRUD, day/time opening-hours picker, clickable **Hours dialog with live Open/Closed** computed client-side each minute), **appointments-section** (CRUD, datetime-local, clinic `<select>`). Pet page relaid: **Vet → Appointments → Medications** stacked full width.
+- **Group C — assessment context & history.**
+  - Migration `20260621000100_assessment_follow_ups` adds `follow_ups JSONB` to `assessments`.
+  - `format.ts`: `formatMedications`, `formatPriorAssessments`, `formatClinicalContext`. `classifier.ts`: new `clinicalContext` param appended to the prompt. Chat route fetches active meds + last 3 completed assessments → injects context into BOTH the extraction system prompt and `classifyRisk`.
+  - **Follow-ups:** chat route `isFollowUp` branch appends a **dated section** (own chat/symptoms/classification) to `follow_ups` and DOES NOT create a new row; original snapshot stays immutable. `assessment/[id]/page.tsx` reads `?followup=<id>` → sets `isFollowUp` + a follow-up greeting. `chat-interface.tsx` gained `isFollowUp`/`greeting` props.
+  - Results page: **detected-symptom badges** (via extended `ClinicalReasoning`), **+ Follow-up** button (history view only) → `/assessment/{petId}?followup={id}`, and a **follow-up timeline** (each section: date + RiskBadge + reasoning + symptoms + next steps). History `AssessmentCard` now shows an **abstract** (concern + symptoms + next steps + "+N follow-ups").
+
+### USER TEST FEEDBACK ON THIS SESSION (→ becomes PENDING BACKLOG below)
+- Confirmed working: Groups A & B; follow-up flow; AI clearly knows meds + prior history when asked ("Lola … June 21st … bloat … antibiotics + pain relief now finished").
+- **BUG reported:** after a follow-up, doing a *new* assessment produced only ONE row in the DB — it appears to have merged into the existing assessment instead of creating a new one. NEEDS REPRO + FIX (see #1). Follow-up vs new assessment must be unmistakably distinct.
+
+### PENDING BACKLOG (Part 2 — do NOT drop any of these)
+1. ~~**[BUG] New assessment merged into existing.**~~ **RESOLVED — not a bug (user confirmed).** Code traced: both "Start new assessment" links go to `/assessment/{petId}` with NO `followup`, so they mint a fresh UUID → new row; only `+ Follow-up` (`?followup=`) appends. User re-tested: new assessments do create new rows. Keep follow-up vs new clearly distinct in any future UI work.
+2. ✅ **DONE — Appointments outcome + Past appointments.** Migration `…000200` adds `outcome` (vet's recommendations after the visit); `notes` = owner observations. `AppointmentsSection` splits by a server-passed `nowIso` into **Next** (future) + **Past** (past) groups; each item shows an inline "+ Add what the vet said / + Add visit info" when `outcome` is empty. Appointments (with reason/notes/outcome) now flow into the AI clinical context via `formatAppointments`/`formatClinicalContext` (chat route fetches last 10).
+3. ✅ **DONE — Medication "Prescribed by" dropdown.** Input now uses a `<datalist>` of saved doctor names (from `vet_doctors`, passed via `doctorOptions`) + free-text for unsaved doctors.
+4. ✅ **DONE — Medication date validation.** `end_date < start_date` rejected client-side (toast) AND in `medicationSchema`/`medicationUpdateSchema` (zod `.refine`).
+5. ✅ **DONE — Pet context in the assessment sidebar.** `SymptomSidebar` now shows Known conditions + Current medications (active meds fetched in `assessment/[id]/page.tsx`, passed through `ChatInterface`).
+6. ✅ **DONE (UI + auto-populate) — Active symptoms tracker.** Decision: **own table `active_symptoms`** (migration `…000300`: name, severity, status active/resolved/worsened, source manual/assessment/followup/chat, detected_at, resolved_at, notes; RLS owner-scoped). API `…/pets/[id]/symptoms[/[symptomId]]` (POST/PATCH/DELETE; PATCH stamps/clears `resolved_at`). `ActiveSymptomsSection` on the pet page below Conditions: add/edit/delete + one-click **Mark resolved / Mark worsened / Reactivate**, shows "Since <date>". **Auto-populated** on assessment/follow-up completion (new detected symptoms not already active are inserted). Fed into the AI assessment context via `formatActiveSymptoms`. **Remaining for Group D:** the AI chat `update_active_symptoms` write tool (mark resolved/worsened from chat).
+7. **[CROSS-CUTTING] The AI must always read ALL pet-related info** — conditions, meds, vet clinics + doctors, appointments + outcome notes, assessments + follow-ups, active symptoms. **Assessment context now includes meds + appointments + prior assessments + active symptoms (✅).** Vet/doctor details + the two chat surfaces reading everything = **Group D**.
+
+### NEXT-BATCH TEST FEEDBACK (after #6 — fix NEXT session, tokens ran low)
+8. **[BUG] Assessment sidebar "Current medications" shows only 1 of 3, and dosage drops the unit.** Root cause (a): `assessment/[id]/page.tsx` fetches meds with `.eq("active", true)`, but the meds add logic in `medications-section.tsx` sets `active = indefinite ? true : ended_at === ""` — so ANY med with an end date (even a FUTURE one) is saved `active=false` and hidden. Fix the `active` rule (active if no end date OR end date ≥ today) AND/OR show all current meds in the sidebar. (b) Dosage display shows "16" not "16 mg" — investigate whether the unit is lost on entry vs display ("Cephalexin — 16 · Once Daily"); ensure full dosage text (with unit) round-trips. Sidebar med formatting/order: show all, newest or active first.
+9. **[UX] Appointment `outcome` should only be editable once the appointment has passed.** For a FUTURE appointment the "Vet's recommendations / outcome" field should be shown disabled (you can't have an outcome before the visit); enable it only when `scheduled_at` is in the past. (Owner notes stay editable always.)
+10. **[UX] Follow-up order on the results page = most-recent first.** Currently the original assessment renders first then follow-ups in chronological order. User wants newest at top: latest follow-up first, earlier follow-ups next, original assessment last — so the timeline reads most-recent → initial. Reverse the `follow_ups` render order (and consider placing follow-ups above the original block).
+11. **[BUG/FEATURE] AI must UPDATE active_symptoms, not only add.** Today auto-populate only INSERTS newly detected symptoms; it never resolves/downgrades. When the owner tells the AI a symptom improved/resolved (in an assessment, follow-up, or the Group D chat), the AI should mark that active symptom resolved/worsened so resolved symptoms leave the active list. Manual buttons work, but the AI doesn't reconcile. Needs the Group D `update_active_symptoms` tool + reconciliation logic on assessment/follow-up completion (match detected vs tracked; resolve ones no longer reported).
+12. **[BUG] Duplicate active symptoms across assessments** — e.g. "sleepiness" (moderate) AND "sleepiness/lethargy" (mild) both tracked, both "Since 2026-06-21". The dedup is exact-lowercase-name only, so differently-phrased same symptoms double up. Need canonicalization / fuzzy matching, or have the AI reconcile against the existing tracked list (tie into #11). Also appears doubled on the dashboard.
+
+### STILL PLANNED (after the backlog above)
+- **Group D — contextual chats:** per-pet chat (on the pet page, focused on that pet, can see others) + dashboard chat (across all pets, must be SURE which pet each action targets). Full context + RAG + write tools (`add_medication`, `add_vet_contact`/`add_doctor` confirm-before-write, `add_appointment`, `update_active_symptoms`, `start_assessment`). Assessments stay immutable.
+- **Group E — Email/Resend (deferred, no account/domain yet):** manual "request appointment → email doctor" + AI-sent appointment email with last-assessment summary; also covers the deferred custom-SMTP auth email.
+- **Part 3 (original 7.5):** printable/downloadable clinical history + AI clinical summary for the vet.
+
+### FILES MODIFIED
+- Migrations: `20260621000000_vet_doctors_appointments.sql`, `20260621000100_assessment_follow_ups.sql`. `src/types/database.ts` regenerated (+`follow_ups` added by hand).
+- New: validations `vet-doctor.ts`, `appointment.ts`; API `…/vet-contacts/[vetId]/doctors[/[doctorId]]`, `…/appointments[/[apptId]]`; component `appointments-section.tsx`.
+- Changed: `vet-contact.ts`, `medication`? (no), `format.ts`, `classifier.ts`, `api/assessment/chat/route.ts`, `assessment/[id]/page.tsx`, `chat-interface.tsx`, `assessment/[id]/results/page.tsx`, `results/clinical-reasoning.tsx`, `assessment-card.tsx`, `pets/[id]/[name]/page.tsx`, `medications-section.tsx`, `vet-contacts-section.tsx`.
+
+### NEXT SESSION MUST START WITH
+1. PENDING #1 is RESOLVED (not a bug). Work the **PENDING BACKLOG #2–#7** (appointment outcome/past notes, prescribed-by dropdown, med date validation, sidebar context, **active-symptoms tracker**, AI-reads-all), then **Group D**.
+2. Keep **Email/Resend deferred** until after Group D (user has no Resend/domain yet).
+
+### DECISIONS / NOTES
+- Type regen: continue using Supabase MCP `generate_typescript_types` (project `xaepzvxrqnqenspnanej`); CLI `gen types --linked` fails under Norton TLS. For tiny schema deltas, hand-edit `database.ts`.
+- Follow-up = dated section in the SAME assessment (immutable original); new assessment = a separate row. This distinction is the crux of PENDING #1.
 ---

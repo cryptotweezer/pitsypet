@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -12,33 +12,124 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
+      active_symptoms: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          detected_at: string
+          name: string
+          notes: string | null
+          pet_id: string
+          resolved_at: string | null
+          severity: string | null
+          source: string
+          status: string
+          symptom_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          detected_at?: string
+          name: string
+          notes?: string | null
+          pet_id: string
+          resolved_at?: string | null
+          severity?: string | null
+          source?: string
+          status?: string
+          symptom_id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          detected_at?: string
+          name?: string
+          notes?: string | null
+          pet_id?: string
+          resolved_at?: string | null
+          severity?: string | null
+          source?: string
+          status?: string
+          symptom_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "active_symptoms_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["pet_id"]
+          },
+        ]
+      }
+      appointments: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          deleted_at: string | null
+          notes: string | null
+          outcome: string | null
+          pet_id: string
+          reason: string | null
+          scheduled_at: string
+          title: string
+          updated_at: string
+          user_id: string
+          vet_contact_id: string | null
+        }
+        Insert: {
+          appointment_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          notes?: string | null
+          outcome?: string | null
+          pet_id: string
+          reason?: string | null
+          scheduled_at: string
+          title: string
+          updated_at?: string
+          user_id: string
+          vet_contact_id?: string | null
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          notes?: string | null
+          outcome?: string | null
+          pet_id?: string
+          reason?: string | null
+          scheduled_at?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          vet_contact_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["pet_id"]
+          },
+          {
+            foreignKeyName: "appointments_vet_contact_id_fkey"
+            columns: ["vet_contact_id"]
+            isOneToOne: false
+            referencedRelation: "vet_contacts"
+            referencedColumns: ["vet_contact_id"]
+          },
+        ]
+      }
       assessments: {
         Row: {
           about_symptoms: string | null
@@ -51,6 +142,7 @@ export type Database = {
           deleted_at: string | null
           extracted_symptoms: Json
           fallback_used: boolean
+          follow_ups: Json
           model_version: string | null
           pet_id: string
           primary_concern: string | null
@@ -74,6 +166,7 @@ export type Database = {
           deleted_at?: string | null
           extracted_symptoms?: Json
           fallback_used?: boolean
+          follow_ups?: Json
           model_version?: string | null
           pet_id: string
           primary_concern?: string | null
@@ -97,6 +190,7 @@ export type Database = {
           deleted_at?: string | null
           extracted_symptoms?: Json
           fallback_used?: boolean
+          follow_ups?: Json
           model_version?: string | null
           pet_id?: string
           primary_concern?: string | null
@@ -357,40 +451,43 @@ export type Database = {
       }
       vet_contacts: {
         Row: {
+          address: string | null
           clinic_name: string | null
           created_at: string
           deleted_at: string | null
-          doctor_name: string | null
           email: string | null
           notes: string | null
           pet_id: string
           phone: string | null
+          service_hours: Json
           updated_at: string
           user_id: string
           vet_contact_id: string
         }
         Insert: {
+          address?: string | null
           clinic_name?: string | null
           created_at?: string
           deleted_at?: string | null
-          doctor_name?: string | null
           email?: string | null
           notes?: string | null
           pet_id: string
           phone?: string | null
+          service_hours?: Json
           updated_at?: string
           user_id: string
           vet_contact_id?: string
         }
         Update: {
+          address?: string | null
           clinic_name?: string | null
           created_at?: string
           deleted_at?: string | null
-          doctor_name?: string | null
           email?: string | null
           notes?: string | null
           pet_id?: string
           phone?: string | null
+          service_hours?: Json
           updated_at?: string
           user_id?: string
           vet_contact_id?: string
@@ -402,6 +499,66 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "pets"
             referencedColumns: ["pet_id"]
+          },
+        ]
+      }
+      vet_doctors: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          doctor_id: string
+          email: string | null
+          name: string
+          notes: string | null
+          pet_id: string
+          phone: string | null
+          specialty: string | null
+          updated_at: string
+          user_id: string
+          vet_contact_id: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          doctor_id?: string
+          email?: string | null
+          name: string
+          notes?: string | null
+          pet_id: string
+          phone?: string | null
+          specialty?: string | null
+          updated_at?: string
+          user_id: string
+          vet_contact_id: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          doctor_id?: string
+          email?: string | null
+          name?: string
+          notes?: string | null
+          pet_id?: string
+          phone?: string | null
+          specialty?: string | null
+          updated_at?: string
+          user_id?: string
+          vet_contact_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vet_doctors_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["pet_id"]
+          },
+          {
+            foreignKeyName: "vet_doctors_vet_contact_id_fkey"
+            columns: ["vet_contact_id"]
+            isOneToOne: false
+            referencedRelation: "vet_contacts"
+            referencedColumns: ["vet_contact_id"]
           },
         ]
       }
@@ -607,11 +764,7 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
 } as const
-

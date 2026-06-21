@@ -16,10 +16,27 @@ import { checkDailyCap, incrementDailyAssessmentCount } from "@/lib/cost-guard";
 import { RecordSymptomsSchema, type ExtractedSymptom } from "@/lib/ai/schemas";
 import { retrieveKnowledge } from "@/lib/ai/rag";
 import { classifyRisk } from "@/lib/ai/classifier";
-import { formatSymptoms, formatPet, formatChunks } from "@/lib/ai/format";
+import {
+  formatSymptoms,
+  formatPet,
+  formatChunks,
+  formatClinicalContext,
+} from "@/lib/ai/format";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+// Pull symptom names out of a stored extracted_symptoms JSON array.
+function extractNames(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((s) =>
+      s && typeof s === "object" && "name" in s
+        ? String((s as { name: unknown }).name)
+        : null,
+    )
+    .filter((n): n is string => !!n);
+}
 
 const EXTRACTION_SYSTEM_PROMPT = `You are a veterinary triage assistant helping a pet owner describe their pet's symptoms.
 
@@ -46,13 +63,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { assessmentId?: string; petId?: string; messages?: Message[] };
+  let body: {
+    assessmentId?: string;
+    petId?: string;
+    messages?: Message[];
+    isFollowUp?: boolean;
+  };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const { assessmentId, petId, messages } = body;
+  const { assessmentId, petId, messages, isFollowUp } = body;
   if (!assessmentId || !petId || !Array.isArray(messages)) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
@@ -94,6 +116,87 @@ export async function POST(req: Request) {
       : [],
   };
 
+  // Clinical context for the AI: current medications + prior completed
+  // assessments (so it can build on earlier findings, e.g. a vet visit between
+  // then and now). Conditions are already in formatPet via medical_conditions.
+  const [
+    { data: medRows },
+    { data: priorRows },
+    { data: apptRows },
+    { data: activeSymptomRows },
+  ] = await Promise.all([
+    supabase
+      .from("medications")
+      .select("name, dosage, frequency, started_at, ended_at, active")
+      .eq("pet_id", petId)
+      .is("deleted_at", null)
+      .order("active", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(20),
+    supabase
+      .from("assessments")
+      .select(
+        "created_at, risk_classification, primary_concern, recommended_action, extracted_symptoms",
+      )
+      .eq("pet_id", petId)
+      .not("completed_at", "is", null)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(3),
+    supabase
+      .from("appointments")
+      .select("title, scheduled_at, reason, notes, outcome")
+      .eq("pet_id", petId)
+      .is("deleted_at", null)
+      .order("scheduled_at", { ascending: false })
+      .limit(10),
+    supabase
+      .from("active_symptoms")
+      .select("name, severity, status, detected_at")
+      .eq("pet_id", petId)
+      .in("status", ["active", "worsened"])
+      .is("deleted_at", null)
+      .order("detected_at", { ascending: false }),
+  ]);
+
+  const clinicalContext = formatClinicalContext(
+    (medRows ?? []).map((m) => ({
+      name: m.name,
+      dosage: m.dosage,
+      frequency: m.frequency,
+      started_at: m.started_at,
+      ended_at: m.ended_at,
+      active: m.active,
+    })),
+    (priorRows ?? []).map((a) => ({
+      created_at: a.created_at,
+      risk_classification: a.risk_classification,
+      primary_concern: a.primary_concern,
+      recommended_action: a.recommended_action,
+      symptomNames: extractNames(a.extracted_symptoms),
+    })),
+    (apptRows ?? []).map((a) => ({
+      title: a.title,
+      scheduled_at: a.scheduled_at,
+      reason: a.reason,
+      notes: a.notes,
+      outcome: a.outcome,
+    })),
+    (activeSymptomRows ?? []).map((s) => ({
+      name: s.name,
+      severity: s.severity,
+      status: s.status,
+      detected_at: s.detected_at,
+    })),
+  );
+
+  const followUpNote = isFollowUp
+    ? "\n\nThis is a FOLLOW-UP to a previous assessment for this pet (see prior assessments above). Acknowledge the earlier visit, ask how the pet has responded since then (including to any treatment or medication), and focus on what has changed."
+    : "";
+  const systemPrompt = clinicalContext
+    ? `${EXTRACTION_SYSTEM_PROMPT}\n\nBackground on this patient (context only — still gather the CURRENT symptoms from the owner):\n${clinicalContext}${followUpNote}`
+    : `${EXTRACTION_SYSTEM_PROMPT}${followUpNote}`;
+
   let symptoms: ExtractedSymptom[] = [];
   let complete = false;
   let confidence = 0;
@@ -103,7 +206,7 @@ export async function POST(req: Request) {
     execute: (dataStream) => {
       const result = streamText({
         model: anthropic("claude-haiku-4-5-20251001"),
-        system: EXTRACTION_SYSTEM_PROMPT,
+        system: systemPrompt,
         messages: convertToCoreMessages(messages),
         maxSteps: 1,
         tools: {
@@ -125,7 +228,13 @@ export async function POST(req: Request) {
           }),
         },
         onFinish: async ({ text, usage }) => {
-          // Persist server-side — fires even if the client disconnects.
+          // Only finalized assessments are persisted. An incomplete turn never
+          // touches the DB, so abandoning/refreshing mid-chat leaves no orphan
+          // rows. (confidence stays logged-only; referenced here to satisfy
+          // no-unused-vars and keep it available if we ever log partials.)
+          void confidence;
+          if (!complete) return;
+
           const turn = [
             ...messages,
             {
@@ -134,51 +243,122 @@ export async function POST(req: Request) {
               createdAt: new Date().toISOString(),
             },
           ];
-          const update: Database["public"]["Tables"]["assessments"]["Update"] = {
+
+          const chunks = await retrieveKnowledge(
+            supabase,
+            symptoms.map((s) => s.name),
+            pet.species,
+            pet.breed,
+          );
+          const classification = await classifyRisk(
+            formatSymptoms(symptoms),
+            formatPet(petForFormat),
+            formatChunks(chunks),
+            clinicalContext,
+          );
+          dataStream.writeData({
+            type: "classification",
+            classification,
+          } as unknown as JSONValue);
+
+          await incrementDailyAssessmentCount();
+
+          // Keep the active-symptoms tracker in sync: add newly detected
+          // symptoms not already tracked as active/worsened. Best-effort.
+          try {
+            const { data: existing } = await supabase
+              .from("active_symptoms")
+              .select("name")
+              .eq("pet_id", petId)
+              .in("status", ["active", "worsened"])
+              .is("deleted_at", null);
+            const have = new Set(
+              (existing ?? []).map((r) => r.name.trim().toLowerCase()),
+            );
+            const today = new Date().toISOString().slice(0, 10);
+            const seen = new Set<string>();
+            const toInsert = symptoms
+              .filter((s) => {
+                const key = s.name?.trim().toLowerCase();
+                if (!key || have.has(key) || seen.has(key)) return false;
+                seen.add(key);
+                return true;
+              })
+              .map((s) => ({
+                pet_id: petId,
+                user_id: user.id,
+                name: s.name,
+                severity: s.severity,
+                status: "active",
+                source: isFollowUp ? "followup" : "assessment",
+                detected_at: today,
+              }));
+            if (toInsert.length > 0) {
+              await supabase.from("active_symptoms").insert(toInsert);
+            }
+          } catch {
+            // non-fatal — never block results on tracker sync
+          }
+
+          if (isFollowUp) {
+            // Append a dated section to the existing assessment — never edit the
+            // original snapshot. RLS scopes the read/update to the owner.
+            const { data: existing } = await supabase
+              .from("assessments")
+              .select("follow_ups")
+              .eq("assessment_id", assessmentId)
+              .single();
+            const prior = Array.isArray(existing?.follow_ups)
+              ? (existing!.follow_ups as unknown[])
+              : [];
+            const section = {
+              created_at: new Date().toISOString(),
+              conversation_log: turn,
+              extracted_symptoms: symptoms,
+              risk_classification: classification.riskLevel,
+              confidence_score: classification.confidenceScore,
+              primary_concern: classification.primaryConcern,
+              clinical_reasoning: classification.clinicalReasoning,
+              recommended_action: classification.recommendedAction,
+              about_symptoms: classification.aboutSymptoms,
+              red_flags: classification.redFlags,
+            };
+            await supabase
+              .from("assessments")
+              .update({
+                follow_ups: [...prior, section] as unknown as Json,
+              })
+              .eq("assessment_id", assessmentId);
+            return;
+          }
+
+          const row: Database["public"]["Tables"]["assessments"]["Insert"] = {
+            assessment_id: assessmentId,
+            pet_id: petId,
+            user_id: user.id,
             conversation_log: turn as unknown as Json,
             extracted_symptoms: symptoms as unknown as Json,
-            confidence_score: confidence, // logged only
+            confidence_score: classification.confidenceScore, // logged only
             tokens_used: usage?.totalTokens ?? 0,
-          };
-
-          if (complete) {
-            const chunks = await retrieveKnowledge(
-              supabase,
-              symptoms.map((s) => s.name),
-              pet.species,
-              pet.breed,
-            );
-            const classification = await classifyRisk(
-              formatSymptoms(symptoms),
-              formatPet(petForFormat),
-              formatChunks(chunks),
-            );
-            dataStream.writeData({
-              type: "classification",
-              classification,
-            } as unknown as JSONValue);
-            update.risk_classification = classification.riskLevel;
-            update.confidence_score = classification.confidenceScore;
-            update.primary_concern = classification.primaryConcern;
-            update.clinical_reasoning = classification.clinicalReasoning;
-            update.recommended_action = classification.recommendedAction;
-            update.about_symptoms = classification.aboutSymptoms;
-            update.red_flags = classification.redFlags;
-            update.rag_chunks_used = chunks.map((c) => ({
+            risk_classification: classification.riskLevel,
+            primary_concern: classification.primaryConcern,
+            clinical_reasoning: classification.clinicalReasoning,
+            recommended_action: classification.recommendedAction,
+            about_symptoms: classification.aboutSymptoms,
+            red_flags: classification.redFlags as unknown as Json,
+            rag_chunks_used: chunks.map((c) => ({
               source: c.source,
               chunk_id: c.chunk_id,
-            })) as unknown as Json;
-            update.fallback_used = classification.fallbackUsed;
-            update.model_version = "sonnet-4-6 / haiku-4-5";
-            update.completed_at = new Date().toISOString();
-            update.processing_time_ms = Date.now() - startedAt;
-            await incrementDailyAssessmentCount();
-          }
+            })) as unknown as Json,
+            fallback_used: classification.fallbackUsed,
+            model_version: "sonnet-4-6 / haiku-4-5",
+            completed_at: new Date().toISOString(),
+            processing_time_ms: Date.now() - startedAt,
+          };
 
           await supabase
             .from("assessments")
-            .update(update)
-            .eq("assessment_id", assessmentId);
+            .upsert(row, { onConflict: "assessment_id" });
         },
       });
 

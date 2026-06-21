@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { ExtractedSymptom, RiskClassification } from "@/lib/ai/schemas";
-import { SymptomSidebar } from "@/components/assessment/symptom-sidebar";
+import {
+  SymptomSidebar,
+  type KnownMedication,
+} from "@/components/assessment/symptom-sidebar";
 import { ProgressIndicator } from "@/components/assessment/progress-indicator";
 
 type RiskResult = RiskClassification & { fallbackUsed?: boolean };
@@ -49,20 +52,30 @@ export function ChatInterface({
   petId,
   assessmentId,
   petName,
+  isFollowUp = false,
+  greeting,
+  conditions = [],
+  medications = [],
 }: {
   petId: string;
   assessmentId: string;
   petName: string;
+  isFollowUp?: boolean;
+  greeting?: string;
+  conditions?: string[];
+  medications?: KnownMedication[];
 }) {
   const { messages, input, handleInputChange, handleSubmit, append, data, isLoading } =
     useChat({
       api: "/api/assessment/chat",
-      body: { assessmentId, petId },
+      body: { assessmentId, petId, isFollowUp },
       initialMessages: [
         {
           id: "greeting",
           role: "assistant",
-          content: `Hi! I'm here to help check on ${petName}. What symptoms have you noticed?`,
+          content:
+            greeting ??
+            `Hi! I'm here to help check on ${petName}. What symptoms have you noticed?`,
         },
       ],
     });
@@ -99,13 +112,13 @@ export function ChatInterface({
       <div className="grid content-start gap-4">
         <div className="flex items-center justify-between gap-4">
           <h1 className="font-heading text-xl font-semibold">
-            {petName}&apos;s assessment
+            {petName}&apos;s {isFollowUp ? "follow-up" : "assessment"}
           </h1>
           <ProgressIndicator stage={stage} />
         </div>
 
         <div
-          className="grid gap-3 rounded-xl border p-4"
+          className="grid max-h-[55vh] content-start gap-3 overflow-y-auto rounded-xl border p-4"
           aria-live="polite"
           aria-label="Conversation"
         >
@@ -168,7 +181,14 @@ export function ChatInterface({
         )}
       </div>
 
-      <SymptomSidebar symptoms={symptoms} analyzing={analyzing} />
+      <div className="h-fit lg:sticky lg:top-6">
+        <SymptomSidebar
+          symptoms={symptoms}
+          analyzing={analyzing}
+          conditions={conditions}
+          medications={medications}
+        />
+      </div>
     </div>
   );
 }
