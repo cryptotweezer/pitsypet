@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Dog, Cat } from "lucide-react";
+import { Dog, Cat, Sparkles } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { buttonVariants } from "@/components/ui/button";
@@ -28,6 +28,7 @@ import {
   type ActiveSymptom,
 } from "@/components/pets/active-symptoms-section";
 import type { ServiceHour } from "@/lib/validations/vet-contact";
+import { AssistantChat } from "@/components/assistant/assistant-chat";
 
 export const metadata = { title: "Pet · PitsyPet" };
 
@@ -74,7 +75,7 @@ export default async function PetPage({
     supabase
       .from("medications")
       .select(
-        "medication_id, name, dosage, quantity, frequency, prescribed_by, started_at, ended_at, notes, active",
+        "medication_id, name, dosage, dosage_unit, quantity, frequency, prescribed_by, started_at, ended_at, notes, active",
       )
       .eq("pet_id", pet.pet_id)
       .is("deleted_at", null)
@@ -257,6 +258,20 @@ export default async function PetPage({
             history.
           </p>
         )}
+      </div>
+
+      <div className="grid gap-3 rounded-xl border p-4">
+        <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
+          <Sparkles className="size-5" aria-hidden /> Ask about {pet.pet_name}
+        </h2>
+        <AssistantChat
+          scope="pet"
+          petId={pet.pet_id}
+          petName={pet.pet_name}
+          greeting={`Hi! Ask me anything about ${pet.pet_name}, or tell me what to record — a medication, appointment, vet, or a symptom update. I'll show a Confirm button before saving anything.`}
+          inputPlaceholder={`Ask about ${pet.pet_name}…`}
+          className="h-[28rem]"
+        />
       </div>
     </section>
   );

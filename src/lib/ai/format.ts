@@ -1,10 +1,13 @@
 // Prompt-formatting helpers shared by the chat route and the classifier.
 
+import { isMedicationActive } from "@/lib/medications";
+
 type Symptom = {
   name: string;
   onset?: string;
   frequency?: string;
   severity: string;
+  status?: string;
 };
 
 type Pet = {
@@ -22,6 +25,7 @@ type Chunk = { text: string; source: string; body_system?: string | null };
 type MedicationContext = {
   name: string;
   dosage?: string | null;
+  dosage_unit?: string | null;
   frequency?: string | null;
   started_at?: string | null;
   ended_at?: string | null;
@@ -59,6 +63,9 @@ export function formatSymptoms(symptoms: Symptom[]): string {
       if (s.onset) parts.push(`onset: ${s.onset}`);
       if (s.frequency) parts.push(`frequency: ${s.frequency}`);
       if (s.severity !== "unknown") parts.push(`severity: ${s.severity}`);
+      // Surface change-over-time so the classifier weights a resolving symptom
+      // differently from a worsening one. "present" is the unremarkable default.
+      if (s.status && s.status !== "present") parts.push(`status: ${s.status}`);
       return "- " + parts.join(", ");
     })
     .join("\n");
@@ -82,13 +89,14 @@ export function formatMedications(meds: MedicationContext[]): string {
   return meds
     .map((m) => {
       const parts = [m.name];
-      if (m.dosage) parts.push(m.dosage);
+      const dose = [m.dosage, m.dosage_unit].filter(Boolean).join(" ");
+      if (dose) parts.push(dose);
       if (m.frequency) parts.push(m.frequency);
       let when = "";
       if (m.started_at && m.ended_at) when = ` (from ${m.started_at} to ${m.ended_at})`;
       else if (m.started_at) when = ` (since ${m.started_at}, ongoing)`;
       else if (m.ended_at) when = ` (until ${m.ended_at})`;
-      const status = m.active === false ? " [inactive]" : "";
+      const status = isMedicationActive(m.ended_at) ? "" : " [inactive]";
       return `- ${parts.join(", ")}${when}${status}`;
     })
     .join("\n");

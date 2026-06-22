@@ -8,6 +8,7 @@ import { Pill, Plus, Trash2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isMedicationActive } from "@/lib/medications";
 import {
   Dialog,
   DialogClose,
@@ -22,6 +23,7 @@ export type Medication = {
   medication_id: string;
   name: string;
   dosage: string | null;
+  dosage_unit: string | null;
   quantity: string | null;
   frequency: string | null;
   prescribed_by: string | null;
@@ -31,9 +33,28 @@ export type Medication = {
   active: boolean;
 };
 
+// Common dosage units offered as suggestions. The field stays free-text (the
+// real set is open-ended), so anything can be typed if it's not listed.
+const DOSAGE_UNITS = [
+  "mg",
+  "ml",
+  "mcg",
+  "g",
+  "IU",
+  "mg/kg",
+  "mg/ml",
+  "tablet",
+  "capsule",
+  "drop",
+  "puff",
+  "sachet",
+  "%",
+];
+
 const EMPTY = {
   name: "",
   dosage: "",
+  dosage_unit: "",
   quantity: "",
   frequency: "",
   prescribed_by: "",
@@ -46,6 +67,7 @@ function toForm(m: Medication) {
   return {
     name: m.name ?? "",
     dosage: m.dosage ?? "",
+    dosage_unit: m.dosage_unit ?? "",
     quantity: m.quantity ?? "",
     frequency: m.frequency ?? "",
     prescribed_by: m.prescribed_by ?? "",
@@ -53,6 +75,11 @@ function toForm(m: Medication) {
     ended_at: m.ended_at ?? "",
     notes: m.notes ?? "",
   };
+}
+
+// Combine the amount and its unit for display, e.g. "1.5" + "mg" → "1.5 mg".
+function formatDosage(m: Pick<Medication, "dosage" | "dosage_unit">): string {
+  return [m.dosage, m.dosage_unit].filter(Boolean).join(" ");
 }
 
 export function MedicationsSection({
@@ -116,11 +143,12 @@ export function MedicationsSection({
       return;
     }
     setSaving(true);
-    // Indefinite course → no end date and stays active.
+    // Indefinite course → no end date and stays active. A fixed course stays
+    // active until its end date passes, so a future end date is still active.
     const payload = {
       ...form,
       ended_at: indefinite ? "" : form.ended_at,
-      active: indefinite ? true : form.ended_at.length === 0,
+      active: indefinite ? true : isMedicationActive(form.ended_at || null),
     };
     const url = editingId
       ? `/api/pets/${petId}/medications/${editingId}`
@@ -169,15 +197,30 @@ export function MedicationsSection({
           required
         />
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="grid gap-1.5">
-          <Label htmlFor="med-dosage">Dosage</Label>
+          <Label htmlFor="med-dosage">Dose amount</Label>
           <Input
             id="med-dosage"
             value={form.dosage}
             onChange={(e) => set("dosage", e.target.value)}
-            placeholder="1.5 mg"
+            placeholder="1.5"
           />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="med-dosage-unit">Unit</Label>
+          <Input
+            id="med-dosage-unit"
+            list="med-dosage-units"
+            value={form.dosage_unit}
+            onChange={(e) => set("dosage_unit", e.target.value)}
+            placeholder="mg"
+          />
+          <datalist id="med-dosage-units">
+            {DOSAGE_UNITS.map((u) => (
+              <option key={u} value={u} />
+            ))}
+          </datalist>
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="med-quantity">Quantity</Label>
@@ -302,7 +345,8 @@ export function MedicationsSection({
                     <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
                       {m.dosage && (
                         <span>
-                          <span className="font-medium">Dosage:</span> {m.dosage}
+                          <span className="font-medium">Dosage:</span>{" "}
+                          {formatDosage(m)}
                         </span>
                       )}
                       {m.quantity && (

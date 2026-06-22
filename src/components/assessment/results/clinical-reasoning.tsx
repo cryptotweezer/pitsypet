@@ -6,6 +6,7 @@ export type SymptomItem = {
   severity?: string;
   onset?: string;
   frequency?: string;
+  status?: string;
 };
 
 // Shown for all risk levels: the headline concern, the detected symptoms, the
@@ -34,7 +35,9 @@ export function ClinicalReasoning({
             <p className="font-medium">Symptoms detected</p>
             <div className="flex flex-wrap gap-1.5">
               {symptoms.map((s, i) => {
-                const detail = [s.severity, s.onset, s.frequency]
+                const status =
+                  s.status && s.status !== "present" ? s.status : undefined;
+                const detail = [s.severity, s.onset, s.frequency, status]
                   .filter((d) => d && d !== "unknown")
                   .join(" · ");
                 return (

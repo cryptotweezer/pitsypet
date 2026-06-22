@@ -16,6 +16,7 @@ import { checkDailyCap, incrementDailyAssessmentCount } from "@/lib/cost-guard";
 import { RecordSymptomsSchema, type ExtractedSymptom } from "@/lib/ai/schemas";
 import { retrieveKnowledge } from "@/lib/ai/rag";
 import { classifyRisk } from "@/lib/ai/classifier";
+import { reconcileActiveSymptoms } from "@/lib/active-symptoms";
 import {
   formatSymptoms,
   formatPet,
@@ -42,9 +43,16 @@ const EXTRACTION_SYSTEM_PROMPT = `You are a veterinary triage assistant helping 
 
 HOW TO RESPOND — every single turn you MUST do BOTH:
 A) Write a short reply to the owner in plain text (2–4 sentences) and ask ONE follow-up question. This visible message is the most important part — NEVER leave it empty and never reply with only a tool call.
-B) In the same response, also call the record_symptoms tool to record structured data in the background: the symptoms gathered so far, the current isComplete value, and 2–4 suggestedReplies that directly answer the question you just asked (use an empty array when the owner should type freely, e.g. when first describing the symptom).
+B) In the same response, also call the record_symptoms tool to record structured data in the background: the FULL current list of this pet's symptoms (see "Tracking symptom changes" below), the current isComplete value, and 2–4 suggestedReplies that directly answer the question you just asked (use an empty array when the owner should type freely, e.g. when first describing the symptom).
 
 What to gather, in priority order: what the symptom is, when it started, how severe, any other symptoms.
+
+Tracking symptom changes — every symptom you record carries a status:
+- "present": currently present (a new symptom, or a previously known one that is still here and unchanged).
+- "improving": better than before but still present.
+- "worsened": worse than before, still present.
+- "resolved": the owner says it is gone now.
+If this pet has previously tracked symptoms (listed below when present), they are pre-loaded for you: ALWAYS include every one of them in extractedSymptoms (carry them forward) and ask the owner how each has changed — better, worse, or gone — then set each one's status accordingly. Never silently drop a tracked symptom; if the owner hasn't mentioned it, keep it as "present". Add any new symptoms you detect.
 
 Completing the assessment:
 - Confirm first. Once you have at least one named symptom, onset, and a severity estimate, do NOT set isComplete yet — first ask one confirmation question, e.g. "Thanks — is there anything else about <pet> you'd like to add, or should I assess now?" (suggestedReplies: "That's everything", "Yes, there's more"). Set isComplete to true only after the owner confirms there's nothing more (or asks you to assess).
@@ -127,7 +135,7 @@ export async function POST(req: Request) {
   ] = await Promise.all([
     supabase
       .from("medications")
-      .select("name, dosage, frequency, started_at, ended_at, active")
+      .select("name, dosage, dosage_unit, frequency, started_at, ended_at, active")
       .eq("pet_id", petId)
       .is("deleted_at", null)
       .order("active", { ascending: false })
@@ -163,6 +171,7 @@ export async function POST(req: Request) {
     (medRows ?? []).map((m) => ({
       name: m.name,
       dosage: m.dosage,
+      dosage_unit: m.dosage_unit,
       frequency: m.frequency,
       started_at: m.started_at,
       ended_at: m.ended_at,
@@ -193,9 +202,25 @@ export async function POST(req: Request) {
   const followUpNote = isFollowUp
     ? "\n\nThis is a FOLLOW-UP to a previous assessment for this pet (see prior assessments above). Acknowledge the earlier visit, ask how the pet has responded since then (including to any treatment or medication), and focus on what has changed."
     : "";
+
+  // The pet's currently tracked symptoms, pre-loaded so the AI carries them into
+  // this conversation, asks how each has changed, and reconciles their status.
+  const trackedSymptoms = activeSymptomRows ?? [];
+  const trackedSymptomsNote =
+    trackedSymptoms.length > 0
+      ? `\n\nPreviously tracked active symptoms for this pet (carry ALL of these into extractedSymptoms and ask how each has changed):\n${trackedSymptoms
+          .map(
+            (s) =>
+              `- ${s.name}${s.severity ? ` (${s.severity})` : ""}${
+                s.status === "worsened" ? " [was worsening]" : ""
+              }`,
+          )
+          .join("\n")}`
+      : "";
+
   const systemPrompt = clinicalContext
-    ? `${EXTRACTION_SYSTEM_PROMPT}\n\nBackground on this patient (context only — still gather the CURRENT symptoms from the owner):\n${clinicalContext}${followUpNote}`
-    : `${EXTRACTION_SYSTEM_PROMPT}${followUpNote}`;
+    ? `${EXTRACTION_SYSTEM_PROMPT}\n\nBackground on this patient (context only — still gather the CURRENT symptoms from the owner):\n${clinicalContext}${followUpNote}${trackedSymptomsNote}`
+    : `${EXTRACTION_SYSTEM_PROMPT}${followUpNote}${trackedSymptomsNote}`;
 
   let symptoms: ExtractedSymptom[] = [];
   let complete = false;
@@ -263,41 +288,24 @@ export async function POST(req: Request) {
 
           await incrementDailyAssessmentCount();
 
-          // Keep the active-symptoms tracker in sync: add newly detected
-          // symptoms not already tracked as active/worsened. Best-effort.
+          // Reconcile the active-symptoms tracker with what was reported: add
+          // new symptoms, update status (improving/worsened), resolve the ones
+          // the owner said are gone, dedup against existing. Best-effort —
+          // never block results on tracker sync.
           try {
-            const { data: existing } = await supabase
-              .from("active_symptoms")
-              .select("name")
-              .eq("pet_id", petId)
-              .in("status", ["active", "worsened"])
-              .is("deleted_at", null);
-            const have = new Set(
-              (existing ?? []).map((r) => r.name.trim().toLowerCase()),
-            );
-            const today = new Date().toISOString().slice(0, 10);
-            const seen = new Set<string>();
-            const toInsert = symptoms
-              .filter((s) => {
-                const key = s.name?.trim().toLowerCase();
-                if (!key || have.has(key) || seen.has(key)) return false;
-                seen.add(key);
-                return true;
-              })
-              .map((s) => ({
-                pet_id: petId,
-                user_id: user.id,
+            await reconcileActiveSymptoms(
+              supabase,
+              petId,
+              user.id,
+              symptoms.map((s) => ({
                 name: s.name,
                 severity: s.severity,
-                status: "active",
-                source: isFollowUp ? "followup" : "assessment",
-                detected_at: today,
-              }));
-            if (toInsert.length > 0) {
-              await supabase.from("active_symptoms").insert(toInsert);
-            }
+                status: s.status,
+              })),
+              isFollowUp ? "followup" : "assessment",
+            );
           } catch {
-            // non-fatal — never block results on tracker sync
+            // non-fatal
           }
 
           if (isFollowUp) {

@@ -19,6 +19,7 @@ const optionalDate = z
 const medicationBase = z.object({
   name: z.string().trim().min(1, "Name is required").max(200),
   dosage: optionalText(100),
+  dosage_unit: optionalText(30),
   quantity: optionalText(100),
   frequency: optionalText(100),
   notes: optionalText(2000),

@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import type { ExtractedSymptom } from "@/lib/ai/schemas";
 
 const SEVERITY_VARIANT: Record<
@@ -12,6 +13,15 @@ const SEVERITY_VARIANT: Record<
   moderate: "default",
   mild: "secondary",
   unknown: "outline",
+};
+
+// How a symptom has changed over the conversation. "present" is the default and
+// shows no tag; the rest get a small coloured label so the owner sees the AI
+// picked up the change.
+const STATUS_LABEL: Record<string, { text: string; className: string }> = {
+  improving: { text: "improving", className: "text-emerald-600" },
+  worsened: { text: "worsened", className: "text-destructive" },
+  resolved: { text: "resolved", className: "text-muted-foreground line-through" },
 };
 
 export type KnownMedication = {
@@ -42,17 +52,29 @@ export function SymptomSidebar({
           </p>
         ) : (
           <ul className="mt-3 grid gap-2">
-            {symptoms.map((s, i) => (
-              <li
-                key={`${s.name}-${i}`}
-                className="flex items-center justify-between gap-2 text-sm"
-              >
-                <span className="capitalize">{s.name}</span>
-                <Badge variant={SEVERITY_VARIANT[s.severity] ?? "outline"}>
-                  {s.severity}
-                </Badge>
-              </li>
-            ))}
+            {symptoms.map((s, i) => {
+              const status = STATUS_LABEL[s.status ?? "present"];
+              return (
+                <li
+                  key={`${s.name}-${i}`}
+                  className="flex items-center justify-between gap-2 text-sm"
+                >
+                  <span className={cn("capitalize", status?.className)}>
+                    {s.name}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    {status && (
+                      <span className={cn("text-xs font-medium", status.className)}>
+                        {status.text}
+                      </span>
+                    )}
+                    <Badge variant={SEVERITY_VARIANT[s.severity] ?? "outline"}>
+                      {s.severity}
+                    </Badge>
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
 

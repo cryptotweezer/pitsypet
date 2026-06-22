@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { buttonVariants } from "@/components/ui/button";
 import { PetCard } from "@/components/pets/pet-card";
 import { DeletedPetCard } from "@/components/pets/deleted-pet-card";
+import { DashboardChatWidget } from "@/components/assistant/dashboard-chat-widget";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard · PitsyPet" };
@@ -95,6 +96,8 @@ export default async function DashboardPage() {
           </div>
         </div>
       )}
+
+      {hasPets && <DashboardChatWidget />}
     </section>
   );
 }

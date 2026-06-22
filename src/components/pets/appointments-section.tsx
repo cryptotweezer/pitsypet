@@ -149,6 +149,10 @@ export function AppointmentsSection({
     clinics.find((c) => c.vet_contact_id === id)?.clinic_name ?? null;
 
   const nowMs = Date.parse(nowIso);
+  // An outcome can only exist after the visit, so the field is only editable
+  // once the form's date is in the past (a future date can't have an outcome).
+  const formIsPast =
+    form.scheduled_at !== "" && Date.parse(form.scheduled_at) < nowMs;
   const upcoming = appointments
     .filter((a) => Date.parse(a.scheduled_at) >= nowMs)
     .sort((a, b) => Date.parse(a.scheduled_at) - Date.parse(b.scheduled_at));
@@ -220,8 +224,19 @@ export function AppointmentsSection({
           id="appt-outcome"
           value={form.outcome}
           onChange={(e) => set("outcome", e.target.value)}
-          placeholder="What the vet said / advised (add after the visit)"
+          placeholder={
+            formIsPast
+              ? "What the vet said / advised"
+              : "Available after the appointment has passed"
+          }
+          disabled={!formIsPast}
         />
+        {!formIsPast && (
+          <p className="text-xs text-muted-foreground">
+            You can record the vet&apos;s outcome once this appointment date has
+            passed.
+          </p>
+        )}
       </div>
       <div className="flex gap-2">
         <Button type="submit" size="sm" disabled={saving}>

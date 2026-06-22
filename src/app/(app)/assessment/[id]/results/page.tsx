@@ -50,6 +50,7 @@ function parseSymptoms(raw: unknown): SymptomItem[] {
       severity: s.severity ? String(s.severity) : undefined,
       onset: s.onset ? String(s.onset) : undefined,
       frequency: s.frequency ? String(s.frequency) : undefined,
+      status: s.status ? String(s.status) : undefined,
     }))
     .filter((s) => s.name.length > 0);
 }
@@ -129,7 +130,9 @@ export default async function ResultsPage({
     ? (assessment.red_flags as unknown[]).map(String)
     : [];
   const symptoms = parseSymptoms(assessment.extracted_symptoms);
-  const followUps = parseFollowUps(assessment.follow_ups);
+  // follow_ups is appended chronologically; show newest first so the timeline
+  // reads most-recent → initial (the original block renders last, below).
+  const followUps = parseFollowUps(assessment.follow_ups).reverse();
 
   const { data: pet } = await supabase
     .from("pets")
@@ -213,23 +216,7 @@ export default async function ResultsPage({
         )}
       </div>
 
-      <RiskBadge risk={risk} />
-
-      <ClinicalReasoning
-        primaryConcern={assessment.primary_concern}
-        clinicalReasoning={assessment.clinical_reasoning}
-        aboutSymptoms={assessment.about_symptoms}
-        symptoms={symptoms}
-      />
-
-      <Recommendations
-        risk={risk}
-        recommendedAction={assessment.recommended_action}
-        redFlags={redFlags}
-        firstAid={firstAid}
-        emergencyContacts={emergencyContacts}
-      />
-
+      {/* Follow-ups, newest first — the pet's most recent state leads. */}
       {followUps.length > 0 && (
         <div className="grid gap-4">
           <h2 className="font-heading text-lg font-semibold">
@@ -262,6 +249,31 @@ export default async function ResultsPage({
           ))}
         </div>
       )}
+
+      {/* The original assessment renders last so the page reads newest → initial.
+          Once there are follow-ups it's the historical starting point, so label it. */}
+      {followUps.length > 0 && (
+        <h2 className="font-heading text-lg font-semibold">
+          Initial assessment · {formatDateTime(assessment.created_at)}
+        </h2>
+      )}
+
+      <RiskBadge risk={risk} />
+
+      <ClinicalReasoning
+        primaryConcern={assessment.primary_concern}
+        clinicalReasoning={assessment.clinical_reasoning}
+        aboutSymptoms={assessment.about_symptoms}
+        symptoms={symptoms}
+      />
+
+      <Recommendations
+        risk={risk}
+        recommendedAction={assessment.recommended_action}
+        redFlags={redFlags}
+        firstAid={firstAid}
+        emergencyContacts={emergencyContacts}
+      />
 
       <Disclaimer />
 

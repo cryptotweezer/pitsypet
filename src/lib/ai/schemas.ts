@@ -5,6 +5,15 @@ export const ExtractedSymptomSchema = z.object({
   onset: z.string().optional(),
   frequency: z.string().optional(),
   severity: z.enum(["mild", "moderate", "severe", "unknown"]).default("unknown"),
+  // Current state of THIS symptom as reported in the conversation. Drives the
+  // shared active-symptoms tracker (see src/lib/active-symptoms.ts):
+  //   present   → currently present (new, or an existing one still here)
+  //   improving → better than before but still present
+  //   worsened  → worse than before, still present
+  //   resolved  → gone now (remove from the active list)
+  status: z
+    .enum(["present", "improving", "worsened", "resolved"])
+    .default("present"),
 });
 
 export type ExtractedSymptom = z.infer<typeof ExtractedSymptomSchema>;

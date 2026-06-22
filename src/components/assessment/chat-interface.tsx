@@ -56,6 +56,7 @@ export function ChatInterface({
   greeting,
   conditions = [],
   medications = [],
+  initialSymptoms = [],
 }: {
   petId: string;
   assessmentId: string;
@@ -64,6 +65,8 @@ export function ChatInterface({
   greeting?: string;
   conditions?: string[];
   medications?: KnownMedication[];
+  // The pet's already-tracked symptoms, shown before the AI's first turn.
+  initialSymptoms?: ExtractedSymptom[];
 }) {
   const { messages, input, handleInputChange, handleSubmit, append, data, isLoading } =
     useChat({
@@ -84,6 +87,9 @@ export function ChatInterface({
     () => readStream(data),
     [data],
   );
+  // Show the pre-loaded tracked symptoms until the AI streams its own (carried-
+  // forward) list, so the panel is never empty when known symptoms exist.
+  const displaySymptoms = symptoms.length > 0 ? symptoms : initialSymptoms;
   const lastMessage = messages[messages.length - 1];
   const replies =
     !isLoading && !classification && lastMessage?.role === "assistant"
@@ -183,7 +189,7 @@ export function ChatInterface({
 
       <div className="h-fit lg:sticky lg:top-6">
         <SymptomSidebar
-          symptoms={symptoms}
+          symptoms={displaySymptoms}
           analyzing={analyzing}
           conditions={conditions}
           medications={medications}

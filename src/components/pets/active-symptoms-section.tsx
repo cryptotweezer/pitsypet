@@ -10,7 +10,9 @@ import {
   Pencil,
   Check,
   TrendingDown,
+  TrendingUp,
   RotateCcw,
+  ChevronDown,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -43,6 +45,7 @@ const STATUS_VARIANT: Record<
   "default" | "secondary" | "destructive" | "outline"
 > = {
   active: "default",
+  improving: "secondary",
   worsened: "destructive",
   resolved: "outline",
 };
@@ -79,6 +82,13 @@ export function ActiveSymptomsSection({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ActiveSymptom | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [showResolved, setShowResolved] = useState(false);
+
+  // Resolved symptoms drop out of the active panel into a collapsible history
+  // section, so "Active symptoms" only shows what the pet is currently dealing
+  // with (active / improving / worsened).
+  const active = symptoms.filter((s) => s.status !== "resolved");
+  const resolved = symptoms.filter((s) => s.status === "resolved");
 
   function set<K extends keyof typeof EMPTY>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -219,6 +229,117 @@ export function ActiveSymptomsSection({
     </form>
   );
 
+  const renderRow = (s: ActiveSymptom) =>
+    editingId === s.symptom_id ? (
+      <li key={s.symptom_id}>{formFields}</li>
+    ) : (
+      <li
+        key={s.symptom_id}
+        className={cn(
+          "flex items-start justify-between gap-3 rounded-lg border p-3 text-sm",
+          s.status === "resolved" && "opacity-60",
+        )}
+      >
+        <div className="grid gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={cn(
+                "font-medium capitalize",
+                s.status === "resolved" && "line-through",
+              )}
+            >
+              {s.name}
+            </span>
+            <Badge variant={STATUS_VARIANT[s.status] ?? "outline"}>
+              {s.status}
+            </Badge>
+            {s.severity && s.severity !== "unknown" && (
+              <Badge variant={SEVERITY_VARIANT[s.severity] ?? "outline"}>
+                {s.severity}
+              </Badge>
+            )}
+          </div>
+          <span className="text-xs text-muted-foreground">
+            Since {s.detected_at}
+            {s.status === "resolved" && s.resolved_at
+              ? ` · resolved ${s.resolved_at}`
+              : ""}
+          </span>
+          {s.notes && (
+            <span className="text-xs text-muted-foreground">{s.notes}</span>
+          )}
+        </div>
+        <div className="flex shrink-0 gap-0.5">
+          {s.status !== "resolved" ? (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={busyId === s.symptom_id}
+                onClick={() => updateStatus(s, "resolved")}
+                aria-label={`Mark ${s.name} resolved`}
+                title="Mark resolved"
+              >
+                <Check className="size-4" aria-hidden />
+              </Button>
+              {s.status !== "improving" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={busyId === s.symptom_id}
+                  onClick={() => updateStatus(s, "improving")}
+                  aria-label={`Mark ${s.name} improving`}
+                  title="Mark improving"
+                >
+                  <TrendingUp className="size-4" aria-hidden />
+                </Button>
+              )}
+              {s.status !== "worsened" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={busyId === s.symptom_id}
+                  onClick={() => updateStatus(s, "worsened")}
+                  aria-label={`Mark ${s.name} worsened`}
+                  title="Mark worsened"
+                >
+                  <TrendingDown className="size-4" aria-hidden />
+                </Button>
+              )}
+            </>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={busyId === s.symptom_id}
+              onClick={() => updateStatus(s, "active")}
+              aria-label={`Reactivate ${s.name}`}
+              title="Reactivate"
+            >
+              <RotateCcw className="size-4" aria-hidden />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => openEdit(s)}
+            aria-label={`Edit ${s.name}`}
+          >
+            <Pencil className="size-4" aria-hidden />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive"
+            onClick={() => setPendingDelete(s)}
+            aria-label={`Remove ${s.name}`}
+          >
+            <Trash2 className="size-4" aria-hidden />
+          </Button>
+        </div>
+      </li>
+    );
+
   return (
     <section className="grid gap-3 rounded-xl border p-4">
       <div className="flex items-center justify-between gap-2">
@@ -232,120 +353,41 @@ export function ActiveSymptomsSection({
         )}
       </div>
 
-      {symptoms.length === 0 && !adding && (
+      {active.length === 0 && !adding && (
         <p className="text-sm text-muted-foreground">
           No active symptoms tracked. Add one, or they&apos;ll appear here after
           an assessment.
         </p>
       )}
 
-      {symptoms.length > 0 && (
-        <ul className="grid gap-2">
-          {symptoms.map((s) =>
-            editingId === s.symptom_id ? (
-              <li key={s.symptom_id}>{formFields}</li>
-            ) : (
-              <li
-                key={s.symptom_id}
-                className={cn(
-                  "flex items-start justify-between gap-3 rounded-lg border p-3 text-sm",
-                  s.status === "resolved" && "opacity-60",
-                )}
-              >
-                <div className="grid gap-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={cn(
-                        "font-medium capitalize",
-                        s.status === "resolved" && "line-through",
-                      )}
-                    >
-                      {s.name}
-                    </span>
-                    <Badge variant={STATUS_VARIANT[s.status] ?? "outline"}>
-                      {s.status}
-                    </Badge>
-                    {s.severity && s.severity !== "unknown" && (
-                      <Badge variant={SEVERITY_VARIANT[s.severity] ?? "outline"}>
-                        {s.severity}
-                      </Badge>
-                    )}
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    Since {s.detected_at}
-                    {s.status === "resolved" && s.resolved_at
-                      ? ` · resolved ${s.resolved_at}`
-                      : ""}
-                  </span>
-                  {s.notes && (
-                    <span className="text-xs text-muted-foreground">
-                      {s.notes}
-                    </span>
-                  )}
-                </div>
-                <div className="flex shrink-0 gap-0.5">
-                  {s.status !== "resolved" ? (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={busyId === s.symptom_id}
-                        onClick={() => updateStatus(s, "resolved")}
-                        aria-label={`Mark ${s.name} resolved`}
-                        title="Mark resolved"
-                      >
-                        <Check className="size-4" aria-hidden />
-                      </Button>
-                      {s.status !== "worsened" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={busyId === s.symptom_id}
-                          onClick={() => updateStatus(s, "worsened")}
-                          aria-label={`Mark ${s.name} worsened`}
-                          title="Mark worsened"
-                        >
-                          <TrendingDown className="size-4" aria-hidden />
-                        </Button>
-                      )}
-                    </>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={busyId === s.symptom_id}
-                      onClick={() => updateStatus(s, "active")}
-                      aria-label={`Reactivate ${s.name}`}
-                      title="Reactivate"
-                    >
-                      <RotateCcw className="size-4" aria-hidden />
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => openEdit(s)}
-                    aria-label={`Edit ${s.name}`}
-                  >
-                    <Pencil className="size-4" aria-hidden />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive"
-                    onClick={() => setPendingDelete(s)}
-                    aria-label={`Remove ${s.name}`}
-                  >
-                    <Trash2 className="size-4" aria-hidden />
-                  </Button>
-                </div>
-              </li>
-            ),
-          )}
-        </ul>
+      {active.length > 0 && (
+        <ul className="grid gap-2">{active.map(renderRow)}</ul>
       )}
 
       {adding && formFields}
+
+      {resolved.length > 0 && (
+        <div className="border-t pt-2">
+          <button
+            type="button"
+            onClick={() => setShowResolved((v) => !v)}
+            className="flex w-full items-center gap-1.5 text-sm font-medium text-muted-foreground"
+            aria-expanded={showResolved}
+          >
+            <ChevronDown
+              className={cn(
+                "size-4 transition-transform",
+                showResolved ? "" : "-rotate-90",
+              )}
+              aria-hidden
+            />
+            Resolved ({resolved.length})
+          </button>
+          {showResolved && (
+            <ul className="mt-2 grid gap-2">{resolved.map(renderRow)}</ul>
+          )}
+        </div>
+      )}
 
       <Dialog
         open={pendingDelete !== null}

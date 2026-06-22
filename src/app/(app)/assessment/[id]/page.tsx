@@ -34,14 +34,45 @@ export default async function AssessmentPage({
   const conditions = Array.isArray(pet.medical_conditions)
     ? pet.medical_conditions.filter((c): c is string => typeof c === "string")
     : [];
+  // "Currently on" = no end date or an end date that hasn't passed. We derive
+  // this from ended_at rather than the stored `active` flag, which can go stale.
+  const today = new Date().toISOString().slice(0, 10);
   const { data: medRows } = await supabase
     .from("medications")
-    .select("name, dosage, frequency")
+    .select("name, dosage, dosage_unit, frequency")
     .eq("pet_id", pet.pet_id)
-    .eq("active", true)
     .is("deleted_at", null)
+    .or(`ended_at.is.null,ended_at.gte.${today}`)
     .order("created_at", { ascending: false });
-  const medications = medRows ?? [];
+  const medications = (medRows ?? []).map((m) => ({
+    name: m.name,
+    dosage: [m.dosage, m.dosage_unit].filter(Boolean).join(" ") || null,
+    frequency: m.frequency,
+  }));
+
+  // Pre-load the pet's currently tracked symptoms so they already show in the
+  // "Symptoms noticed" panel and the AI can ask how each has changed. Tracker
+  // statuses map into the conversation vocabulary (active → present).
+  const { data: trackedRows } = await supabase
+    .from("active_symptoms")
+    .select("name, severity, status")
+    .eq("pet_id", pet.pet_id)
+    .in("status", ["active", "improving", "worsened"])
+    .is("deleted_at", null)
+    .order("detected_at", { ascending: false });
+  const severityValues = ["mild", "moderate", "severe", "unknown"] as const;
+  type Severity = (typeof severityValues)[number];
+  const initialSymptoms = (trackedRows ?? []).map((s) => ({
+    name: s.name,
+    severity: (severityValues as readonly string[]).includes(s.severity ?? "")
+      ? (s.severity as Severity)
+      : ("unknown" as Severity),
+    status: (s.status === "active" ? "present" : s.status) as
+      | "present"
+      | "improving"
+      | "worsened"
+      | "resolved",
+  }));
 
   // Follow-up mode: continue an existing completed assessment. We reuse its id
   // so onFinish appends a dated section instead of creating a new row. RLS +
@@ -68,6 +99,13 @@ export default async function AssessmentPage({
     }
   }
 
+  // If symptoms are already being tracked, surface them up front so the owner
+  // sees the AI is aware and can report how each has changed.
+  if (initialSymptoms.length > 0) {
+    const names = initialSymptoms.map((s) => s.name).join(", ");
+    greeting += ` I'm already tracking these for ${pet.pet_name}: ${names}. How are they now — better, worse, or gone? And is there anything new?`;
+  }
+
   return (
     <ChatInterface
       petId={pet.pet_id}
@@ -77,6 +115,7 @@ export default async function AssessmentPage({
       greeting={greeting}
       conditions={conditions}
       medications={medications}
+      initialSymptoms={initialSymptoms}
     />
   );
 }

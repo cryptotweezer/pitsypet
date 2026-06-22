@@ -38,7 +38,8 @@ export async function PATCH(
   };
   if (parsed.data.status === "resolved") {
     update.resolved_at = new Date().toISOString().slice(0, 10);
-  } else if (parsed.data.status === "active" || parsed.data.status === "worsened") {
+  } else if (parsed.data.status) {
+    // Any non-resolved status (active / improving / worsened) is still ongoing.
     update.resolved_at = null;
   }
 

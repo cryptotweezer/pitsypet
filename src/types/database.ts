@@ -324,6 +324,7 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           dosage: string | null
+          dosage_unit: string | null
           ended_at: string | null
           frequency: string | null
           medication_id: string
@@ -341,6 +342,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           dosage?: string | null
+          dosage_unit?: string | null
           ended_at?: string | null
           frequency?: string | null
           medication_id?: string
@@ -358,6 +360,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           dosage?: string | null
+          dosage_unit?: string | null
           ended_at?: string | null
           frequency?: string | null
           medication_id?: string

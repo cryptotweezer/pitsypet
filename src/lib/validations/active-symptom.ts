@@ -17,7 +17,7 @@ const optionalDate = z
 export const activeSymptomSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(200),
   severity: z.enum(["mild", "moderate", "severe", "unknown"]).optional(),
-  status: z.enum(["active", "resolved", "worsened"]).optional(),
+  status: z.enum(["active", "improving", "worsened", "resolved"]).optional(),
   detected_at: optionalDate,
   notes: optionalText(2000),
 });
