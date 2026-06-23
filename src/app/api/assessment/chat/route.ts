@@ -17,6 +17,7 @@ import { RecordSymptomsSchema, type ExtractedSymptom } from "@/lib/ai/schemas";
 import { retrieveKnowledge } from "@/lib/ai/rag";
 import { classifyRisk } from "@/lib/ai/classifier";
 import { reconcileActiveSymptoms } from "@/lib/active-symptoms";
+import { loadUserClinics } from "@/lib/ai/assistant";
 import {
   formatSymptoms,
   formatPet,
@@ -53,6 +54,10 @@ Tracking symptom changes — every symptom you record carries a status:
 - "worsened": worse than before, still present.
 - "resolved": the owner says it is gone now.
 If this pet has previously tracked symptoms (listed below when present), they are pre-loaded for you: ALWAYS include every one of them in extractedSymptoms (carry them forward) and ask the owner how each has changed — better, worse, or gone — then set each one's status accordingly. Never silently drop a tracked symptom; if the owner hasn't mentioned it, keep it as "present". Add any new symptoms you detect.
+
+What may go in extractedSymptoms — ONLY: (a) symptoms the owner describes in THIS conversation, and (b) the previously-tracked active symptoms pre-loaded above (when present). NEVER invent or assume a symptom from the background records: a medication, a known condition, or a past assessment is NOT proof of a current symptom, and one medication can treat many different things — so do not turn "on Metacam" into "hip pain" on your own. You MAY use the background to ASK about it: name what you see and why, e.g. "I see Lola takes Metacam, prescribed by Dr Lorieth — that's usually for pain or inflammation. Is she having any discomfort right now?" — and only add that symptom to extractedSymptoms once the owner CONFIRMS it is present now. Never set improving/worsened/resolved on something the owner hasn't actually discussed in this conversation.
+
+Appointments in the background are labelled (upcoming) or (past). An (upcoming) appointment has NOT happened yet — never ask how it went or imply it already occurred; at most acknowledge it's coming up. A RECENT (past) appointment may be worth one short question about anything relevant that came of it; ignore appointments long in the past.
 
 Completing the assessment:
 - Confirm first. Once you have at least one named symptom, onset, and a severity estimate, do NOT set isComplete yet — first ask one confirmation question, e.g. "Thanks — is there anything else about <pet> you'd like to add, or should I assess now?" (suggestedReplies: "That's everything", "Yes, there's more"). Set isComplete to true only after the owner confirms there's nothing more (or asks you to assess).
@@ -167,6 +172,10 @@ export async function POST(req: Request) {
       .order("detected_at", { ascending: false }),
   ]);
 
+  // Owner-level vet clinics (shared across pets) — so the AI can reference the
+  // owner's vet by name and suggest contacting them when relevant.
+  const userClinics = await loadUserClinics(supabase);
+
   const clinicalContext = formatClinicalContext(
     (medRows ?? []).map((m) => ({
       name: m.name,
@@ -218,9 +227,14 @@ export async function POST(req: Request) {
           .join("\n")}`
       : "";
 
+  const clinicsNote =
+    userClinics.clinics.length > 0
+      ? `\n\nThe owner's vet clinics (shared across their pets):\n${userClinics.text}`
+      : "";
+
   const systemPrompt = clinicalContext
-    ? `${EXTRACTION_SYSTEM_PROMPT}\n\nBackground on this patient (context only — still gather the CURRENT symptoms from the owner):\n${clinicalContext}${followUpNote}${trackedSymptomsNote}`
-    : `${EXTRACTION_SYSTEM_PROMPT}${followUpNote}${trackedSymptomsNote}`;
+    ? `${EXTRACTION_SYSTEM_PROMPT}\n\nBackground on this patient (context only — still gather the CURRENT symptoms from the owner):\n${clinicalContext}${clinicsNote}${followUpNote}${trackedSymptomsNote}`
+    : `${EXTRACTION_SYSTEM_PROMPT}${clinicsNote}${followUpNote}${trackedSymptomsNote}`;
 
   let symptoms: ExtractedSymptom[] = [];
   let complete = false;

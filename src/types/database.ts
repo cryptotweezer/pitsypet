@@ -460,7 +460,6 @@ export type Database = {
           deleted_at: string | null
           email: string | null
           notes: string | null
-          pet_id: string
           phone: string | null
           service_hours: Json
           updated_at: string
@@ -474,7 +473,6 @@ export type Database = {
           deleted_at?: string | null
           email?: string | null
           notes?: string | null
-          pet_id: string
           phone?: string | null
           service_hours?: Json
           updated_at?: string
@@ -488,22 +486,13 @@ export type Database = {
           deleted_at?: string | null
           email?: string | null
           notes?: string | null
-          pet_id?: string
           phone?: string | null
           service_hours?: Json
           updated_at?: string
           user_id?: string
           vet_contact_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "vet_contacts_pet_id_fkey"
-            columns: ["pet_id"]
-            isOneToOne: false
-            referencedRelation: "pets"
-            referencedColumns: ["pet_id"]
-          },
-        ]
+        Relationships: []
       }
       vet_doctors: {
         Row: {
@@ -513,7 +502,6 @@ export type Database = {
           email: string | null
           name: string
           notes: string | null
-          pet_id: string
           phone: string | null
           specialty: string | null
           updated_at: string
@@ -527,7 +515,6 @@ export type Database = {
           email?: string | null
           name: string
           notes?: string | null
-          pet_id: string
           phone?: string | null
           specialty?: string | null
           updated_at?: string
@@ -541,7 +528,6 @@ export type Database = {
           email?: string | null
           name?: string
           notes?: string | null
-          pet_id?: string
           phone?: string | null
           specialty?: string | null
           updated_at?: string
@@ -549,13 +535,6 @@ export type Database = {
           vet_contact_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "vet_doctors_pet_id_fkey"
-            columns: ["pet_id"]
-            isOneToOne: false
-            referencedRelation: "pets"
-            referencedColumns: ["pet_id"]
-          },
           {
             foreignKeyName: "vet_doctors_vet_contact_id_fkey"
             columns: ["vet_contact_id"]

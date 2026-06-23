@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useChat, type Message } from "@ai-sdk/react";
 import { toast } from "sonner";
-import { Check, X, Sparkles, ArrowRight } from "lucide-react";
+import { Check, X, Sparkles, ArrowRight, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +46,13 @@ export function AssistantChat({
   inputPlaceholder?: string;
 }) {
   const router = useRouter();
+  // The user's own timezone (from their device), so the assistant resolves
+  // "today"/"tomorrow"/"next Monday" against the date THEY see — not the UTC
+  // server. Independent of where Vercel runs or where the user connects from.
+  const timeZone =
+    typeof Intl !== "undefined"
+      ? Intl.DateTimeFormat().resolvedOptions().timeZone
+      : "UTC";
   const {
     messages,
     setMessages,
@@ -56,7 +63,7 @@ export function AssistantChat({
     isLoading,
   } = useChat({
     api: "/api/assistant",
-    body: { scope, petId },
+    body: { scope, petId, timeZone },
     initialMessages: greeting
       ? [{ id: "greeting", role: "assistant", content: greeting }]
       : undefined,
@@ -70,6 +77,13 @@ export function AssistantChat({
   // before hydration applies). It only starts saving on the render AFTER
   // hydration, when `messages` already holds the restored transcript.
   const storageKey = `pitsypet-chat:${scope}:${petId ?? "all"}`;
+  // Proposed-action cards + their statuses/anchors are persisted separately
+  // ("ext"), because they live in the useChat `data` stream which resets on
+  // refresh — without this, a Start/Confirm button vanishes on reload.
+  const extKey = `${storageKey}:ext`;
+  const [storedActions, setStoredActions] = useState<ProposedAction[]>([]);
+  const [statuses, setStatuses] = useState<Record<string, ActionStatus>>({});
+  const [anchors, setAnchors] = useState<Record<string, string>>({});
   const [ready, setReady] = useState(false);
   useEffect(() => {
     try {
@@ -77,6 +91,31 @@ export function AssistantChat({
       if (raw) {
         const saved = JSON.parse(raw) as Message[];
         if (Array.isArray(saved) && saved.length > 0) setMessages(saved);
+      }
+    } catch {
+      // ignore corrupt storage
+    }
+    try {
+      const rawExt = localStorage.getItem(extKey);
+      if (rawExt) {
+        const ext = JSON.parse(rawExt) as {
+          actions?: ProposedAction[];
+          statuses?: Record<string, ActionStatus>;
+          anchors?: Record<string, string>;
+        };
+        if (Array.isArray(ext.actions)) setStoredActions(ext.actions);
+        if (ext.statuses) {
+          // A write interrupted by the refresh would restore as "working"
+          // forever — reset those to pending so the card is actionable again.
+          const cleaned = Object.fromEntries(
+            Object.entries(ext.statuses).map(([k, v]) => [
+              k,
+              v === "working" ? "pending" : v,
+            ]),
+          ) as Record<string, ActionStatus>;
+          setStatuses(cleaned);
+        }
+        if (ext.anchors) setAnchors(ext.anchors);
       }
     } catch {
       // ignore corrupt storage
@@ -93,9 +132,41 @@ export function AssistantChat({
       // ignore quota / disabled storage
     }
   }, [messages, ready, storageKey]);
+  useEffect(() => {
+    if (!ready) return;
+    try {
+      localStorage.setItem(
+        extKey,
+        JSON.stringify({ actions: storedActions, statuses, anchors }),
+      );
+    } catch {
+      // ignore quota / disabled storage
+    }
+  }, [storedActions, statuses, anchors, ready, extKey]);
 
-  const actions = useMemo(() => readActions(data), [data]);
-  const [statuses, setStatuses] = useState<Record<string, ActionStatus>>({});
+  // Cards arrive in the useChat `data` stream; mirror new ones into
+  // `storedActions` (persisted above) so they survive a refresh. `clearChat`
+  // empties the list and marks the live ids dismissed so the merge below — which
+  // re-reads the still-populated `data` stream — won't resurrect them.
+  const [clearedActionIds, setClearedActionIds] = useState<Set<string>>(
+    new Set(),
+  );
+  useEffect(() => {
+    const live = readActions(data).filter((a) => !clearedActionIds.has(a.id));
+    if (live.length === 0) return;
+    setStoredActions((prev) => {
+      const byId = new Map(prev.map((a) => [a.id, a]));
+      let changed = false;
+      for (const a of live) {
+        if (!byId.has(a.id)) {
+          byId.set(a.id, a);
+          changed = true;
+        }
+      }
+      return changed ? Array.from(byId.values()) : prev;
+    });
+  }, [data, clearedActionIds]);
+  const actions = storedActions;
   const setStatus = (id: string, s: ActionStatus) =>
     setStatuses((prev) => ({ ...prev, [id]: s }));
 
@@ -103,8 +174,8 @@ export function AssistantChat({
   // stays in place in the transcript instead of jumping to the bottom. useChat
   // can swap the streaming message's id when it finalizes, so we re-anchor any
   // anchor that points at a now-missing message to the latest message — this
-  // self-heals during streaming and then stays put on later turns.
-  const [anchors, setAnchors] = useState<Record<string, string>>({});
+  // self-heals during streaming and then stays put on later turns. (`anchors`
+  // state is declared above so it can be restored from localStorage.)
   useEffect(() => {
     const lastId = messages[messages.length - 1]?.id;
     if (!lastId) return;
@@ -147,14 +218,21 @@ export function AssistantChat({
       });
       if (!res.ok) {
         setStatus(a.id, "error");
-        toast.error("Could not complete that. Please try again.");
+        // Surface a specific server message (e.g. duplicate pet name) when present.
+        const msg = await res
+          .json()
+          .then((b) => (b && typeof b.error === "string" ? b.error : null))
+          .catch(() => null);
+        toast.error(msg ?? "Could not complete that. Please try again.");
         return;
       }
       setStatus(a.id, "done");
       toast.success(
         a.kind === "cancel_appointment"
           ? "Appointment cancelled."
-          : "Saved to the record.",
+          : a.kind === "create_pet"
+            ? `${a.petName} added!`
+            : "Saved to the record.",
       );
       router.refresh();
     } catch {
@@ -162,6 +240,37 @@ export function AssistantChat({
       toast.error("Network error — please try again.");
     }
   }
+
+  // Wipe the conversation on this device: reset to just the greeting, drop the
+  // stored cards/statuses/anchors, and clear the saved transcript. The live
+  // `data` stream can't be emptied, so we also mark its current action ids
+  // dismissed (clearedActionIds) — the merge effect skips them, so they don't
+  // get re-stored.
+  function clearChat() {
+    setMessages(
+      greeting
+        ? [{ id: "greeting", role: "assistant", content: greeting }]
+        : [],
+    );
+    setClearedActionIds((prev) => {
+      const next = new Set(prev);
+      for (const a of readActions(data)) next.add(a.id);
+      return next;
+    });
+    setStoredActions([]);
+    setStatuses({});
+    setAnchors({});
+    try {
+      localStorage.removeItem(storageKey);
+      localStorage.removeItem(extKey);
+    } catch {
+      // ignore
+    }
+  }
+
+  // Show the clear button once there's a real conversation (more than the
+  // initial greeting).
+  const hasConversation = messages.some((m) => m.id !== "greeting");
 
   const liveActions = actions.filter(
     (a) => (statuses[a.id] ?? "pending") !== "cancelled",
@@ -243,6 +352,20 @@ export function AssistantChat({
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
+      {hasConversation && (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 text-xs text-muted-foreground"
+            onClick={clearChat}
+            disabled={isLoading}
+          >
+            <Trash2 className="size-3.5" aria-hidden /> Clear chat
+          </Button>
+        </div>
+      )}
       <div
         className="flex-1 space-y-3 overflow-y-auto rounded-lg border bg-background/50 p-3"
         aria-live="polite"

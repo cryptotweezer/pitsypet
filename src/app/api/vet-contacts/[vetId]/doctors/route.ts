@@ -3,10 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { vetDoctorSchema } from "@/lib/validations/vet-doctor";
 
-// POST /api/pets/[id]/vet-contacts/[vetId]/doctors — add a doctor to a clinic.
+// POST /api/vet-contacts/[vetId]/doctors — add a doctor to a clinic the user owns.
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string; vetId: string } },
+  { params }: { params: { vetId: string } },
 ) {
   const supabase = createClient();
   const {
@@ -31,12 +31,12 @@ export async function POST(
     );
   }
 
-  // Verify the clinic belongs to this pet (and the user, via RLS) before writing.
+  // Verify the clinic belongs to the user (RLS also enforces this) before writing.
   const { data: clinic } = await supabase
     .from("vet_contacts")
-    .select("vet_contact_id, pet_id")
+    .select("vet_contact_id")
     .eq("vet_contact_id", params.vetId)
-    .eq("pet_id", params.id)
+    .eq("user_id", user.id)
     .is("deleted_at", null)
     .maybeSingle();
   if (!clinic) {
@@ -48,7 +48,6 @@ export async function POST(
     .insert({
       ...parsed.data,
       vet_contact_id: clinic.vet_contact_id,
-      pet_id: clinic.pet_id,
       user_id: user.id,
     })
     .select()

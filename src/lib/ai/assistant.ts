@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/types/database";
+import type { ServiceHour } from "@/lib/validations/vet-contact";
 import {
   formatPet,
   formatMedications,
@@ -14,6 +15,7 @@ import {
 // validated, RLS-scoped REST route) when the owner confirms. `start_assessment`
 // is a navigation action (href) rather than a write.
 export type ProposedActionKind =
+  | "create_pet"
   | "add_medication"
   | "add_appointment"
   | "cancel_appointment"
@@ -46,17 +48,124 @@ export type PetRow = {
 };
 
 // Everything the assistant needs about one pet: a formatted text block for the
-// prompt, plus the clinic name→id map so a "add doctor to <clinic>" proposal can
-// resolve the clinic without exposing raw ids to the model.
+// prompt, plus this pet's appointments so a "cancel appointment" proposal can
+// resolve which one. Vet clinics are owner-level now (see loadUserClinics).
 export type PetDossier = {
   petId: string;
   petName: string;
   text: string;
-  clinics: { id: string; name: string }[];
   appointments: { id: string; title: string; scheduled_at: string }[];
 };
 
+// Owner-level vet clinics (shared across all pets), with their doctors, plus the
+// clinic name→id map so an "add doctor to <clinic>" / appointment proposal can
+// resolve the clinic without exposing raw ids to the model.
+export type UserClinics = {
+  clinics: { id: string; name: string; service_hours: ServiceHour[] }[];
+  text: string;
+};
+
 type Supabase = SupabaseClient<Database>;
+
+const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+// JS Date.getDay() is 0=Sun…6=Sat — map onto our Mon-first labels.
+const JS_DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
+export function formatServiceHours(hours: ServiceHour[]): string {
+  if (!hours || hours.length === 0) return "hours not specified";
+  return DAY_LABELS.map((d) => {
+    const h = hours.find((x) => x.day === d);
+    return h ? `${d} ${h.open}-${h.close}` : null;
+  })
+    .filter(Boolean)
+    .join(", ");
+}
+
+// Is a clinic open at a given appointment datetime? Parses the wall-clock
+// day/time directly from the ISO-ish string (no Date() timezone drift) and
+// compares against the structured opening hours. Returns null if it can't parse
+// (caller then skips the check). When hours are empty, treats it as open so a
+// clinic without hours is never blocked.
+export function clinicOpenAt(
+  scheduledAt: string,
+  hours: ServiceHour[],
+): { open: boolean; dayLabel: string; timeLabel: string } | null {
+  const m = scheduledAt.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if (!m) return null;
+  const [, y, mo, d, hh, mm] = m;
+  const jsDay = new Date(
+    Number(y),
+    Number(mo) - 1,
+    Number(d),
+    12,
+    0,
+    0,
+  ).getDay();
+  const dayLabel = JS_DAY_LABELS[jsDay];
+  const timeLabel = `${hh}:${mm}`;
+  if (!hours || hours.length === 0) return { open: true, dayLabel, timeLabel };
+  const minutes = Number(hh) * 60 + Number(mm);
+  const open = hours.some((h) => {
+    if (h.day !== dayLabel) return false;
+    const [oh, om] = h.open.split(":").map(Number);
+    const [ch, cm] = h.close.split(":").map(Number);
+    return minutes >= oh * 60 + om && minutes <= ch * 60 + cm;
+  });
+  return { open, dayLabel, timeLabel };
+}
+
+// Load the owner's vet clinics + doctors once (not per pet). RLS scopes to the
+// authenticated user.
+export async function loadUserClinics(supabase: Supabase): Promise<UserClinics> {
+  const { data: vetRows } = await supabase
+    .from("vet_contacts")
+    .select("vet_contact_id, clinic_name, phone, address, service_hours")
+    .is("deleted_at", null);
+
+  const clinics = (vetRows ?? []).map((v) => ({
+    id: v.vet_contact_id,
+    name: v.clinic_name ?? "Unnamed clinic",
+    service_hours: (Array.isArray(v.service_hours)
+      ? v.service_hours
+      : []) as unknown as ServiceHour[],
+  }));
+
+  let doctorsByClinic = new Map<string, string[]>();
+  if (clinics.length > 0) {
+    const { data: docRows } = await supabase
+      .from("vet_doctors")
+      .select("name, specialty, vet_contact_id")
+      .in(
+        "vet_contact_id",
+        clinics.map((c) => c.id),
+      )
+      .is("deleted_at", null);
+    doctorsByClinic = (docRows ?? []).reduce((map, d) => {
+      const list = map.get(d.vet_contact_id) ?? [];
+      list.push(d.specialty ? `${d.name} (${d.specialty})` : d.name);
+      map.set(d.vet_contact_id, list);
+      return map;
+    }, new Map<string, string[]>());
+  }
+
+  const text =
+    clinics.length === 0
+      ? "No vet clinics on record."
+      : clinics
+          .map((c) => {
+            const v = (vetRows ?? []).find((r) => r.vet_contact_id === c.id);
+            const bits = [c.name];
+            if (v?.phone) bits.push(`ph ${v.phone}`);
+            if (v?.address) bits.push(v.address);
+            const docs = doctorsByClinic.get(c.id) ?? [];
+            const docLine = docs.length > 0 ? `; doctors: ${docs.join(", ")}` : "";
+            const hoursLine = `; hours: ${formatServiceHours(c.service_hours)}`;
+            return `- ${bits.join(", ")}${hoursLine}${docLine}`;
+          })
+          .join("\n");
+
+  return { clinics, text };
+}
 
 function asConditions(raw: unknown): string[] {
   return Array.isArray(raw)
@@ -85,7 +194,6 @@ export async function loadPetDossier(
     { data: medRows },
     { data: symptomRows },
     { data: apptRows },
-    { data: vetRows },
     { data: priorRows },
   ] = await Promise.all([
     supabase
@@ -110,11 +218,6 @@ export async function loadPetDossier(
       .order("scheduled_at", { ascending: false })
       .limit(10),
     supabase
-      .from("vet_contacts")
-      .select("vet_contact_id, clinic_name, phone, address")
-      .eq("pet_id", pet.pet_id)
-      .is("deleted_at", null),
-    supabase
       .from("assessments")
       .select(
         "created_at, risk_classification, primary_concern, recommended_action, extracted_symptoms",
@@ -125,46 +228,6 @@ export async function loadPetDossier(
       .order("created_at", { ascending: false })
       .limit(3),
   ]);
-
-  const clinics = (vetRows ?? []).map((v) => ({
-    id: v.vet_contact_id,
-    name: v.clinic_name ?? "Unnamed clinic",
-  }));
-
-  // Doctors per clinic (one extra query covering all this pet's clinics).
-  let doctorsByClinic = new Map<string, string[]>();
-  if (clinics.length > 0) {
-    const { data: docRows } = await supabase
-      .from("vet_doctors")
-      .select("name, specialty, vet_contact_id")
-      .in(
-        "vet_contact_id",
-        clinics.map((c) => c.id),
-      )
-      .is("deleted_at", null);
-    doctorsByClinic = (docRows ?? []).reduce((map, d) => {
-      const list = map.get(d.vet_contact_id) ?? [];
-      list.push(d.specialty ? `${d.name} (${d.specialty})` : d.name);
-      map.set(d.vet_contact_id, list);
-      return map;
-    }, new Map<string, string[]>());
-  }
-
-  const vetText =
-    clinics.length === 0
-      ? "No vet clinics on record."
-      : clinics
-          .map((c) => {
-            const v = (vetRows ?? []).find((r) => r.vet_contact_id === c.id);
-            const bits = [c.name];
-            if (v?.phone) bits.push(`ph ${v.phone}`);
-            if (v?.address) bits.push(v.address);
-            const docs = doctorsByClinic.get(c.id) ?? [];
-            const docLine =
-              docs.length > 0 ? `; doctors: ${docs.join(", ")}` : "";
-            return `- ${bits.join(", ")}${docLine}`;
-          })
-          .join("\n");
 
   const sections = [
     formatPet({
@@ -195,7 +258,6 @@ export async function loadPetDossier(
         active: m.active,
       })),
     )}`,
-    `Vet clinics:\n${vetText}`,
     `Appointments:\n${formatAppointments(
       (apptRows ?? []).map((a) => ({
         title: a.title,
@@ -220,7 +282,6 @@ export async function loadPetDossier(
     petId: pet.pet_id,
     petName: pet.pet_name,
     text: sections.join("\n\n"),
-    clinics,
     appointments: (apptRows ?? []).map((a) => ({
       id: a.appointment_id,
       title: a.title,

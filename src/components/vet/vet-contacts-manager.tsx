@@ -111,13 +111,9 @@ const EMPTY_DOCTOR = {
   notes: "",
 };
 
-export function VetContactsSection({
-  petId,
-  contacts,
-}: {
-  petId: string;
-  contacts: VetContact[];
-}) {
+// Owner-level vet clinics + doctors (shared across all the owner's pets). Lives
+// on the dashboard; the assistant can see and propose changes too.
+export function VetContactsManager({ contacts }: { contacts: VetContact[] }) {
   const router = useRouter();
 
   // Clinic add/edit state.
@@ -232,8 +228,8 @@ export function VetContactsSection({
     setSaving(true);
     const payload = { ...clinicForm, service_hours: stateToHours(hours) };
     const url = editingClinicId
-      ? `/api/pets/${petId}/vet-contacts/${editingClinicId}`
-      : `/api/pets/${petId}/vet-contacts`;
+      ? `/api/vet-contacts/${editingClinicId}`
+      : `/api/vet-contacts`;
     const res = await fetch(url, {
       method: editingClinicId ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -256,7 +252,7 @@ export function VetContactsSection({
       return;
     }
     setSaving(true);
-    const base = `/api/pets/${petId}/vet-contacts/${doctorClinicId}/doctors`;
+    const base = `/api/vet-contacts/${doctorClinicId}/doctors`;
     const url = editingDoctorId ? `${base}/${editingDoctorId}` : base;
     const res = await fetch(url, {
       method: editingDoctorId ? "PATCH" : "POST",
@@ -277,7 +273,7 @@ export function VetContactsSection({
     if (!pendingDeleteClinic) return;
     setDeleting(true);
     const res = await fetch(
-      `/api/pets/${petId}/vet-contacts/${pendingDeleteClinic.vet_contact_id}`,
+      `/api/vet-contacts/${pendingDeleteClinic.vet_contact_id}`,
       { method: "DELETE" },
     );
     setDeleting(false);
@@ -302,7 +298,7 @@ export function VetContactsSection({
     }
     setDeleting(true);
     const res = await fetch(
-      `/api/pets/${petId}/vet-contacts/${clinic.vet_contact_id}/doctors/${pendingDeleteDoctor.doctor_id}`,
+      `/api/vet-contacts/${clinic.vet_contact_id}/doctors/${pendingDeleteDoctor.doctor_id}`,
       { method: "DELETE" },
     );
     setDeleting(false);
@@ -466,7 +462,7 @@ export function VetContactsSection({
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
-          <Label htmlFor="doc-phone">Phone</Label>
+          <Label htmlFor="doc-phone">Phone (optional)</Label>
           <Input
             id="doc-phone"
             value={doctorForm.phone}
@@ -475,7 +471,7 @@ export function VetContactsSection({
           />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="doc-email">Email</Label>
+          <Label htmlFor="doc-email">Email (optional)</Label>
           <Input
             id="doc-email"
             type="email"
@@ -508,9 +504,14 @@ export function VetContactsSection({
   return (
     <section className="grid gap-3 rounded-xl border p-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
-          <Stethoscope className="size-5" aria-hidden /> Veterinarian
-        </h2>
+        <div className="grid gap-0.5">
+          <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
+            <Stethoscope className="size-5" aria-hidden /> Vet clinics
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Shared across all your pets.
+          </p>
+        </div>
         {!clinicOpen && (
           <Button variant="outline" size="sm" onClick={openAddClinic}>
             <Plus className="size-4" aria-hidden /> Add clinic
@@ -674,17 +675,17 @@ export function VetContactsSection({
                           {d.phone && (
                             <a
                               href={`tel:${d.phone.replace(/[^\d+]/g, "")}`}
-                              className="text-xs text-muted-foreground hover:underline"
+                              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:underline"
                             >
-                              {d.phone}
+                              <Phone className="size-3" aria-hidden /> {d.phone}
                             </a>
                           )}
                           {d.email && (
                             <a
                               href={`mailto:${d.email}`}
-                              className="text-xs text-muted-foreground hover:underline"
+                              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:underline"
                             >
-                              {d.email}
+                              <Mail className="size-3" aria-hidden /> {d.email}
                             </a>
                           )}
                           {d.notes && (
@@ -740,8 +741,8 @@ export function VetContactsSection({
               Remove {pendingDeleteClinic?.clinic_name ?? "this clinic"}?
             </DialogTitle>
             <DialogDescription>
-              This removes the clinic and all its doctors from the pet&apos;s
-              record. You can add it again later.
+              This removes the clinic and all its doctors. You can add it again
+              later.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

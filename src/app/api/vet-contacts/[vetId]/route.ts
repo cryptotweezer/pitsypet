@@ -3,10 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { vetContactUpdateSchema } from "@/lib/validations/vet-contact";
 
-// PATCH = edit a vet contact.
+// PATCH = edit an owner-level clinic.
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string; vetId: string } },
+  { params }: { params: { vetId: string } },
 ) {
   const supabase = createClient();
   const {
@@ -41,16 +41,16 @@ export async function PATCH(
     .single();
 
   if (error) {
-    return NextResponse.json({ error: "Vet contact not found" }, { status: 404 });
+    return NextResponse.json({ error: "Clinic not found" }, { status: 404 });
   }
 
   return NextResponse.json({ vetContact });
 }
 
-// DELETE = soft delete a vet contact.
+// DELETE = soft delete a clinic.
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string; vetId: string } },
+  { params }: { params: { vetId: string } },
 ) {
   const supabase = createClient();
   const {
@@ -69,7 +69,7 @@ export async function DELETE(
 
   if (error) {
     return NextResponse.json(
-      { error: "Failed to delete vet contact" },
+      { error: "Failed to delete clinic" },
       { status: 500 },
     );
   }

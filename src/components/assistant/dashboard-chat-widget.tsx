@@ -10,8 +10,12 @@ import { AssistantChat } from "@/components/assistant/assistant-chat";
 // Floating dashboard assistant — bottom-right. Spans all of the owner's pets, so
 // it always confirms which pet an action is for. (Provisional UI; will be
 // refined in the UI/UX phase.)
-export function DashboardChatWidget() {
+export function DashboardChatWidget({ hasPets = true }: { hasPets?: boolean }) {
   const [open, setOpen] = useState(false);
+
+  const greeting = hasPets
+    ? "Hi! I can help across all your pets — ask me anything, or tell me what to record (a medication, appointment, symptom update…). I'll always check which pet first."
+    : "Hi! You don't have any pets yet. Tell me about your dog or cat — their name, breed, age and weight — and I'll set up their profile for you. You can also ask me anything about pet care.";
 
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
@@ -32,8 +36,8 @@ export function DashboardChatWidget() {
           </div>
           <AssistantChat
             scope="dashboard"
-            greeting="Hi! I can help across all your pets — ask me anything, or tell me what to record (a medication, appointment, symptom update…). I'll always check which pet first."
-            inputPlaceholder="Ask about any pet…"
+            greeting={greeting}
+            inputPlaceholder={hasPets ? "Ask about any pet…" : "Tell me about your pet…"}
             className="min-h-0 flex-1 p-3"
           />
         </div>

@@ -15,11 +15,6 @@ import {
   type Medication,
 } from "@/components/pets/medications-section";
 import {
-  VetContactsSection,
-  type VetContact,
-  type VetDoctor,
-} from "@/components/pets/vet-contacts-section";
-import {
   AppointmentsSection,
   type Appointment,
 } from "@/components/pets/appointments-section";
@@ -27,7 +22,6 @@ import {
   ActiveSymptomsSection,
   type ActiveSymptom,
 } from "@/components/pets/active-symptoms-section";
-import type { ServiceHour } from "@/lib/validations/vet-contact";
 import { AssistantChat } from "@/components/assistant/assistant-chat";
 
 export const metadata = { title: "Pet · PitsyPet" };
@@ -58,8 +52,8 @@ export default async function PetPage({
   const [
     { data: assessmentRows },
     { data: medRows },
-    { data: vetRows },
-    { data: doctorRows },
+    { data: clinicRows },
+    { data: doctorNameRows },
     { data: apptRows },
     { data: symptomRows },
   ] = await Promise.all([
@@ -81,22 +75,18 @@ export default async function PetPage({
       .is("deleted_at", null)
       .order("active", { ascending: false })
       .order("created_at", { ascending: false }),
+    // Vet clinics are owner-level now — fetch them for the appointment clinic
+    // picker (managed on the dashboard, not here).
     supabase
       .from("vet_contacts")
-      .select(
-        "vet_contact_id, clinic_name, phone, email, address, service_hours, notes",
-      )
-      .eq("pet_id", pet.pet_id)
+      .select("vet_contact_id, clinic_name")
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
+    // Owner-level doctor names → "Prescribed by" suggestions on medications.
     supabase
       .from("vet_doctors")
-      .select(
-        "doctor_id, vet_contact_id, name, specialty, phone, email, notes",
-      )
-      .eq("pet_id", pet.pet_id)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: true }),
+      .select("name")
+      .is("deleted_at", null),
     supabase
       .from("appointments")
       .select(
@@ -136,43 +126,16 @@ export default async function PetPage({
     created_at: a.created_at,
   }));
   const medications = (medRows ?? []) as Medication[];
-
-  // Group doctors under their clinic.
-  const doctorsByClinic = new Map<string, VetDoctor[]>();
-  for (const d of doctorRows ?? []) {
-    const list = doctorsByClinic.get(d.vet_contact_id) ?? [];
-    list.push({
-      doctor_id: d.doctor_id,
-      name: d.name,
-      specialty: d.specialty,
-      phone: d.phone,
-      email: d.email,
-      notes: d.notes,
-    });
-    doctorsByClinic.set(d.vet_contact_id, list);
-  }
-  const vetContacts: VetContact[] = (vetRows ?? []).map((c) => ({
-    vet_contact_id: c.vet_contact_id,
-    clinic_name: c.clinic_name,
-    phone: c.phone,
-    email: c.email,
-    address: c.address,
-    service_hours: (Array.isArray(c.service_hours)
-      ? c.service_hours
-      : []) as unknown as ServiceHour[],
-    notes: c.notes,
-    doctors: doctorsByClinic.get(c.vet_contact_id) ?? [],
-  }));
   const appointments = (apptRows ?? []) as Appointment[];
   const activeSymptoms = (symptomRows ?? []) as ActiveSymptom[];
-  const clinicOptions = vetContacts.map((c) => ({
+  const clinicOptions = (clinicRows ?? []).map((c) => ({
     vet_contact_id: c.vet_contact_id,
     clinic_name: c.clinic_name,
   }));
-  // Doctor names from saved clinics → "Prescribed by" suggestions on meds.
+  // Owner-level doctor names → "Prescribed by" suggestions on meds.
   const doctorOptions = Array.from(
     new Set(
-      (doctorRows ?? [])
+      (doctorNameRows ?? [])
         .map((d) => d.name)
         .filter((n): n is string => !!n && n.trim().length > 0),
     ),
@@ -230,7 +193,6 @@ export default async function PetPage({
       <ActiveSymptomsSection petId={pet.pet_id} symptoms={activeSymptoms} />
 
       <div className="grid gap-4">
-        <VetContactsSection petId={pet.pet_id} contacts={vetContacts} />
         <AppointmentsSection
           petId={pet.pet_id}
           appointments={appointments}

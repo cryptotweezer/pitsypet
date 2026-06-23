@@ -6,7 +6,7 @@ import { vetDoctorUpdateSchema } from "@/lib/validations/vet-doctor";
 // PATCH = edit a doctor.
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string; vetId: string; doctorId: string } },
+  { params }: { params: { vetId: string; doctorId: string } },
 ) {
   const supabase = createClient();
   const {
@@ -50,7 +50,7 @@ export async function PATCH(
 // DELETE = soft delete a doctor.
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string; vetId: string; doctorId: string } },
+  { params }: { params: { vetId: string; doctorId: string } },
 ) {
   const supabase = createClient();
   const {

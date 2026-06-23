@@ -124,18 +124,26 @@ export function formatPriorAssessments(prior: PriorAssessment[]): string {
 }
 
 // Vet appointments (upcoming + recent past), including what the vet advised
-// (outcome) and the owner's observations — useful context for triage.
-export function formatAppointments(appts: AppointmentContext[]): string {
+// (outcome) and the owner's observations — useful context for triage. Each is
+// labelled (upcoming) or (past) vs `todayStr` so the AI never treats a future
+// visit as already-happened. todayStr is a YYYY-MM-DD date (defaults to today
+// UTC); pass the user's local date when available.
+export function formatAppointments(
+  appts: AppointmentContext[],
+  todayStr: string = new Date().toISOString().slice(0, 10),
+): string {
   if (appts.length === 0) return "No appointments on record.";
   return appts
     .map((a) => {
       const date = a.scheduled_at.slice(0, 10);
+      // Same-day counts as upcoming (the visit may not have happened yet).
+      const when = date >= todayStr ? "upcoming" : "past";
       const extra: string[] = [];
       if (a.reason) extra.push(`reason: ${a.reason}`);
       if (a.notes) extra.push(`owner notes: ${a.notes}`);
       if (a.outcome) extra.push(`vet outcome: ${a.outcome}`);
       const tail = extra.length > 0 ? `\n  ${extra.join("; ")}` : "";
-      return `- ${date} — ${a.title}${tail}`;
+      return `- ${date} (${when}) — ${a.title}${tail}`;
     })
     .join("\n");
 }
