@@ -82,15 +82,16 @@ export default async function PetPage({
       .select("vet_contact_id, clinic_name")
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
-    // Owner-level doctor names → "Prescribed by" suggestions on medications.
+    // Owner-level doctors → "Prescribed by" (meds) + per-clinic appointment
+    // doctor suggestions. Keep vet_contact_id so we can group by clinic.
     supabase
       .from("vet_doctors")
-      .select("name")
+      .select("name, vet_contact_id")
       .is("deleted_at", null),
     supabase
       .from("appointments")
       .select(
-        "appointment_id, title, scheduled_at, reason, notes, outcome, vet_contact_id",
+        "appointment_id, title, scheduled_at, reason, notes, outcome, vet_contact_id, doctor_name",
       )
       .eq("pet_id", pet.pet_id)
       .is("deleted_at", null)
@@ -107,32 +108,61 @@ export default async function PetPage({
       .order("detected_at", { ascending: false }),
   ]);
 
-  const assessments: AssessmentSummary[] = (assessmentRows ?? []).map((a) => ({
-    assessment_id: a.assessment_id,
-    pet_name: pet.pet_name,
-    risk_classification: a.risk_classification,
-    primary_concern: a.primary_concern,
-    recommended_action: a.recommended_action,
-    symptoms: Array.isArray(a.extracted_symptoms)
-      ? (a.extracted_symptoms as unknown[])
-          .map((s) =>
-            s && typeof s === "object" && "name" in s
-              ? String((s as { name: unknown }).name)
-              : null,
+  const assessments: AssessmentSummary[] = (assessmentRows ?? []).map((a) => {
+    const followUps = Array.isArray(a.follow_ups)
+      ? (a.follow_ups as unknown[])
+      : [];
+    // The card's risk tag tracks the pet's CURRENT state, so a follow-up that
+    // re-classifies the case overrides the initial risk. Each follow-up is the
+    // newest at the end of the array → use the last one's risk if present.
+    const lastFollowUp = followUps[followUps.length - 1];
+    const latestRisk =
+      lastFollowUp &&
+      typeof lastFollowUp === "object" &&
+      "risk_classification" in lastFollowUp &&
+      (lastFollowUp as { risk_classification: unknown }).risk_classification
+        ? String(
+            (lastFollowUp as { risk_classification: unknown })
+              .risk_classification,
           )
-          .filter((n): n is string => !!n)
-      : [],
-    follow_up_count: Array.isArray(a.follow_ups) ? a.follow_ups.length : 0,
-    created_at: a.created_at,
-  }));
+        : a.risk_classification;
+    return {
+      assessment_id: a.assessment_id,
+      pet_name: pet.pet_name,
+      risk_classification: latestRisk,
+      primary_concern: a.primary_concern,
+      recommended_action: a.recommended_action,
+      symptoms: Array.isArray(a.extracted_symptoms)
+        ? (a.extracted_symptoms as unknown[])
+            .map((s) =>
+              s && typeof s === "object" && "name" in s
+                ? String((s as { name: unknown }).name)
+                : null,
+            )
+            .filter((n): n is string => !!n)
+        : [],
+      follow_up_count: followUps.length,
+      created_at: a.created_at,
+    };
+  });
   const medications = (medRows ?? []) as Medication[];
   const appointments = (apptRows ?? []) as Appointment[];
   const activeSymptoms = (symptomRows ?? []) as ActiveSymptom[];
+  // Group doctor names by clinic so the appointment form can suggest the chosen
+  // clinic's doctors. Names are deduped + sorted per clinic.
+  const doctorsByClinic = new Map<string, Set<string>>();
+  for (const d of doctorNameRows ?? []) {
+    if (!d.vet_contact_id || !d.name || d.name.trim().length === 0) continue;
+    const set = doctorsByClinic.get(d.vet_contact_id) ?? new Set<string>();
+    set.add(d.name.trim());
+    doctorsByClinic.set(d.vet_contact_id, set);
+  }
   const clinicOptions = (clinicRows ?? []).map((c) => ({
     vet_contact_id: c.vet_contact_id,
     clinic_name: c.clinic_name,
+    doctors: Array.from(doctorsByClinic.get(c.vet_contact_id) ?? []).sort(),
   }));
-  // Owner-level doctor names → "Prescribed by" suggestions on meds.
+  // Owner-level doctor names → "Prescribed by" suggestions on meds (all clinics).
   const doctorOptions = Array.from(
     new Set(
       (doctorNameRows ?? [])

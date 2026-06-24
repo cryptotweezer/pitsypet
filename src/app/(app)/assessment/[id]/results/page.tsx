@@ -63,6 +63,7 @@ type FollowUpSection = {
   recommended_action: string | null;
   about_symptoms: string | null;
   symptoms: SymptomItem[];
+  red_flags: string[];
 };
 
 function parseFollowUps(raw: unknown): FollowUpSection[] {
@@ -81,6 +82,9 @@ function parseFollowUps(raw: unknown): FollowUpSection[] {
         : null,
       about_symptoms: s.about_symptoms ? String(s.about_symptoms) : null,
       symptoms: parseSymptoms(s.extracted_symptoms),
+      red_flags: Array.isArray(s.red_flags)
+        ? (s.red_flags as unknown[]).map(String)
+        : [],
     }));
 }
 
@@ -140,35 +144,41 @@ export default async function ResultsPage({
     .eq("pet_id", assessment.pet_id)
     .maybeSingle();
 
-  // Low risk → first-aid for the extracted symptoms, age-appropriate.
-  let firstAid: FirstAid[] = [];
-  if (risk === "Low" && pet) {
-    const names = symptomNames(assessment.extracted_symptoms);
-    if (names.length > 0) {
-      const band = ageRange(pet.age_years);
-      const { data: rows } = await supabase
-        .from("first_aid_recommendations")
-        .select("symptom_name, recommendation_text, age_range")
-        .in("symptom_name", names)
-        .in("age_range", [band, "Any"]);
-      // Prefer the age-specific row over the generic 'Any' for each symptom.
-      const bySymptom = new Map<string, FirstAid>();
-      for (const r of rows ?? []) {
-        const existing = bySymptom.get(r.symptom_name);
-        if (!existing || r.age_range !== "Any") {
-          bySymptom.set(r.symptom_name, {
-            symptom_name: r.symptom_name,
-            recommendation_text: r.recommendation_text,
-          });
-        }
+  // Age-appropriate first-aid lookup, reused for the initial assessment and any
+  // Low-risk follow-up. Prefers the age-specific row over the generic 'Any'.
+  const band = pet ? ageRange(pet.age_years) : null;
+  async function loadFirstAid(names: string[]): Promise<FirstAid[]> {
+    if (!band || names.length === 0) return [];
+    const { data: rows } = await supabase
+      .from("first_aid_recommendations")
+      .select("symptom_name, recommendation_text, age_range")
+      .in("symptom_name", names)
+      .in("age_range", [band, "Any"]);
+    const bySymptom = new Map<string, FirstAid>();
+    for (const r of rows ?? []) {
+      const existing = bySymptom.get(r.symptom_name);
+      if (!existing || r.age_range !== "Any") {
+        bySymptom.set(r.symptom_name, {
+          symptom_name: r.symptom_name,
+          recommendation_text: r.recommendation_text,
+        });
       }
-      firstAid = Array.from(bySymptom.values());
     }
+    return Array.from(bySymptom.values());
   }
 
+  // Low risk → first-aid for the extracted symptoms.
+  const firstAid: FirstAid[] =
+    risk === "Low" ? await loadFirstAid(symptomNames(assessment.extracted_symptoms)) : [];
+
   // High risk → emergency contacts in the user's state, plus the national line.
+  // A follow-up is an immutable, separate snapshot, so the High case can live in
+  // ANY block (a Low initial assessment followed by a High follow-up, say) — we
+  // fetch the contacts once if the initial OR any follow-up is High.
+  const needsEmergency =
+    risk === "High" || followUps.some((f) => f.risk_classification === "High");
   let emergencyContacts: EmergencyContact[] = [];
-  if (risk === "High") {
+  if (needsEmergency) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("state")
@@ -191,6 +201,18 @@ export default async function ResultsPage({
         website: c.website,
       }));
   }
+
+  // Each follow-up renders its own risk-appropriate recommendations, so precompute
+  // first-aid for the Low ones (emergency contacts are shared across blocks).
+  const followUpData = await Promise.all(
+    followUps.map(async (f) => ({
+      ...f,
+      firstAid:
+        f.risk_classification === "Low"
+          ? await loadFirstAid(f.symptoms.map((s) => s.name))
+          : [],
+    })),
+  );
 
   const recordHref = petHref(assessment.pet_id, pet?.pet_name ?? "pet");
 
@@ -222,7 +244,7 @@ export default async function ResultsPage({
           <h2 className="font-heading text-lg font-semibold">
             Follow-ups ({followUps.length})
           </h2>
-          {followUps.map((f, i) => (
+          {followUpData.map((f, i) => (
             <div
               key={i}
               className="grid gap-3 rounded-xl border border-dashed p-4"
@@ -237,13 +259,23 @@ export default async function ResultsPage({
                 aboutSymptoms={f.about_symptoms}
                 symptoms={f.symptoms}
               />
-              {f.recommended_action && (
-                <div className="grid gap-1 text-sm">
-                  <p className="font-medium">Recommended next steps</p>
-                  <p className="text-muted-foreground">
-                    {f.recommended_action}
-                  </p>
-                </div>
+              {f.risk_classification ? (
+                <Recommendations
+                  risk={f.risk_classification}
+                  recommendedAction={f.recommended_action}
+                  redFlags={f.red_flags}
+                  firstAid={f.firstAid}
+                  emergencyContacts={emergencyContacts}
+                />
+              ) : (
+                f.recommended_action && (
+                  <div className="grid gap-1 text-sm">
+                    <p className="font-medium">Recommended next steps</p>
+                    <p className="text-muted-foreground">
+                      {f.recommended_action}
+                    </p>
+                  </div>
+                )
               )}
             </div>
           ))}

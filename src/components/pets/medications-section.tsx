@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Pill, Plus, Trash2, Pencil } from "lucide-react";
+import { Pill, Plus, Trash2, Pencil, ChevronDown, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { isMedicationActive } from "@/lib/medications";
 import {
   Dialog,
@@ -101,6 +102,9 @@ export function MedicationsSection({
   const [indefinite, setIndefinite] = useState(true);
   const [pendingDelete, setPendingDelete] = useState<Medication | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // Finished medications are history — collapsed by default.
+  const [showFinished, setShowFinished] = useState(false);
+  const [finishingId, setFinishingId] = useState<string | null>(null);
 
   function set<K extends keyof typeof EMPTY>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -182,6 +186,28 @@ export function MedicationsSection({
     }
     toast.success(`${pendingDelete.name} removed`);
     setPendingDelete(null);
+    router.refresh();
+  }
+
+  // Mark an ongoing medication as finished today: set its end date to today and
+  // clear the active flag, which moves it into the "Finished" section.
+  async function markFinished(m: Medication) {
+    const today = new Date().toISOString().slice(0, 10);
+    setFinishingId(m.medication_id);
+    const res = await fetch(
+      `/api/pets/${petId}/medications/${m.medication_id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ended_at: today, active: false }),
+      },
+    );
+    setFinishingId(null);
+    if (!res.ok) {
+      toast.error("Could not update medication.");
+      return;
+    }
+    toast.success(`${m.name} marked as finished`);
     router.refresh();
   }
 
@@ -308,6 +334,97 @@ export function MedicationsSection({
     </form>
   );
 
+  // Current vs finished is derived from the end date, not the stored flag (which
+  // can go stale when a future end date passes). See isMedicationActive.
+  const active = medications.filter((m) => isMedicationActive(m.ended_at));
+  const finished = medications.filter((m) => !isMedicationActive(m.ended_at));
+
+  const renderMed = (m: Medication, isFinished: boolean) =>
+    editingId === m.medication_id ? (
+      <li key={m.medication_id} className="sm:col-span-2">
+        {formFields}
+      </li>
+    ) : (
+      <li
+        key={m.medication_id}
+        className="flex items-start justify-between gap-3 rounded-lg border p-3 text-sm"
+      >
+        <div className="grid gap-1">
+          <span className="font-medium">{m.name}</span>
+          {(m.dosage || m.quantity || m.frequency) && (
+            <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+              {m.dosage && (
+                <span>
+                  <span className="font-medium">Dosage:</span>{" "}
+                  {formatDosage(m)}
+                </span>
+              )}
+              {m.quantity && (
+                <span>
+                  <span className="font-medium">Quantity:</span> {m.quantity}
+                </span>
+              )}
+              {m.frequency && (
+                <span>
+                  <span className="font-medium">Frequency:</span> {m.frequency}
+                </span>
+              )}
+            </div>
+          )}
+          {(m.started_at || m.ended_at) && (
+            <span className="text-xs text-muted-foreground">
+              {m.started_at ? `From ${m.started_at}` : ""}
+              {m.ended_at
+                ? ` to ${m.ended_at}`
+                : m.started_at
+                  ? " · ongoing"
+                  : ""}
+            </span>
+          )}
+          {m.prescribed_by && (
+            <span className="text-xs text-muted-foreground">
+              Prescribed by {m.prescribed_by}
+            </span>
+          )}
+          {m.notes && (
+            <span className="text-xs text-muted-foreground">{m.notes}</span>
+          )}
+          {!isFinished && (
+            <button
+              type="button"
+              onClick={() => markFinished(m)}
+              disabled={finishingId === m.medication_id}
+              className="flex w-fit items-center gap-1 text-xs font-medium text-primary hover:underline disabled:opacity-50"
+            >
+              <CheckCircle2 className="size-3.5" aria-hidden />
+              {finishingId === m.medication_id
+                ? "Saving…"
+                : "Mark as finished"}
+            </button>
+          )}
+        </div>
+        <div className="flex shrink-0 gap-0.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => openEdit(m)}
+            aria-label={`Edit ${m.name}`}
+          >
+            <Pencil className="size-4" aria-hidden />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive"
+            onClick={() => setPendingDelete(m)}
+            aria-label={`Remove ${m.name}`}
+          >
+            <Trash2 className="size-4" aria-hidden />
+          </Button>
+        </div>
+      </li>
+    );
+
   return (
     <section className="grid gap-3 rounded-xl border p-4">
       <div className="flex items-center justify-between gap-2">
@@ -327,86 +444,35 @@ export function MedicationsSection({
         </p>
       )}
 
-      {medications.length > 0 && (
+      {active.length > 0 && (
         <ul className="grid gap-2 sm:grid-cols-2">
-          {medications.map((m) =>
-            editingId === m.medication_id ? (
-              <li key={m.medication_id} className="sm:col-span-2">
-                {formFields}
-              </li>
-            ) : (
-              <li
-                key={m.medication_id}
-                className="flex items-start justify-between gap-3 rounded-lg border p-3 text-sm"
-              >
-                <div className="grid gap-1">
-                  <span className="font-medium">{m.name}</span>
-                  {(m.dosage || m.quantity || m.frequency) && (
-                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                      {m.dosage && (
-                        <span>
-                          <span className="font-medium">Dosage:</span>{" "}
-                          {formatDosage(m)}
-                        </span>
-                      )}
-                      {m.quantity && (
-                        <span>
-                          <span className="font-medium">Quantity:</span>{" "}
-                          {m.quantity}
-                        </span>
-                      )}
-                      {m.frequency && (
-                        <span>
-                          <span className="font-medium">Frequency:</span>{" "}
-                          {m.frequency}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  {(m.started_at || m.ended_at) && (
-                    <span className="text-xs text-muted-foreground">
-                      {m.started_at ? `From ${m.started_at}` : ""}
-                      {m.ended_at
-                        ? ` to ${m.ended_at}`
-                        : m.started_at
-                          ? " · ongoing"
-                          : ""}
-                    </span>
-                  )}
-                  {m.prescribed_by && (
-                    <span className="text-xs text-muted-foreground">
-                      Prescribed by {m.prescribed_by}
-                    </span>
-                  )}
-                  {m.notes && (
-                    <span className="text-xs text-muted-foreground">
-                      {m.notes}
-                    </span>
-                  )}
-                </div>
-                <div className="flex shrink-0 gap-0.5">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => openEdit(m)}
-                    aria-label={`Edit ${m.name}`}
-                  >
-                    <Pencil className="size-4" aria-hidden />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive"
-                    onClick={() => setPendingDelete(m)}
-                    aria-label={`Remove ${m.name}`}
-                  >
-                    <Trash2 className="size-4" aria-hidden />
-                  </Button>
-                </div>
-              </li>
-            ),
-          )}
+          {active.map((m) => renderMed(m, false))}
         </ul>
+      )}
+
+      {finished.length > 0 && (
+        <div className="grid gap-2 border-t pt-3">
+          <button
+            type="button"
+            onClick={() => setShowFinished((v) => !v)}
+            aria-expanded={showFinished}
+            className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
+          >
+            <ChevronDown
+              className={cn(
+                "size-4 transition-transform",
+                showFinished && "rotate-180",
+              )}
+              aria-hidden
+            />
+            Finished medications ({finished.length})
+          </button>
+          {showFinished && (
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {finished.map((m) => renderMed(m, true))}
+            </ul>
+          )}
+        </div>
       )}
 
       {adding && formFields}

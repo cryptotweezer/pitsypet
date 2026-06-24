@@ -47,7 +47,9 @@ export async function PATCH(
   return NextResponse.json({ doctor });
 }
 
-// DELETE = soft delete a doctor.
+// DELETE = permanently remove a doctor. Like clinics, doctors are owner-level
+// reference data with no restore UI, so this is a hard delete (their name is
+// only referenced as free text on medications/appointments, never by FK).
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: { vetId: string; doctorId: string } },
@@ -62,10 +64,9 @@ export async function DELETE(
 
   const { error } = await supabase
     .from("vet_doctors")
-    .update({ deleted_at: new Date().toISOString() })
+    .delete()
     .eq("doctor_id", params.doctorId)
-    .eq("user_id", user.id)
-    .is("deleted_at", null);
+    .eq("user_id", user.id);
 
   if (error) {
     return NextResponse.json(

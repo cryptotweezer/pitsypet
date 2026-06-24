@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { useChat } from "@ai-sdk/react";
 
 import { Button } from "@/components/ui/button";
@@ -99,14 +100,14 @@ export function ChatInterface({
   const stage: 0 | 1 | 2 = classification ? 2 : isLoading && symptoms.length > 0 ? 1 : 0;
   const analyzing = isLoading && symptoms.length > 0 && !classification;
 
-  // Once classified and the stream has closed (onFinish persisted the row),
-  // hand off to the results page, which reads everything back from the DB.
-  const router = useRouter();
-  useEffect(() => {
-    if (classification && !isLoading) {
-      router.push(`/assessment/${assessmentId}/results`);
-    }
-  }, [classification, isLoading, assessmentId, router]);
+  // Once classified, the assessment is done: the AI posts a final message with a
+  // link to the results and the chat locks (input + replies disappear). We do
+  // NOT auto-redirect — the owner reads the AI's closing message, then chooses
+  // when to open the results, so the last message is never lost to a redirect.
+  // The closing message + link only appear once the stream has fully closed,
+  // which means onFinish has persisted the row the results page reads back.
+  const done = classification !== null && !isLoading;
+  const finishing = classification !== null && isLoading;
 
   const bottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -146,14 +147,31 @@ export function ChatInterface({
               Analyzing {petName}&apos;s symptoms…
             </div>
           )}
+          {finishing && (
+            <div className="justify-self-start rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+              Preparing {petName}&apos;s results…
+            </div>
+          )}
+          {done && (
+            <div className="grid max-w-[85%] justify-items-start gap-2 justify-self-start rounded-lg bg-muted px-3 py-2 text-sm">
+              <p>
+                All done — I&apos;ve finished {petName}&apos;s{" "}
+                {isFollowUp ? "follow-up" : "assessment"}. You can view the full
+                results and recommendations whenever you&apos;re ready.
+              </p>
+              <Button
+                size="sm"
+                render={
+                  <Link href={`/assessment/${assessmentId}/results`} />
+                }
+              >
+                View {petName}&apos;s results
+                <ArrowRight className="size-4" aria-hidden />
+              </Button>
+            </div>
+          )}
           <div ref={bottomRef} />
         </div>
-
-        {classification && (
-          <div className="justify-self-start rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
-            Preparing {petName}&apos;s results…
-          </div>
-        )}
 
         {replies.length > 0 && (
           <div className="flex flex-wrap gap-2">

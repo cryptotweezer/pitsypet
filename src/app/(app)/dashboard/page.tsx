@@ -65,7 +65,7 @@ export default async function DashboardPage() {
       supabase
         .from("appointments")
         .select(
-          "appointment_id, pet_id, title, scheduled_at, reason, notes, outcome, vet_contact_id",
+          "appointment_id, pet_id, title, scheduled_at, reason, notes, outcome, vet_contact_id, doctor_name",
         )
         .is("deleted_at", null)
         .order("scheduled_at", { ascending: true }),
@@ -116,6 +116,7 @@ export default async function DashboardPage() {
       notes: a.notes,
       outcome: a.outcome,
       vet_contact_id: a.vet_contact_id,
+      doctor_name: a.doctor_name,
     }));
   const petOptions = (pets ?? []).map((p) => ({
     pet_id: p.pet_id,
@@ -124,6 +125,7 @@ export default async function DashboardPage() {
   const clinicOptions = vetContacts.map((c) => ({
     vet_contact_id: c.vet_contact_id,
     clinic_name: c.clinic_name,
+    doctors: c.doctors.map((d) => d.name).filter(Boolean),
   }));
 
   return (

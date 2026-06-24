@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CalendarClock, Plus, Trash2, Pencil } from "lucide-react";
+import { CalendarClock, Plus, Trash2, Pencil, ChevronDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogClose,
@@ -26,9 +27,15 @@ export type Appointment = {
   notes: string | null;
   outcome: string | null;
   vet_contact_id: string | null;
+  doctor_name: string | null;
 };
 
-export type ClinicOption = { vet_contact_id: string; clinic_name: string | null };
+export type ClinicOption = {
+  vet_contact_id: string;
+  clinic_name: string | null;
+  // The clinic's doctors, suggested in the appointment form when it's selected.
+  doctors: string[];
+};
 
 const EMPTY = {
   title: "",
@@ -37,6 +44,7 @@ const EMPTY = {
   notes: "",
   outcome: "",
   vet_contact_id: "",
+  doctor_name: "",
 };
 
 function toLocalInput(iso: string): string {
@@ -75,6 +83,8 @@ export function AppointmentsSection({
   const [form, setForm] = useState(EMPTY);
   const [pendingDelete, setPendingDelete] = useState<Appointment | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // Past appointments are collapsed by default — they're history, not the focus.
+  const [showPast, setShowPast] = useState(false);
 
   function set<K extends keyof typeof EMPTY>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -94,6 +104,7 @@ export function AppointmentsSection({
       notes: a.notes ?? "",
       outcome: a.outcome ?? "",
       vet_contact_id: a.vet_contact_id ?? "",
+      doctor_name: a.doctor_name ?? "",
     });
     setEditingId(a.appointment_id);
   }
@@ -159,6 +170,9 @@ export function AppointmentsSection({
   const past = appointments
     .filter((a) => Date.parse(a.scheduled_at) < nowMs)
     .sort((a, b) => Date.parse(b.scheduled_at) - Date.parse(a.scheduled_at));
+  // Doctors of the clinic currently chosen in the form → datalist suggestions.
+  const selectedClinicDoctors =
+    clinics.find((c) => c.vet_contact_id === form.vet_contact_id)?.doctors ?? [];
 
   const formFields = (
     <form onSubmit={handleSubmit} className="grid gap-3 rounded-lg border p-3">
@@ -199,6 +213,29 @@ export function AppointmentsSection({
             ))}
           </select>
         </div>
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="appt-doctor">Doctor (optional)</Label>
+        <Input
+          id="appt-doctor"
+          list="appt-doctor-options"
+          value={form.doctor_name}
+          onChange={(e) => set("doctor_name", e.target.value)}
+          placeholder={
+            form.vet_contact_id
+              ? selectedClinicDoctors.length > 0
+                ? "Pick a doctor or type a name"
+                : "Type a doctor's name"
+              : "Pick a clinic to see its doctors, or type a name"
+          }
+        />
+        {selectedClinicDoctors.length > 0 && (
+          <datalist id="appt-doctor-options">
+            {selectedClinicDoctors.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+        )}
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="appt-reason">Reason</Label>
@@ -271,6 +308,11 @@ export function AppointmentsSection({
               {clinicName(a.vet_contact_id)}
             </span>
           )}
+          {a.doctor_name && (
+            <span className="text-xs text-muted-foreground">
+              <span className="font-medium">Doctor:</span> {a.doctor_name}
+            </span>
+          )}
           {a.reason && (
             <span className="text-xs text-muted-foreground">{a.reason}</span>
           )}
@@ -340,10 +382,26 @@ export function AppointmentsSection({
 
       {past.length > 0 && (
         <div className="grid gap-2 border-t pt-3">
-          <h3 className="text-sm font-semibold text-muted-foreground">
-            Past appointments
-          </h3>
-          <ul className="grid gap-2">{past.map((a) => renderItem(a, true))}</ul>
+          <button
+            type="button"
+            onClick={() => setShowPast((v) => !v)}
+            aria-expanded={showPast}
+            className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
+          >
+            <ChevronDown
+              className={cn(
+                "size-4 transition-transform",
+                showPast && "rotate-180",
+              )}
+              aria-hidden
+            />
+            Past appointments ({past.length})
+          </button>
+          {showPast && (
+            <ul className="grid gap-2">
+              {past.map((a) => renderItem(a, true))}
+            </ul>
+          )}
         </div>
       )}
 

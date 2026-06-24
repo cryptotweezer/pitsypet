@@ -75,6 +75,7 @@ export type Database = {
           appointment_id: string
           created_at: string
           deleted_at: string | null
+          doctor_name: string | null
           notes: string | null
           outcome: string | null
           pet_id: string
@@ -89,6 +90,7 @@ export type Database = {
           appointment_id?: string
           created_at?: string
           deleted_at?: string | null
+          doctor_name?: string | null
           notes?: string | null
           outcome?: string | null
           pet_id: string
@@ -103,6 +105,7 @@ export type Database = {
           appointment_id?: string
           created_at?: string
           deleted_at?: string | null
+          doctor_name?: string | null
           notes?: string | null
           outcome?: string | null
           pet_id?: string

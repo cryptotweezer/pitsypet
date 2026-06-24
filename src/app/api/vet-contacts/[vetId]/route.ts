@@ -47,7 +47,10 @@ export async function PATCH(
   return NextResponse.json({ vetContact });
 }
 
-// DELETE = soft delete a clinic.
+// DELETE = permanently remove a clinic. Clinics are owner-level reference data
+// with no "restore" UI, so a soft delete would only leave hidden rows forever.
+// The schema cascades doctors (ON DELETE CASCADE) and nulls the clinic link on
+// any appointments (ON DELETE SET NULL), so those survive without their clinic.
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: { vetId: string } },
@@ -62,10 +65,9 @@ export async function DELETE(
 
   const { error } = await supabase
     .from("vet_contacts")
-    .update({ deleted_at: new Date().toISOString() })
+    .delete()
     .eq("vet_contact_id", params.vetId)
-    .eq("user_id", user.id)
-    .is("deleted_at", null);
+    .eq("user_id", user.id);
 
   if (error) {
     return NextResponse.json(

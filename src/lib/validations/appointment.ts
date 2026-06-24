@@ -26,6 +26,9 @@ export const appointmentSchema = z.object({
   notes: optionalText(2000),
   outcome: optionalText(2000),
   vet_contact_id: optionalUuid,
+  // Free-text doctor name. The form suggests the selected clinic's doctors but
+  // allows any name (or none), so this isn't an FK to vet_doctors.
+  doctor_name: optionalText(200),
 });
 
 export const appointmentUpdateSchema = appointmentSchema.partial();

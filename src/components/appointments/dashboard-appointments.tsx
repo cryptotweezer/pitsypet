@@ -31,10 +31,16 @@ export type DashboardAppointment = {
   notes: string | null;
   outcome: string | null;
   vet_contact_id: string | null;
+  doctor_name: string | null;
 };
 
 export type PetOption = { pet_id: string; pet_name: string };
-export type ClinicOption = { vet_contact_id: string; clinic_name: string | null };
+export type ClinicOption = {
+  vet_contact_id: string;
+  clinic_name: string | null;
+  // The clinic's doctors, suggested in the form when it's selected.
+  doctors: string[];
+};
 
 const EMPTY = {
   pet_id: "",
@@ -44,6 +50,7 @@ const EMPTY = {
   notes: "",
   outcome: "",
   vet_contact_id: "",
+  doctor_name: "",
 };
 
 function toLocalInput(iso: string): string {
@@ -109,6 +116,7 @@ export function DashboardAppointments({
       notes: a.notes ?? "",
       outcome: a.outcome ?? "",
       vet_contact_id: a.vet_contact_id ?? "",
+      doctor_name: a.doctor_name ?? "",
     });
     setEditingId(a.appointment_id);
   }
@@ -183,6 +191,9 @@ export function DashboardAppointments({
   const past = appointments
     .filter((a) => Date.parse(a.scheduled_at) < nowMs)
     .sort((a, b) => Date.parse(b.scheduled_at) - Date.parse(a.scheduled_at));
+  // Doctors of the clinic currently chosen in the form → datalist suggestions.
+  const selectedClinicDoctors =
+    clinics.find((c) => c.vet_contact_id === form.vet_contact_id)?.doctors ?? [];
 
   const formFields = (
     <form onSubmit={handleSubmit} className="grid gap-3 rounded-lg border p-3">
@@ -245,6 +256,29 @@ export function DashboardAppointments({
             ))}
           </select>
         </div>
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="dappt-doctor">Doctor (optional)</Label>
+        <Input
+          id="dappt-doctor"
+          list="dappt-doctor-options"
+          value={form.doctor_name}
+          onChange={(e) => set("doctor_name", e.target.value)}
+          placeholder={
+            form.vet_contact_id
+              ? selectedClinicDoctors.length > 0
+                ? "Pick a doctor or type a name"
+                : "Type a doctor's name"
+              : "Pick a clinic to see its doctors, or type a name"
+          }
+        />
+        {selectedClinicDoctors.length > 0 && (
+          <datalist id="dappt-doctor-options">
+            {selectedClinicDoctors.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+        )}
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="dappt-reason">Reason</Label>
@@ -321,6 +355,11 @@ export function DashboardAppointments({
           {clinicName(a.vet_contact_id) && (
             <span className="text-xs text-muted-foreground">
               {clinicName(a.vet_contact_id)}
+            </span>
+          )}
+          {a.doctor_name && (
+            <span className="text-xs text-muted-foreground">
+              <span className="font-medium">Doctor:</span> {a.doctor_name}
             </span>
           )}
           {a.reason && (
