@@ -19,6 +19,7 @@ import {
 } from "@/components/assessment/results/recommendations";
 import { Disclaimer } from "@/components/assessment/results/disclaimer";
 import { DeleteButton } from "@/components/assessment/results/delete-button";
+import { ExportButton } from "@/components/assessment/results/export-button";
 
 export const metadata = { title: "Assessment results · PitsyPet" };
 
@@ -218,24 +219,30 @@ export default async function ResultsPage({
 
   return (
     <section className="mx-auto grid max-w-2xl gap-5">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-heading text-2xl font-semibold">
           {pet?.pet_name ? `${pet.pet_name}'s results` : "Assessment results"}
         </h1>
-        {fromHistory && (
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/assessment/${assessment.pet_id}?followup=${assessment.assessment_id}`}
-              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-            >
-              + Follow-up
-            </Link>
-            <DeleteButton
-              assessmentId={assessment.assessment_id}
-              returnHref={recordHref}
-            />
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportButton
+            assessmentId={assessment.assessment_id}
+            petName={pet?.pet_name ?? "pet"}
+          />
+          {fromHistory && (
+            <>
+              <Link
+                href={`/assessment/${assessment.pet_id}?followup=${assessment.assessment_id}`}
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+              >
+                + Follow-up
+              </Link>
+              <DeleteButton
+                assessmentId={assessment.assessment_id}
+                returnHref={recordHref}
+              />
+            </>
+          )}
+        </div>
       </div>
 
       {/* Follow-ups, newest first — the pet's most recent state leads. */}

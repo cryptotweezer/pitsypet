@@ -97,6 +97,15 @@
 - [ ] **H.2** Permanently deleting a pet removes its assessments/meds/appointments (CASCADE) but leaves the **global** vet clinics/doctors (by design). — **Result:**
 - [ ] **H.3** Soft-deleted pets appear in "Recently deleted" with Restore + Delete-permanently. — **Result:**
 
+## Group I — Vet PDF export (Part 3)
+- [ ] **I.1** On the results page, the **"Export for vet (PDF)"** button downloads a PDF (`<pet>-triage-<date>.pdf`). Works right after completing an assessment AND when opened from history. — **Result:**
+- [ ] **I.2** The PDF has, in order: header, **triage priority** banner, **AI summary** (headline + synthesis + symptom timeline + medications note + suggested focus), **patient** block, **medications**, the **assessment record**, and a footer with the disclaimer + page numbers. — **Result:**
+- [ ] **I.3** Priority is correct: any **High** block → **Urgent**; any Medium → **Soon**; else **Routine** (and the AI prose never contradicts/softens it). — **Result:**
+- [ ] **I.4** An assessment **with follow-ups** includes each follow-up as its own block (with its own risk) and the timeline reflects them. — **Result:**
+- [ ] **I.5** Medications are split into **Current** and **Past** sections, each showing **start/end dates** (current = ongoing, past = finished). The AI summary references the actual meds + dates (does NOT say "dates not recorded"). — **Result:**
+- [ ] **I.6** The summary reads as a vet handover (factual, triage context, explicitly **not a diagnosis**) and only uses data from the record (no invented findings). — **Result:**
+- [ ] **I.7** *(Known/deferred — just confirm behaviour)* each click currently triggers a fresh AI call; re-downloading regenerates the summary. Caching is a noted future optimization. — **Result:**
+
 ---
 
 ## Failures to fix (filled in as we go)
