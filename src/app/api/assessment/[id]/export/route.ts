@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
 import { isMedicationActive } from "@/lib/medications";
+import { exportRateLimiter } from "@/lib/rate-limit";
+import { checkDailyCap } from "@/lib/cost-guard";
 import { generateVetSummary } from "@/lib/ai/vet-summary";
 import type {
   ExportBlock,
@@ -46,6 +48,22 @@ export async function POST(
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // This route calls Claude (the vet summary), so it is bounded like the other
+  // AI routes: the global daily spend cap, then a per-user rate limit.
+  if (await checkDailyCap()) {
+    return NextResponse.json(
+      { error: "Service temporarily unavailable — please try again later." },
+      { status: 503 },
+    );
+  }
+  const { success } = await exportRateLimiter.limit(user.id);
+  if (!success) {
+    return NextResponse.json(
+      { error: "Too many requests — please slow down." },
+      { status: 429 },
+    );
   }
 
   // RLS scopes this to the owner.

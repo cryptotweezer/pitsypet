@@ -40,7 +40,7 @@
 
 ## STATUS
 
-**Current phase:** Phase 7.5 — Pet Clinical History Hub. **Part 1 ✅ committed.** **Part 2 — groups A→B→C ✅ committed (`31c463e`); #8–#12 + Group D + chat fixes ✅ (Session 13).** **Session 14 (global vet clinics + tz dates + assessment prompt fixes) ✅. Session 15 (final test-driven fix batch) ✅. Session 16 (Part 3 — vet PDF export + AI summary) ✅.** Feature work is in the TESTING pass (`docs/TESTING_PROTOCOL.md`, Groups 0–I). **Remaining: Email/Resend (Group E) + RAG-in-chat** (both deferred), plus the noted **export-summary caching** optimization.
+**Current phase:** Phase 7.5 — Pet Clinical History Hub. **Part 1 ✅ committed.** **Part 2 — groups A→B→C ✅ committed (`31c463e`); #8–#12 + Group D + chat fixes ✅ (Session 13).** **Session 14 (global vet clinics + tz dates + assessment prompt fixes) ✅. Session 15 (final test-driven fix batch) ✅. Session 16 (Part 3 — vet PDF export + AI summary) ✅. Session 17 (proposal-vs-implemented audit + security pass round 1) ✅.** Feature work is in the TESTING pass (`docs/TESTING_PROTOCOL.md`, Groups 0–I). **Remaining: Email/Resend (Group E) + RAG-in-chat** (both deferred), **security round 2** (headers + Arcjet), plus the noted **export-summary caching** optimization. See `docs/proposal_vs_implemented.md` for the full proposal coverage map.
 - **A (bugs):** orphan-assessment fixed (no DB row until COMPLETE — chat route persists only on completion via upsert; page mints a UUID, no pre-insert); chat box fixed-height + scroll, symptom sidebar sticky.
 - **B (pet record):** vet model = **clinic + doctors** (`vet_contacts`→clinic w/ `service_hours` JSONB + `address`; new `vet_doctors`; new `appointments`); meds **editable + labeled** (Dosage/Quantity/Frequency); vet **editable**, structured **opening-hours picker**, clickable **Hours dialog w/ live Open/Closed**, **collapsible doctors**; **Next appointments** section; pet page relaid Vet → Appointments → Medications.
 - **C (assessment context/history):** AI now gets current **meds + last 3 assessments** in extraction + classification (conditions already via formatPet); results page lists **detected symptoms**; history cards show an **abstract** (concern + symptoms + next steps + follow-up count); **follow-ups** = dated sections appended to the same assessment (`follow_ups` JSONB), with a **+ Follow-up** button + timeline on results.
@@ -49,10 +49,40 @@
 - **Session 15 (this session, committed):** final fix batch from the user's manual test, then **handed off to the testing pass**. (1) Pet page **past appointments** + **finished medications** are now collapsible sections; ongoing meds get a **"Mark as finished"** button (sets `ended_at=today`). (2) Assessment chat completion reworked: **no auto-redirect** — the AI posts a closing message with a clickable **"View results"** button and the chat **locks** (input + replies gone), so the last AI message is never lost. (3) **Appointment `doctor_name`** field added (migration `20260624000000`): a datalist of the **selected clinic's doctors**, free-text or empty — on BOTH the pet-page and dashboard appointment forms. (4) **Results page emergency-contacts bug fixed**: each block (initial + every follow-up) now renders its OWN risk-appropriate `Recommendations`, so a **High-risk follow-up** shows emergency contacts even when the initial was Low/Medium; emergency contacts are fetched if ANY block is High; Low follow-ups get their own first-aid. (5) Pet-card **risk tag now tracks the LATEST follow-up's** risk, not the initial. (6) Vet clinic/doctor **DELETE changed from soft → hard delete** (no restore UI for this owner-global reference data; clinic delete cascades doctors + nulls appointment links). Testing protocol written to `docs/TESTING_PROTOCOL.md` (renamed from `TESTING_PHASE_7.5.md`).
 - **Session 16 (this session, committed):** **Part 3 — vet-facing PDF export + AI summary.** New `POST /api/assessment/[id]/export` (auth + RLS) assembles the record — patient, **current + past medications with start/end dates**, the initial assessment + **all follow-ups** — and generates a **Sonnet clinical-handover summary** (`src/lib/ai/vet-summary.ts`, with a deterministic fallback). **Triage priority is computed deterministically** from the case's highest stored risk (any High → Urgent, Medium → Soon, else Routine) and the AI never softens it. PDF via **`@react-pdf/renderer`** (`vet-pdf-document.tsx`) downloaded client-side from a dynamically-imported **"Export for vet (PDF)"** button (`export-button.tsx`) so the heavy lib stays out of the page bundle (results page still ~3.9 kB). Shared types in `src/lib/export/types.ts`. Independent of RAG/Resend. Mid-session fix from the user's test: meds dates weren't passed to the AI (said "not recorded") and the PDF only showed active meds → now all meds flow through with dates + a Current/Past split in both the PDF and the AI prompt.
 **Active plan:** `dev_plan.md` (Phase 7.5 section)
-**Next action (RESUME HERE):** Continue the **TESTING PASS** — `docs/TESTING_PROTOCOL.md` (Groups 0–I, Group I = the new PDF export). Fix anything in its "Failures to fix" section. Only after the test pass: **Email/Resend** (Group E), **RAG into the assistant chat** (KB empty until Phase 4 ingestion). See CLAUDE.md **"Triage calibration & tuning"** for the over-escalation work (vet-driven + Phase 4 RAG).
+**Next action (RESUME HERE):** Two independent tracks (both safe w.r.t. deferred RAG/Resend/UI): (a) the **TESTING PASS** — `docs/TESTING_PROTOCOL.md` (Groups 0–I); (b) **security round 2** — `next.config` security headers, RLS/injection re-audit, then **Arcjet** harden (user has an account/key) on auth + AI routes; optionally wire the history **search UI** + its 30/min limiter. See `docs/proposal_vs_implemented.md` §4/§7. Deferred: **Email/Resend** (Group E), **RAG-in-chat** (KB empty until Phase 4). See CLAUDE.md **"Triage calibration & tuning"** for the over-escalation work.
 **Deferred (explicit):** **Email/Resend** — user has **no Resend account or domain yet** (gets one at the end). The manual "request appointment → email doctor" button AND the AI-sent appointment email (with last-assessment summary) are deferred to a dedicated step (needs the chat tools + summary). Build email once, reuse for the deferred custom-SMTP auth too. **Also deferred:** wiring RAG into the assistant chat (no KB content yet); **caching the vet PDF summary** — currently it calls Sonnet on EVERY download (store `vet_summary` on the assessment + a "Regenerate" action so reprints are free; see CLAUDE.md deferred bullet).
 
 ---
+
+---
+## SESSION 17 — 2026-06-24 — Claude / Opus 4.8 (Proposal audit + security pass round 1)
+
+### STARTED WITH
+- Session 16 committed (`fc2991d`). User paused testing/RAG/Resend/UI and asked to (a) audit proposal vs implemented, esp. security/cybersecurity coverage, and (b) implement the security gaps that are safe while RAG/Resend/UI are deferred.
+
+### COMPLETED THIS SESSION (all: `tsc` + `lint` + `npm run build` clean; COMMITTED)
+- **`docs/proposal_vs_implemented.md`** — new audit doc mapping PROPOSAL.md → implemented / additional / intentionally-diverged / missing, with dedicated **Security & Cybersecurity** and **External services** sections, and a "what to advance now" plan. (Proposal is a starting point, not a contract; the plan supersedes it where they diverge.)
+- **Security pass round 1 (the 4 items vs the proposal's security NFR):**
+  1. **Export route bounded.** `/api/assessment/[id]/export` called Claude with NO rate-limit/cost-guard. Added `checkDailyCap()` (global daily 503) + a new **`exportRateLimiter` (10/min/user, `src/lib/rate-limit.ts`)** → 429. Now every Claude/OpenAI route (chat, assistant, export) is behind both guards.
+  2. **Password policy — already compliant** (no change). `register-form.tsx` zod enforces 8+, upper, lower, number, special — matches the proposal. Documented as ✅.
+  3. **Emergency-contacts-on-timeout <2s.** New **static** `src/components/assessment/emergency-fallback.tsx` (national hotline 1300 226 226 + "search emergency vet near me", no fetch → renders instantly). `chat-interface.tsx` now tracks `error` + a **>10s stall** (`STALL_MS`) and shows the fallback when an assessment errors/stalls before results — satisfies proposal NFR-3.
+  4. **Search 30/min — reserved, not wired.** `searchRateLimiter` stays defined with a comment; there is no server search route yet (the `search_assessments` RPC isn't wired to a UI), so there's nothing to limit. Tracked as an FR3 feature, not a security task.
+
+### NOT DONE / DEFERRED
+- **Security round 2:** `next.config` security headers (CSP/HSTS/X-Frame-Options/…), RLS/injection re-audit, **Arcjet** harden (user HAS an account/key) on auth + AI routes.
+- History **search UI** + applying `searchRateLimiter`.
+- Unchanged deferrals: RAG ingestion (Phase 4), Email/Resend, UI/UX (Phase 8), export-summary caching.
+
+### FILES MODIFIED
+- New: `docs/proposal_vs_implemented.md`, `src/components/assessment/emergency-fallback.tsx`.
+- Changed: `src/lib/rate-limit.ts` (exportRateLimiter), `src/app/api/assessment/[id]/export/route.ts` (cap + limit), `src/components/assessment/chat-interface.tsx` (error/stall → emergency fallback), `docs/DEV_LOG.md`.
+
+### DECISIONS / NOTES
+- Proposal security NFR = TLS + injection-prevention + rate-limit + auth + fallbacks. All now met (TLS via platform; RLS + parameterised + RPC; Upstash limiters + daily cap on all AI routes; Supabase Auth; rule-based + emergency fallbacks). Arcjet is an **extra harden**, not a proposal requirement.
+- `EmergencyFallback` is intentionally static/propless so it can never be blocked by the same API/DB failure it's reacting to.
+
+### NEXT SESSION MUST START WITH
+1. Security round 2 (headers + Arcjet) OR continue the testing pass — both independent of the deferred work.
 
 ---
 ## SESSION 16 — 2026-06-24 — Claude / Opus 4.8 (Phase 7.5 Part 3 — vet PDF export + AI summary)

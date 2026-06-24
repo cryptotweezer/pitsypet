@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useChat } from "@ai-sdk/react";
@@ -14,6 +14,11 @@ import {
   type KnownMedication,
 } from "@/components/assessment/symptom-sidebar";
 import { ProgressIndicator } from "@/components/assessment/progress-indicator";
+import { EmergencyFallback } from "@/components/assessment/emergency-fallback";
+
+// Reliability (proposal NFR-3): if a turn takes longer than this, surface the
+// static emergency contacts so the owner is never stuck waiting on the AI.
+const STALL_MS = 10_000;
 
 type RiskResult = RiskClassification & { fallbackUsed?: boolean };
 
@@ -69,7 +74,7 @@ export function ChatInterface({
   // The pet's already-tracked symptoms, shown before the AI's first turn.
   initialSymptoms?: ExtractedSymptom[];
 }) {
-  const { messages, input, handleInputChange, handleSubmit, append, data, isLoading } =
+  const { messages, input, handleInputChange, handleSubmit, append, data, isLoading, error } =
     useChat({
       api: "/api/assessment/chat",
       body: { assessmentId, petId, isFollowUp },
@@ -108,6 +113,20 @@ export function ChatInterface({
   // which means onFinish has persisted the row the results page reads back.
   const done = classification !== null && !isLoading;
   const finishing = classification !== null && isLoading;
+
+  // If a turn stalls past STALL_MS, flag it so the static emergency fallback
+  // shows. The timer only runs while waiting and is cleared once a reply lands.
+  const [stalled, setStalled] = useState(false);
+  useEffect(() => {
+    if (!isLoading) {
+      setStalled(false);
+      return;
+    }
+    const t = setTimeout(() => setStalled(true), STALL_MS);
+    return () => clearTimeout(t);
+  }, [isLoading]);
+  // Surface emergency contacts on an outright error, or a stall before results.
+  const showEmergency = (error != null || stalled) && !done;
 
   const bottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -172,6 +191,16 @@ export function ChatInterface({
           )}
           <div ref={bottomRef} />
         </div>
+
+        {showEmergency && (
+          <EmergencyFallback
+            note={
+              error != null
+                ? "Something went wrong with the assessment. If this might be an emergency, don't wait."
+                : undefined
+            }
+          />
+        )}
 
         {replies.length > 0 && (
           <div className="flex flex-wrap gap-2">
