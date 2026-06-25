@@ -60,6 +60,23 @@
 ---
 
 ---
+## SESSION 25 — 2026-06-25 — Claude / Opus 4.8 (PostHog named events — Phase 11.2 complete)
+
+### COMPLETED (tsc + lint + build + 71 tests green)
+- The three product events from the plan, via a typed helper `src/lib/analytics.ts` (`trackAssessmentStarted/Completed/RiskLevelShown` — all safe no-ops when PostHog isn't initialised):
+  - **`assessment_started`** `{isFollowUp}` — fired on chat mount (`chat-interface.tsx`, ref-guarded once).
+  - **`assessment_completed`** `{riskLevel,isFollowUp}` — fired when the classification lands (`done`), ref-guarded.
+  - **`risk_level_shown`** `{riskLevel,assessmentId}` — new client island `track-risk-shown.tsx` rendered on the results page (Server Component), fires on view incl. history revisits.
+- Now PostHog has a funnel (started → completed → risk shown) + risk distribution, not just pageviews. **User must still have the PostHog env vars in Vercel (done).**
+
+### FILES MODIFIED
+- New: `src/lib/analytics.ts`, `src/components/assessment/results/track-risk-shown.tsx`.
+- Changed: `src/components/assessment/chat-interface.tsx`, `src/app/(app)/assessment/[id]/results/page.tsx`.
+
+### NEXT
+- Phase 11 leftovers: point **UptimeRobot** at `/api/health` (user's account); confirm Sentry/PostHog events flowing in prod. Then UI (Phase 8) + full manual pass. Deferred: RAG (Phase 4), Email/Resend. No-blocker option: route-handler integration tests (10.6).
+
+---
 ## SESSION 24 — 2026-06-25 — Claude / Opus 4.8 (PostHog wired — product analytics, Phase 11.2)
 
 ### STARTED WITH

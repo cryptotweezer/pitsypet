@@ -20,6 +20,7 @@ import {
 import { Disclaimer } from "@/components/assessment/results/disclaimer";
 import { DeleteButton } from "@/components/assessment/results/delete-button";
 import { ExportButton } from "@/components/assessment/results/export-button";
+import { TrackRiskShown } from "@/components/assessment/results/track-risk-shown";
 
 export const metadata = { title: "Assessment results · PitsyPet" };
 
@@ -220,6 +221,7 @@ export default async function ResultsPage(
 
   return (
     <section className="mx-auto grid max-w-2xl gap-5">
+      <TrackRiskShown risk={risk} assessmentId={assessment.assessment_id} />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-heading text-2xl font-semibold">
           {pet?.pet_name ? `${pet.pet_name}'s results` : "Assessment results"}

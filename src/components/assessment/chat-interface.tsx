@@ -15,6 +15,10 @@ import {
 } from "@/components/assessment/symptom-sidebar";
 import { ProgressIndicator } from "@/components/assessment/progress-indicator";
 import { EmergencyFallback } from "@/components/assessment/emergency-fallback";
+import {
+  trackAssessmentStarted,
+  trackAssessmentCompleted,
+} from "@/lib/analytics";
 
 // Reliability (proposal NFR-3): if a turn takes longer than this, surface the
 // static emergency contacts so the owner is never stuck waiting on the AI.
@@ -132,6 +136,22 @@ export function ChatInterface({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, classification]);
+
+  // Analytics (Phase 11.2). Refs guard against double-firing (React strict mode
+  // / re-renders) so each session counts once.
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    trackAssessmentStarted({ isFollowUp });
+  }, [isFollowUp]);
+
+  const completedRef = useRef(false);
+  useEffect(() => {
+    if (!done || completedRef.current) return;
+    completedRef.current = true;
+    trackAssessmentCompleted({ riskLevel: classification!.riskLevel, isFollowUp });
+  }, [done, classification, isFollowUp]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
