@@ -74,7 +74,8 @@
 - Changed: `src/components/assessment/chat-interface.tsx`, `src/app/(app)/assessment/[id]/results/page.tsx`.
 
 ### NEXT
-- Phase 11 leftovers: point **UptimeRobot** at `/api/health` (user's account); confirm Sentry/PostHog events flowing in prod. Then UI (Phase 8) + full manual pass. Deferred: RAG (Phase 4), Email/Resend. No-blocker option: route-handler integration tests (10.6).
+- **UptimeRobot live** (this session, in the user's panel): HTTP monitor on `https://pitsypet.vercel.app/api/health`, 5-min interval, status "Up". Verified the prod endpoint returns 200 `{status:"ok",database:"reachable"}`. Monitoring (Sentry+PostHog+health+uptime) is now complete.
+- Phase 11 leftovers: 11.4 confirm Supabase Auth redirect URLs include the prod domain; 11.6 prod smoke test (manual). Custom domain swap is the very-end task (then update UptimeRobot URL + Supabase redirect URLs). Then UI (Phase 8) + full manual pass. Deferred: RAG (Phase 4), Email/Resend. No-blocker option: route-handler integration tests (10.6).
 
 ---
 ## SESSION 24 — 2026-06-25 — Claude / Opus 4.8 (PostHog wired — product analytics, Phase 11.2)
