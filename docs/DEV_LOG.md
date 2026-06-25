@@ -60,6 +60,29 @@
 ---
 
 ---
+## SESSION 24 — 2026-06-25 — Claude / Opus 4.8 (PostHog wired — product analytics, Phase 11.2)
+
+### STARTED WITH
+- Session 23 pushed (`f0fdde6`); user added `NEXT_PUBLIC_SENTRY_DSN` to Vercel (prod deploy green). User created a PostHog account (US Cloud) and gave the project token + host.
+
+### COMPLETED THIS SESSION (build + lint + 71 tests clean; app 200, CSP allows PostHog)
+- **`posthog-js` wired (already a dep)**: `NEXT_PUBLIC_POSTHOG_KEY` + `NEXT_PUBLIC_POSTHOG_HOST` in `.env.local` + `.env.example` (token is public/client-safe).
+  - New `src/components/providers/posthog-provider.tsx` ("use client"): inits posthog (no-op without a key; `person_profiles: identified_only`), wraps the tree in `PHProvider`, and captures `$pageview` manually on App Router navigations via a Suspense-wrapped `PostHogPageView` (usePathname + useSearchParams).
+  - Added `<PostHogProvider>` around `{children}` in `src/app/layout.tsx`.
+  - **CSP:** `buildCsp` adds `NEXT_PUBLIC_POSTHOG_HOST` + its `-assets` variant to `connect-src` when the key is set. Verified live (`us.i.posthog.com` + `us-assets.i.posthog.com`).
+- Note: PostHog initialises whenever the key is present (dev + prod), so it can be verified locally — unlike Sentry which is production-only. Restrict to prod later if dev noise matters.
+
+### ACTION REQUIRED (user)
+- **Add `NEXT_PUBLIC_POSTHOG_KEY` + `NEXT_PUBLIC_POSTHOG_HOST` to Vercel** (Production + Preview), then redeploy. Verify: visit the app → events appear in PostHog → Activity.
+
+### NOT DONE / NEXT
+- **The 3 custom events** (Phase 11.2: `assessment_started`, `assessment_completed`, `risk_level_shown`) — pageviews + autocapture are live now; the named events need placing in the assessment flow components (next, low-risk). UptimeRobot → `/api/health` (user's account). Then UI (Phase 8), full manual pass. Deferred: RAG (Phase 4), Email/Resend.
+
+### FILES MODIFIED
+- New: `src/components/providers/posthog-provider.tsx`.
+- Changed: `src/app/layout.tsx` (provider), `src/lib/security/csp.ts` (PostHog in connect-src), `.env.example`.
+
+---
 ## SESSION 23 — 2026-06-25 — Claude / Opus 4.8 (Sentry wired — error tracking, Phase 11.1)
 
 ### STARTED WITH

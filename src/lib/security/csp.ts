@@ -25,6 +25,12 @@ export function buildCsp(nonce: string, isDev: boolean): string {
   // Sentry sends error/trace events from the browser to its ingest endpoint
   // (o<id>.ingest.<region>.sentry.io) — allow it only when a DSN is configured.
   if (process.env.NEXT_PUBLIC_SENTRY_DSN) connectSrc.push("https://*.sentry.io");
+  // PostHog ingest + its assets host (us-assets / eu-assets) — only when set.
+  const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST;
+  if (process.env.NEXT_PUBLIC_POSTHOG_KEY && posthogHost) {
+    connectSrc.push(posthogHost);
+    connectSrc.push(posthogHost.replace(".i.posthog.com", "-assets.i.posthog.com"));
+  }
 
   // In dev, Next's HMR/React-Refresh relies on eval and inline scripts, so we
   // relax script-src. Production gets the strict nonce + strict-dynamic policy.

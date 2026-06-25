@@ -40,7 +40,7 @@ The full build is 12 phases, each gated by its own **✅ Done When** checklist i
 | 8 | UI/UX Polish & Accessibility (responsive 320–1920px, WCAG 2.1 AA) | ⬜ Not started |
 | 9 | Error Handling, Fallbacks & Security (RLS/injection/cost-guard audit) | 🟡 **Partial (pulled forward):** security rounds 1–2 done — see Status note. Remaining Phase-9 work (broader error/fallback audit) still pending. |
 | 10 | Testing (Vitest; triage regression set from 5.14) | 🟡 **Started:** Vitest + **71** unit tests (safety override, fallback, schemas, model-down regression, active-symptoms dedup, RAG ranking, meds, formatters) pass. Integration (10.6)/perf/manual still pending. |
-| 11 | Monitoring & Production Deployment (Sentry, PostHog, UptimeRobot health check) | 🟡 **Partial:** `GET /api/health` done (11.3); **Sentry wired (11.1)** — needs `NEXT_PUBLIC_SENTRY_DSN` set in Vercel. PostHog (11.2) waiting on account key; UptimeRobot pointing pending. |
+| 11 | Monitoring & Production Deployment (Sentry, PostHog, UptimeRobot health check) | 🟡 **Partial:** `/api/health` done (11.3); **Sentry wired (11.1)**; **PostHog wired (11.2)** — pageviews/autocapture (the 3 named events still to place). Set the Sentry DSN + PostHog key/host in Vercel. UptimeRobot pointing pending. |
 | 12 | User Acceptance Testing + README | ⬜ Not started |
 
 **Things to keep in mind across phases (so early work doesn't paint us into a corner):**
