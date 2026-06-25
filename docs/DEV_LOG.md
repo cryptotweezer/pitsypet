@@ -50,10 +50,42 @@
 - **Session 16 (this session, committed):** **Part 3 — vet-facing PDF export + AI summary.** New `POST /api/assessment/[id]/export` (auth + RLS) assembles the record — patient, **current + past medications with start/end dates**, the initial assessment + **all follow-ups** — and generates a **Sonnet clinical-handover summary** (`src/lib/ai/vet-summary.ts`, with a deterministic fallback). **Triage priority is computed deterministically** from the case's highest stored risk (any High → Urgent, Medium → Soon, else Routine) and the AI never softens it. PDF via **`@react-pdf/renderer`** (`vet-pdf-document.tsx`) downloaded client-side from a dynamically-imported **"Export for vet (PDF)"** button (`export-button.tsx`) so the heavy lib stays out of the page bundle (results page still ~3.9 kB). Shared types in `src/lib/export/types.ts`. Independent of RAG/Resend. Mid-session fix from the user's test: meds dates weren't passed to the AI (said "not recorded") and the PDF only showed active meds → now all meds flow through with dates + a Current/Past split in both the PDF and the AI prompt.
 **Active plan:** `dev_plan.md` (Phase 7.5 section)
 **Security round 2 ✅ (Session 18):** nonce-based CSP (middleware) + static security headers (next.config); all routes forced dynamic for strict-dynamic; **Arcjet** (shield + bot detection, fails-open, DRY_RUN in dev) on the 3 AI routes; RLS/injection re-audit PASS (13/13 RLS, no SERVICE_ROLE in src, 100% body writes zod-validated). **Open decision:** Next 14.2.35 has 14 advisories fixed only in 15.5.16+ (a Next 15 major upgrade) — incl. a moderate CSP-nonce XSS; staying on 14.2.35 with documented residuals for now.
-**Next action (RESUME HERE):** (a) decide on the Next.js advisories (stay vs Next 15 upgrade); (b) independent track — **Phase 10 Vitest** (triage regression set) and/or the **TESTING PASS** (`docs/TESTING_PROTOCOL.md`, Groups 0–I); optionally wire the history **search UI** + its 30/min limiter. See `docs/proposal_vs_implemented.md` §4/§7. Deferred: **Email/Resend** (Group E), **RAG-in-chat** (KB empty until Phase 4). See CLAUDE.md **"Triage calibration & tuning"** for the over-escalation work.
+**Phase 10 started ✅ (Session 19):** Vitest set up; 50 pure-logic tests pass (safety override now a testable pure fn, rule-based fallback thresholds, Zod schemas, model-down triage regression set). `npm test` is the green net for the migration. Remaining Phase-10 work (integration/perf/manual) is post-migration.
+**Next action (RESUME HERE):** Decide the **Next 15 migration** (now safe to verify against `npm test`). Then post-migration: UI (Phase 8), monitoring (Phase 11), manual testing pass — all once, on the final version. Deferred unchanged: RAG (Phase 4), Email/Resend. See `docs/proposal_vs_implemented.md` §4/§7. Deferred: **Email/Resend** (Group E), **RAG-in-chat** (KB empty until Phase 4). See CLAUDE.md **"Triage calibration & tuning"** for the over-escalation work.
 **Deferred (explicit):** **Email/Resend** — user has **no Resend account or domain yet** (gets one at the end). The manual "request appointment → email doctor" button AND the AI-sent appointment email (with last-assessment summary) are deferred to a dedicated step (needs the chat tools + summary). Build email once, reuse for the deferred custom-SMTP auth too. **Also deferred:** wiring RAG into the assistant chat (no KB content yet); **caching the vet PDF summary** — currently it calls Sonnet on EVERY download (store `vet_summary` on the assessment + a "Regenerate" action so reprints are free; see CLAUDE.md deferred bullet).
 
 ---
+
+---
+## SESSION 19 — 2026-06-25 — Claude / Opus 4.8 (Phase 10 start — Vitest triage regression set)
+
+### STARTED WITH
+- Session 18 committed + pushed (`6e6e820`). Agreed plan: do the framework-independent automated tests NOW (they don't get redone by a later Next 15 migration and act as a regression net for it), defer manual testing / monitoring / UI to after the migration.
+
+### COMPLETED THIS SESSION (50 tests pass; tsc + lint + build clean)
+- **Vitest set up** (`vitest@4`, `vitest.config.ts` node env, `include src/**/*.test.ts`; scripts `test` = `vitest run`, `test:watch`). Pure-logic only — no jsdom/testing-library yet.
+- **Refactor (testability):** extracted the safety override out of `classifyRisk` into a pure `applySafetyOverride(result, text)` in `src/lib/ai/safety.ts`; `classifier.ts` now calls it. Behaviour identical; the "can only escalate" invariant is now unit-testable without the model.
+- **4 test files, 50 cases** under `src/lib/ai/__tests__/`:
+  - `safety.test.ts` — every critical pattern recognised; `applySafetyOverride` escalates Low/Medium→High, is idempotent on High, and NEVER lowers.
+  - `fallback.test.ts` — rule-based scoring thresholds (High/Medium/Low) + fallback metadata.
+  - `schemas.test.ts` — Zod: valid passes; invalid risk level / out-of-range confidence / empty name / bad severity / >4 suggestedReplies rejected; defaults applied.
+  - `triage-regression.test.ts` — worst-case path (`applySafetyOverride(fallbackClassify(text), text)`, i.e. model-down): 11 emergencies → High, 4 mild/moderate → not force-escalated.
+
+### FINDINGS (noted, NOT changed — calibration is vet-driven)
+- **Plan example 10.2 is stale:** `vomiting+diarrhea+lethargy` scores 4+4+3=11 ≥10 → **High** in the current rubric, not the "Medium" the plan text says. Tests assert the real behaviour.
+- **Safety rubric is word-order sensitive:** `/pale (gums|tongue)/` and `/blue (tongue|gum)/` require the adjacent phrase, so natural owner phrasing like "tongue is blue" or "gums look pale" is NOT caught by the override (only "blue tongue" / "pale gums" are). Worth a vet-reviewed rubric tweak later (add inverted phrasings); flagged, left as-is for now since editing safety patterns is sensitive.
+
+### NOT DONE / DEFERRED
+- Phase 10 remainder is post-migration: integration tests (10.6, hit route handlers — affected by Next 15 async APIs), performance targets (10.8), full manual walkthrough. Component tests (jsdom) not set up.
+- Everything else unchanged: Next 15 migration decision; manual testing pass; monitoring; UI; RAG; Email/Resend.
+
+### FILES MODIFIED
+- New: `vitest.config.ts`, `src/lib/ai/__tests__/{safety,fallback,schemas,triage-regression}.test.ts`.
+- Changed: `src/lib/ai/safety.ts` (+applySafetyOverride), `src/lib/ai/classifier.ts` (use it), `package.json` (vitest + scripts).
+
+### NEXT SESSION MUST START WITH
+1. The **Next 15 migration decision** (now backed by a green regression net to verify the migration).
+2. Or continue independent work; the migration is the recommended next big step before UI/monitoring/manual-testing.
 
 ---
 ## SESSION 18 — 2026-06-25 — Claude / Opus 4.8 (Security round 2 — headers + Arcjet + RLS/injection re-audit)

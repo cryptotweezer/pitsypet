@@ -2,7 +2,7 @@ import { generateObject, NoObjectGeneratedError } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 
 import { RiskClassificationSchema, type RiskClassification } from "./schemas";
-import { hasCriticalSymptom } from "./safety";
+import { applySafetyOverride } from "./safety";
 import { fallbackClassify } from "./fallback";
 
 const MODEL = "claude-sonnet-4-6";
@@ -57,13 +57,7 @@ export async function classifyRisk(
   }
 
   // Deterministic safety override — can only escalate.
-  if (hasCriticalSymptom(symptomsText) && result.riskLevel !== "High") {
-    result = {
-      ...result,
-      riskLevel: "High",
-      recommendedAction: "Seek immediate veterinary care — do not wait.",
-    };
-  }
+  result = applySafetyOverride(result, symptomsText);
 
   return { ...result, fallbackUsed };
 }

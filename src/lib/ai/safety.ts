@@ -17,3 +17,20 @@ const CRITICAL_PATTERNS: RegExp[] = [
 export function hasCriticalSymptom(text: string): boolean {
   return CRITICAL_PATTERNS.some((re) => re.test(text));
 }
+
+// Deterministic safety override: a critical symptom forces High. This can ONLY
+// escalate — a result already at High (or a non-critical case) is returned
+// unchanged. Extracted as a pure function so the "can only escalate" invariant
+// is unit-testable without calling the model. Applied at the end of classifyRisk.
+export function applySafetyOverride<
+  T extends { riskLevel: "Low" | "Medium" | "High"; recommendedAction: string },
+>(result: T, symptomsText: string): T {
+  if (hasCriticalSymptom(symptomsText) && result.riskLevel !== "High") {
+    return {
+      ...result,
+      riskLevel: "High",
+      recommendedAction: "Seek immediate veterinary care — do not wait.",
+    };
+  }
+  return result;
+}
