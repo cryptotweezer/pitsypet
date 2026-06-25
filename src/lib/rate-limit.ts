@@ -9,9 +9,8 @@ export const chatRateLimiter = new Ratelimit({
   prefix: "pitsypet:chat",
 });
 
-// Reserved for the assessment history search route (FR3). The route that calls
-// the parameterised `search_assessments` RPC is not wired to a UI yet; apply
-// this limiter when it is built.
+// Assessment history search (FR3). Applied in GET /api/search, which calls the
+// parameterised `search_assessments` RPC behind the /history page.
 export const searchRateLimiter = new Ratelimit({
   redis,
   limiter: Ratelimit.slidingWindow(30, "1 m"),

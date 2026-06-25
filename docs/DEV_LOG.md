@@ -53,10 +53,33 @@
 **Phase 10 started ✅ (Session 19):** Vitest set up; 50 pure-logic tests pass (safety override now a testable pure fn, rule-based fallback thresholds, Zod schemas, model-down triage regression set). `npm test` is the green net for the migration. Remaining Phase-10 work (integration/perf/manual) is post-migration.
 **Next 15 migration ✅ DONE & on main (Session 20, `4adaaba`):** Next 15.5.19 + React 19; async request APIs handled; all 14 Next advisories cleared (4 high → 0 high); build/lint/50-tests/CSP-headers green. **Verify the Vercel prod deploy went through on Next 15.**
 **Session 21 (no-blocker work):** `GET /api/health` (Phase 11.3) live; automated tests 50 → **71** (active-symptoms dedup, RAG ranking, medications, formatters). `npm test` green.
-**Next action (RESUME HERE):** Post-migration / account-gated work on the final version: UI (Phase 8), Sentry+PostHog (Phase 11.1/2, need accounts), full manual testing pass (`docs/TESTING_PROTOCOL.md`). No-blocker options still open: route-handler integration tests (10.6), History search route + `searchRateLimiter`. Small cleanup: `next lint` → ESLint CLI. Deferred unchanged: RAG (Phase 4), Email/Resend. See `docs/proposal_vs_implemented.md` §4/§7. Deferred: **Email/Resend** (Group E), **RAG-in-chat** (KB empty until Phase 4). See CLAUDE.md **"Triage calibration & tuning"** for the over-escalation work.
+**Session 22:** History search wired — `GET /api/search` + `/history` page + navbar link, behind `searchRateLimiter`. Functional click-test pending (needs login → manual pass).
+**Next action (RESUME HERE):** Account-gated/manual work on the final version: Sentry+PostHog (Phase 11.1/2 — FREE tiers, user opening accounts), UI (Phase 8), full manual testing pass (incl. clicking through History search). No-blocker option still open: route-handler integration tests (10.6). Cleanup: `next lint` → ESLint CLI. Deferred unchanged: RAG (Phase 4), Email/Resend. See `docs/proposal_vs_implemented.md` §4/§7. Deferred: **Email/Resend** (Group E), **RAG-in-chat** (KB empty until Phase 4). See CLAUDE.md **"Triage calibration & tuning"** for the over-escalation work.
 **Deferred (explicit):** **Email/Resend** — user has **no Resend account or domain yet** (gets one at the end). The manual "request appointment → email doctor" button AND the AI-sent appointment email (with last-assessment summary) are deferred to a dedicated step (needs the chat tools + summary). Build email once, reuse for the deferred custom-SMTP auth too. **Also deferred:** wiring RAG into the assistant chat (no KB content yet); **caching the vet PDF summary** — currently it calls Sonnet on EVERY download (store `vet_summary` on the assessment + a "Regenerate" action so reprints are free; see CLAUDE.md deferred bullet).
 
 ---
+
+---
+## SESSION 22 — 2026-06-25 — Claude / Opus 4.8 (History search — wired the search_assessments RPC to a UI)
+
+### STARTED WITH
+- Session 21 pushed (`26ee0a4`). User chose to build the assessment history search (no external blockers).
+
+### COMPLETED THIS SESSION (build + lint + 71 tests clean; auth-protection smoke-tested)
+- **Finding corrected:** the `search_assessments` RPC was NOT stale — migration `20260620000200_search_completed_assessments` already switched the filter to `completed_at IS NOT NULL` (auto-save model). No migration needed; RPC is current and in `src/types/database.ts`.
+- **`GET /api/search?q=…`** (`src/app/api/search/route.ts`): auth → **`searchRateLimiter` (30/min/user)** → `search_assessments` RPC. RLS scopes to `auth.uid()`; `query_text` is parameterised via `plainto_tsquery` → injection-safe. Empty `q` returns `{results:[]}` without spending a rate-limit token.
+- **`/history` page** (`src/app/(app)/history/page.tsx`, force-dynamic for the nonce CSP) + **`HistorySearch`** client component (`src/components/history/history-search.tsx`): debounced (300 ms) live search with AbortController (no out-of-order results), loading skeletons, empty state, and 429/error handling. Results = risk pill + pet name + concern + date, linking to `/assessment/[id]/results?from=history`.
+- **Navbar:** added a **History** link.
+- **`searchRateLimiter`** comment updated from "reserved" → wired.
+- **Search semantics (for the user):** keyword full-text (English, stemmed) over clinical reasoning + primary concern + extracted symptoms, plus ILIKE on pet name + concern; ranked by `ts_rank`.
+
+### NOT DONE / NEXT
+- Functional click-test (type a query, see results) needs a logged-in session → part of the manual testing pass. Auth protection verified (unauth `/history` + `/api/search` → 307 /login).
+- Still deferred (accounts/content/UI/manual): RAG (Phase 4), Email/Resend, Sentry+PostHog (account-gated, FREE tiers — user may open accounts), UI polish (Phase 8), full manual pass. No-blocker option remaining: route-handler integration tests (10.6).
+
+### FILES MODIFIED
+- New: `src/app/api/search/route.ts`, `src/app/(app)/history/page.tsx`, `src/components/history/history-search.tsx`.
+- Changed: `src/components/shared/navbar.tsx` (History link), `src/lib/rate-limit.ts` (comment).
 
 ---
 ## SESSION 21 — 2026-06-25 — Claude / Opus 4.8 (No-blocker work: health route + expanded test suite)

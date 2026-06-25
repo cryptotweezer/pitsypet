@@ -32,6 +32,12 @@ export function Navbar({ email }: { email: string }) {
           >
             Dashboard
           </Link>
+          <Link
+            href="/history"
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            History
+          </Link>
           <span className="hidden text-sm text-muted-foreground sm:inline">
             {email}
           </span>
