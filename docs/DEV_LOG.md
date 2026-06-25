@@ -75,7 +75,8 @@
 
 ### NEXT
 - **UptimeRobot live** (this session, in the user's panel): HTTP monitor on `https://pitsypet.vercel.app/api/health`, 5-min interval, status "Up". Verified the prod endpoint returns 200 `{status:"ok",database:"reachable"}`. Monitoring (Sentry+PostHog+health+uptime) is now complete.
-- Phase 11 leftovers: 11.4 confirm Supabase Auth redirect URLs include the prod domain; 11.6 prod smoke test (manual). Custom domain swap is the very-end task (then update UptimeRobot URL + Supabase redirect URLs). Then UI (Phase 8) + full manual pass. Deferred: RAG (Phase 4), Email/Resend. No-blocker option: route-handler integration tests (10.6).
+- **11.4 done (this session):** Supabase Auth → URL Configuration set to Site URL `https://pitsypet.vercel.app` + redirect allowlist = prod `/**` and `http://localhost:3000/**` (so prod is canonical and local dev still works). Code already uses `location.origin`/request origin (no code change needed). AI keys confirmed in Vercel (prod AI works). Also fixed the *unused* `NEXT_PUBLIC_APP_URL` in `.env.local` (was the Supabase URL → set to localhost; it's referenced nowhere in code).
+- Phase 11 leftover: **11.6 prod smoke test (manual)** only. Custom-domain swap is the very-end task (then update UptimeRobot URL + Supabase Site/redirect URLs). Then UI (Phase 8) + full manual pass. Deferred: RAG (Phase 4), Email/Resend. No-blocker option: route-handler integration tests (10.6).
 
 ---
 ## SESSION 24 — 2026-06-25 — Claude / Opus 4.8 (PostHog wired — product analytics, Phase 11.2)
