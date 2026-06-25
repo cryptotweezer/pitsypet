@@ -87,7 +87,7 @@ The proposal also has no concept of the **deterministic safety override** or the
 
 ## Tech stack
 
-Next.js 14 App Router · TypeScript · **Vercel AI SDK v4** · Supabase (PostgreSQL + pgvector/HNSW + Auth + RLS) · OpenAI `text-embedding-3-small` · Upstash Redis (rate limit + cost guard) · Tailwind v4 + shadcn base-nova (Base UI) · Sentry · PostHog · Vercel.
+Next.js **15** App Router (migrated from 14 in Session 20 — async `cookies()`/`params`/`searchParams`; React 19) · TypeScript · **Vercel AI SDK v4** · Supabase (PostgreSQL + pgvector/HNSW + Auth + RLS) · OpenAI `text-embedding-3-small` · Upstash Redis (rate limit + cost guard) · Tailwind v4 + shadcn base-nova (Base UI) · Sentry · PostHog · Vercel.
 
 **Pin discipline:** the Vercel AI SDK is v4 (`ai@^4`, `@ai-sdk/*@^1`). **Never run `npm install ai@latest`** — v5 renames the streaming APIs (`streamText`/`createDataStreamResponse`/`useChat`) the plan depends on.
 
