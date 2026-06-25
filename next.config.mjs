@@ -29,4 +29,14 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+import { withSentryConfig } from "@sentry/nextjs";
+
+export default withSentryConfig(nextConfig, {
+  org: "tweezer",
+  project: "javascript-nextjs",
+  // Quiet build logs unless on CI; source-map upload only runs when
+  // SENTRY_AUTH_TOKEN is set (optional — the app reports fine without it).
+  silent: !process.env.CI,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  widenClientFileUpload: true,
+});

@@ -22,6 +22,9 @@ export function buildCsp(nonce: string, isDev: boolean): string {
   // Supabase realtime uses a websocket on the same host.
   const supabaseWs = supabaseUrl.replace(/^https:\/\//, "wss://");
   const connectSrc = ["'self'", supabaseUrl, supabaseWs].filter(Boolean);
+  // Sentry sends error/trace events from the browser to its ingest endpoint
+  // (o<id>.ingest.<region>.sentry.io) — allow it only when a DSN is configured.
+  if (process.env.NEXT_PUBLIC_SENTRY_DSN) connectSrc.push("https://*.sentry.io");
 
   // In dev, Next's HMR/React-Refresh relies on eval and inline scripts, so we
   // relax script-src. Production gets the strict nonce + strict-dynamic policy.

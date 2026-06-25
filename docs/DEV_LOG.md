@@ -60,6 +60,29 @@
 ---
 
 ---
+## SESSION 23 — 2026-06-25 — Claude / Opus 4.8 (Sentry wired — error tracking, Phase 11.1)
+
+### STARTED WITH
+- Session 22 pushed (`e97bea9`). User opened a Sentry account (org `tweezer`, project `javascript-nextjs`) and provided the DSN. Wired it MANUALLY (not the wizard — it would clobber our custom next.config headers + CSP middleware).
+
+### COMPLETED THIS SESSION (build + lint + 71 tests clean; app loads 200, CSP allows Sentry)
+- **`@sentry/nextjs` v10 wired for Next 15** (DSN in `.env.local` + `.env.example`; DSN is public/client-safe):
+  - `src/instrumentation.ts` (`register()` → server/edge config; `onRequestError = captureRequestError`), `src/instrumentation-client.ts` (client init + `onRouterTransitionStart`), `src/sentry.server.config.ts`, `src/sentry.edge.config.ts`. `tracesSampleRate: 0.1`, **`enabled` only in production** (no dev noise).
+  - `src/app/global-error.tsx` (App Router root error boundary → `captureException`; force-dynamic for the nonce CSP).
+  - `next.config.mjs` wrapped with `withSentryConfig` (org/project, `silent` off-CI, `authToken` from env optional, `widenClientFileUpload`). Our `headers()` security block is preserved.
+  - **CSP:** `buildCsp` adds `https://*.sentry.io` to `connect-src` only when `NEXT_PUBLIC_SENTRY_DSN` is set, so the browser can POST events. Verified live in the header.
+
+### ACTION REQUIRED (user)
+- **Add `NEXT_PUBLIC_SENTRY_DSN` to Vercel** (Production + Preview) or the deployed app won't report. Optional: `SENTRY_AUTH_TOKEN` for readable (source-mapped) stack traces. Verify by triggering an error on the deployed app → it appears in Sentry Issues.
+
+### NOT DONE / NEXT
+- **PostHog (Phase 11.2)** — waiting on the user's account key+host (free, no domain). UptimeRobot pointing at `/api/health` (their account). Then the rest: UI (Phase 8), full manual pass. Deferred unchanged: RAG (Phase 4), Email/Resend.
+
+### FILES MODIFIED
+- New: `src/instrumentation.ts`, `src/instrumentation-client.ts`, `src/sentry.server.config.ts`, `src/sentry.edge.config.ts`, `src/app/global-error.tsx`.
+- Changed: `next.config.mjs` (withSentryConfig), `src/lib/security/csp.ts` (Sentry in connect-src), `.env.example`.
+
+---
 ## SESSION 22 — 2026-06-25 — Claude / Opus 4.8 (History search — wired the search_assessments RPC to a UI)
 
 ### STARTED WITH
