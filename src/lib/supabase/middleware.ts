@@ -45,7 +45,9 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isAuthRoute =
     path.startsWith("/login") || path.startsWith("/register");
-  const isPublic = path === "/" || path.startsWith("/auth");
+  // /api/health is an unauthenticated uptime probe — must not redirect to /login.
+  const isPublic =
+    path === "/" || path.startsWith("/auth") || path === "/api/health";
 
   if (!user && !isAuthRoute && !isPublic) {
     return NextResponse.redirect(new URL("/login", request.url));

@@ -52,10 +52,33 @@
 **Security round 2 ✅ (Session 18):** nonce-based CSP (middleware) + static security headers (next.config); all routes forced dynamic for strict-dynamic; **Arcjet** (shield + bot detection, fails-open, DRY_RUN in dev) on the 3 AI routes; RLS/injection re-audit PASS (13/13 RLS, no SERVICE_ROLE in src, 100% body writes zod-validated). **Open decision:** Next 14.2.35 has 14 advisories fixed only in 15.5.16+ (a Next 15 major upgrade) — incl. a moderate CSP-nonce XSS; staying on 14.2.35 with documented residuals for now.
 **Phase 10 started ✅ (Session 19):** Vitest set up; 50 pure-logic tests pass (safety override now a testable pure fn, rule-based fallback thresholds, Zod schemas, model-down triage regression set). `npm test` is the green net for the migration. Remaining Phase-10 work (integration/perf/manual) is post-migration.
 **Next 15 migration ✅ DONE & on main (Session 20, `4adaaba`):** Next 15.5.19 + React 19; async request APIs handled; all 14 Next advisories cleared (4 high → 0 high); build/lint/50-tests/CSP-headers green. **Verify the Vercel prod deploy went through on Next 15.**
-**Next action (RESUME HERE):** Post-migration work, all on the final version: UI (Phase 8), monitoring (Phase 11), full manual testing pass (`docs/TESTING_PROTOCOL.md`). Small cleanup: `next lint` → ESLint CLI (deprecated in Next 16). Deferred unchanged: RAG (Phase 4), Email/Resend. See `docs/proposal_vs_implemented.md` §4/§7. Deferred: **Email/Resend** (Group E), **RAG-in-chat** (KB empty until Phase 4). See CLAUDE.md **"Triage calibration & tuning"** for the over-escalation work.
+**Session 21 (no-blocker work):** `GET /api/health` (Phase 11.3) live; automated tests 50 → **71** (active-symptoms dedup, RAG ranking, medications, formatters). `npm test` green.
+**Next action (RESUME HERE):** Post-migration / account-gated work on the final version: UI (Phase 8), Sentry+PostHog (Phase 11.1/2, need accounts), full manual testing pass (`docs/TESTING_PROTOCOL.md`). No-blocker options still open: route-handler integration tests (10.6), History search route + `searchRateLimiter`. Small cleanup: `next lint` → ESLint CLI. Deferred unchanged: RAG (Phase 4), Email/Resend. See `docs/proposal_vs_implemented.md` §4/§7. Deferred: **Email/Resend** (Group E), **RAG-in-chat** (KB empty until Phase 4). See CLAUDE.md **"Triage calibration & tuning"** for the over-escalation work.
 **Deferred (explicit):** **Email/Resend** — user has **no Resend account or domain yet** (gets one at the end). The manual "request appointment → email doctor" button AND the AI-sent appointment email (with last-assessment summary) are deferred to a dedicated step (needs the chat tools + summary). Build email once, reuse for the deferred custom-SMTP auth too. **Also deferred:** wiring RAG into the assistant chat (no KB content yet); **caching the vet PDF summary** — currently it calls Sonnet on EVERY download (store `vet_summary` on the assessment + a "Regenerate" action so reprints are free; see CLAUDE.md deferred bullet).
 
 ---
+
+---
+## SESSION 21 — 2026-06-25 — Claude / Opus 4.8 (No-blocker work: health route + expanded test suite)
+
+### STARTED WITH
+- Next 15 live in prod (`c3d8da7` Ready). User chose to keep doing work that needs none of the deferred items (RAG / Resend / UI / manual testing). Picked: (A) expand automated tests, (B) `/api/health` route.
+
+### COMPLETED THIS SESSION (build + lint clean; 71 tests pass; health route smoke-tested 200)
+- **B — `GET /api/health` (Phase 11.3).** New `src/app/api/health/route.ts`: a light `breeds` read (round-trips to the DB → confirms reachability AND keeps Supabase from auto-pausing). 200 `{status:"ok",database:"reachable",latencyMs,…}` or 503 on failure. Unauthenticated by design — added `/api/health` to `isPublic` in `src/lib/supabase/middleware.ts` so the probe isn't redirected to /login. Point UptimeRobot here later (their account needed; the route itself is done). No secrets. Live test: 200, 82 ms.
+- **A — expanded the regression net 50 → 71 tests** (8 files). Three small testability refactors (behaviour unchanged):
+  - `active-symptoms.ts`: exported the pure matchers `canonical`, `symptomsMatch`, `mapStatus`. New `active-symptoms.test.ts` pins the canonical token-subset dedup (e.g. "sleepiness" ↔ "sleepiness/lethargy"; "limp" ≠ "limping"; status mapping).
+  - `rag.ts`: extracted the inline ranking into a pure exported `rankChunks()`. New `rag.test.ts` pins the invariants: <0.3 dropped; urgency NUDGES order but NEVER hides a chunk; ≤2 per source; top-5.
+  - `medications.test.ts` (`isMedicationActive`: ongoing/future/past/today-inclusive) and `format.test.ts` (`formatPet`/`formatSymptoms`).
+  - `vitest.config.ts`: added the `@/` → `src/` alias (some modules import via `@/`).
+
+### NOT DONE / NEXT
+- Still deferred (need accounts/content/UI): RAG (Phase 4), Email/Resend, Sentry+PostHog (Phase 11.1/11.2 — account-gated like Resend), UI (Phase 8), full manual testing pass + the in-app History search UI.
+- Possible next no-blocker items: integration tests for route handlers (10.6 — needs Supabase mocking), or wire the History search route + `searchRateLimiter` (backend clean; UI minimal).
+
+### FILES MODIFIED
+- New: `src/app/api/health/route.ts`, `src/lib/__tests__/{medications,active-symptoms}.test.ts`, `src/lib/ai/__tests__/{rag,format}.test.ts`.
+- Changed: `src/lib/supabase/middleware.ts` (health public), `src/lib/active-symptoms.ts` (exports), `src/lib/ai/rag.ts` (rankChunks), `vitest.config.ts` (@/ alias).
 
 ---
 ## SESSION 20 — 2026-06-25 — Claude / Opus 4.8 (Next.js 15 migration — on branch `migrate/next-15`)

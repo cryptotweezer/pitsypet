@@ -30,7 +30,7 @@ export type ReconcileSymptom = {
 
 type Supabase = SupabaseClient<Database>;
 
-function canonical(name: string): string {
+export function canonical(name: string): string {
   return name
     .toLowerCase()
     .replace(/[/,;|]+/g, " ")
@@ -54,7 +54,13 @@ function sameSymptom(aTokens: Set<string>, bTokens: Set<string>): boolean {
   return isSubset(aTokens, bTokens) || isSubset(bTokens, aTokens);
 }
 
-function mapStatus(s?: DetectedStatus | null): TrackerStatus {
+// Whether two symptom names refer to the same symptom under the canonical,
+// token-subset matching used to dedup the tracker. Exported for testing.
+export function symptomsMatch(a: string, b: string): boolean {
+  return sameSymptom(tokenSet(a), tokenSet(b));
+}
+
+export function mapStatus(s?: DetectedStatus | null): TrackerStatus {
   switch (s) {
     case "improving":
       return "improving";
