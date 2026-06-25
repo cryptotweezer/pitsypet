@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isMedicationActive } from "@/lib/medications";
 import { exportRateLimiter } from "@/lib/rate-limit";
 import { checkDailyCap } from "@/lib/cost-guard";
+import { arcjetGuard } from "@/lib/arcjet";
 import { generateVetSummary } from "@/lib/ai/vet-summary";
 import type {
   ExportBlock,
@@ -39,7 +40,7 @@ function strArray(raw: unknown): string[] {
 
 // POST /api/assessment/[id]/export — assemble the vet-facing record + AI summary.
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } },
 ) {
   const supabase = createClient();
@@ -49,6 +50,10 @@ export async function POST(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Arcjet shield + bot detection before any DB/AI work.
+  const blocked = await arcjetGuard(request);
+  if (blocked) return blocked;
 
   // This route calls Claude (the vet summary), so it is bounded like the other
   // AI routes: the global daily spend cap, then a per-user rate limit.

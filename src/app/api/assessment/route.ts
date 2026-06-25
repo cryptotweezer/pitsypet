@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
+
+const BodySchema = z.object({ petId: z.string().uuid() });
 
 // POST — start a new assessment for a pet the user owns. Returns the new
 // assessment_id. (The chat page also creates rows directly server-side; this
@@ -14,21 +17,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { petId?: string };
+  let raw: unknown;
   try {
-    body = await request.json();
+    raw = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  if (!body.petId) {
-    return NextResponse.json({ error: "Missing petId" }, { status: 400 });
+  const parsed = BodySchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid petId" }, { status: 400 });
   }
+  const { petId } = parsed.data;
 
   // Verify ownership through RLS before creating the assessment.
   const { data: pet } = await supabase
     .from("pets")
     .select("pet_id")
-    .eq("pet_id", body.petId)
+    .eq("pet_id", petId)
     .is("deleted_at", null)
     .maybeSingle();
   if (!pet) {
@@ -37,7 +42,7 @@ export async function POST(request: NextRequest) {
 
   const { data: assessment, error } = await supabase
     .from("assessments")
-    .insert({ pet_id: body.petId, user_id: user.id })
+    .insert({ pet_id: petId, user_id: user.id })
     .select("assessment_id")
     .single();
   if (error) {

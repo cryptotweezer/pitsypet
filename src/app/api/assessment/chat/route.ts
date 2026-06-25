@@ -12,6 +12,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 import type { Database, Json } from "@/types/database";
 import { createClient } from "@/lib/supabase/server";
 import { chatRateLimiter } from "@/lib/rate-limit";
+import { arcjetGuard } from "@/lib/arcjet";
 import { checkDailyCap, incrementDailyAssessmentCount } from "@/lib/cost-guard";
 import { RecordSymptomsSchema, type ExtractedSymptom } from "@/lib/ai/schemas";
 import { retrieveKnowledge } from "@/lib/ai/rag";
@@ -75,6 +76,10 @@ export async function POST(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Arcjet shield + bot detection before any DB/AI work.
+  const blocked = await arcjetGuard(req);
+  if (blocked) return blocked;
 
   let body: {
     assessmentId?: string;

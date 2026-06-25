@@ -10,6 +10,11 @@ import { RegisterForm } from "@/components/auth/register-form";
 
 export const metadata = { title: "Create account · PitsyPet" };
 
+// Dynamic so the page receives the middleware's per-request CSP nonce — our
+// 'strict-dynamic' script-src would otherwise block this page's build-time
+// static scripts. See src/lib/security/csp.ts.
+export const dynamic = "force-dynamic";
+
 export default function RegisterPage() {
   return (
     <main className="flex min-h-screen items-center justify-center p-4">

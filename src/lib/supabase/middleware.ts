@@ -1,9 +1,20 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database";
+import { buildCsp } from "@/lib/security/csp";
 
 export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  // Per-request CSP nonce. Next.js reads it from the request's
+  // Content-Security-Policy header and stamps it onto its own inline scripts,
+  // so hydration works while attacker-injected <script>s are blocked.
+  const nonce = btoa(crypto.randomUUID());
+  const csp = buildCsp(nonce, process.env.NODE_ENV !== "production");
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", csp);
+
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,7 +26,7 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
-          response = NextResponse.next({ request });
+          response = NextResponse.next({ request: { headers: requestHeaders } });
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options),
           );
@@ -43,5 +54,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
+  // The CSP must also ride on the response so the browser enforces it.
+  response.headers.set("Content-Security-Policy", csp);
   return response;
 }

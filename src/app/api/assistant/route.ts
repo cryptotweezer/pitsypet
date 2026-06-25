@@ -13,6 +13,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { chatRateLimiter } from "@/lib/rate-limit";
 import { checkDailyCap } from "@/lib/cost-guard";
+import { arcjetGuard } from "@/lib/arcjet";
 import {
   loadPetDossier,
   loadUserClinics,
@@ -113,6 +114,10 @@ export async function POST(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Arcjet shield + bot detection before any DB/AI work.
+  const blocked = await arcjetGuard(req);
+  if (blocked) return blocked;
 
   let body: {
     scope?: "pet" | "dashboard";

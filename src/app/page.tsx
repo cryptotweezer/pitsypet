@@ -3,6 +3,12 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+// Render per-request so this page receives the middleware's per-request CSP
+// nonce (our script-src uses 'strict-dynamic', which ignores 'self' — a
+// build-time static page's un-nonced scripts would be blocked). Any new public
+// page added under this CSP must be dynamic too. See src/lib/security/csp.ts.
+export const dynamic = "force-dynamic";
+
 // PLACEHOLDER landing page (added pre-Phase 3 as a clean entry point for manual
 // testing). Phase 8, task 8.1 polishes this into the real landing — hero + CTA,
 // 3 features, 3-step how-it-works, footer disclaimer. Intentionally minimal for now.
