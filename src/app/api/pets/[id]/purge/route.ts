@@ -8,11 +8,9 @@ import { createClient } from "@/lib/supabase/server";
 //
 // The pets→assessments FK is ON DELETE CASCADE, so this also removes every
 // assessment for the pet. RLS scopes the row to the owner; we pin user_id too.
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: { id: string } },
-) {
-  const supabase = createClient();
+export async function DELETE(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

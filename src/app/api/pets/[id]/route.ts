@@ -6,11 +6,9 @@ import { petApiSchema } from "@/lib/validations/pet";
 // PATCH = update fields. DELETE = soft delete (deleted_at = now()). RLS scopes
 // every row to the owner; we also pin user_id explicitly as defence in depth.
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
-  const supabase = createClient();
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -59,11 +57,9 @@ export async function PATCH(
   return NextResponse.json({ pet });
 }
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: { id: string } },
-) {
-  const supabase = createClient();
+export async function DELETE(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

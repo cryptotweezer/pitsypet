@@ -6,8 +6,9 @@ import type { Database } from "@/types/database";
 // and Route Handlers). It uses the anon key + the user's session cookies, so
 // every query is constrained by RLS. The service-role key is never imported
 // here — it lives only in scripts/ (ingestion).
-export const createClient = () => {
-  const cookieStore = cookies();
+export const createClient = async () => {
+  // Next 15: cookies() is async and must be awaited.
+  const cookieStore = await cookies();
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

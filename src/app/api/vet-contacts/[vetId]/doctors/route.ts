@@ -4,11 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { vetDoctorSchema } from "@/lib/validations/vet-doctor";
 
 // POST /api/vet-contacts/[vetId]/doctors — add a doctor to a clinic the user owns.
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { vetId: string } },
-) {
-  const supabase = createClient();
+export async function POST(request: NextRequest, props: { params: Promise<{ vetId: string }> }) {
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

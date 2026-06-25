@@ -9,11 +9,9 @@ import { createClient } from "@/lib/supabase/server";
 // The partial unique index `idx_pets_user_name_active` allows only ONE active
 // pet per (user_id, pet_name). If the owner already re-created an active pet
 // with this name, reviving would create a duplicate → 23505 → a friendly 409.
-export async function POST(
-  _request: NextRequest,
-  { params }: { params: { id: string } },
-) {
-  const supabase = createClient();
+export async function POST(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

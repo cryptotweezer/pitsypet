@@ -39,11 +39,9 @@ function strArray(raw: unknown): string[] {
 }
 
 // POST /api/assessment/[id]/export — assemble the vet-facing record + AI summary.
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
-  const supabase = createClient();
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

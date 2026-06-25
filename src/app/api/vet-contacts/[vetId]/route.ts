@@ -4,11 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { vetContactUpdateSchema } from "@/lib/validations/vet-contact";
 
 // PATCH = edit an owner-level clinic.
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { vetId: string } },
-) {
-  const supabase = createClient();
+export async function PATCH(request: NextRequest, props: { params: Promise<{ vetId: string }> }) {
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -51,11 +49,9 @@ export async function PATCH(
 // with no "restore" UI, so a soft delete would only leave hidden rows forever.
 // The schema cascades doctors (ON DELETE CASCADE) and nulls the clinic link on
 // any appointments (ON DELETE SET NULL), so those survive without their clinic.
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: { vetId: string } },
-) {
-  const supabase = createClient();
+export async function DELETE(_request: NextRequest, props: { params: Promise<{ vetId: string }> }) {
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

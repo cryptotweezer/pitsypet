@@ -6,9 +6,10 @@ import { appointmentUpdateSchema } from "@/lib/validations/appointment";
 // PATCH = edit an appointment (reschedule, change reason, etc.).
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string; apptId: string } },
+  props: { params: Promise<{ id: string; apptId: string }> }
 ) {
-  const supabase = createClient();
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -60,9 +61,10 @@ export async function PATCH(
 // DELETE = soft delete an appointment.
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string; apptId: string } },
+  props: { params: Promise<{ id: string; apptId: string }> }
 ) {
-  const supabase = createClient();
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -4,11 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { medicationSchema } from "@/lib/validations/medication";
 
 // POST /api/pets/[id]/medications — add a medication to a pet the user owns.
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
-  const supabase = createClient();
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

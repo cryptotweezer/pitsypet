@@ -4,11 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { activeSymptomSchema } from "@/lib/validations/active-symptom";
 
 // POST /api/pets/[id]/symptoms — add an active symptom to a pet the user owns.
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
-  const supabase = createClient();
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

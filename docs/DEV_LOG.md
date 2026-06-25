@@ -57,6 +57,28 @@
 ---
 
 ---
+## SESSION 20 — 2026-06-25 — Claude / Opus 4.8 (Next.js 15 migration — on branch `migrate/next-15`)
+
+### STARTED WITH
+- Session 19 committed/pushed (`fc2cf35`). Decision taken: do the Next 15 upgrade now (early), in an isolated branch, BEFORE UI/monitoring/manual-testing so those happen once on the final version. Vitest set (50 tests) is the regression net.
+
+### COMPLETED THIS SESSION (build + lint + 50 tests all green on Next 15; CSP/headers smoke-tested live) — **NOT on main yet**
+- **Branch `migrate/next-15`.** Upgraded `next` 14.2.35 → **15.5.19**, `react`/`react-dom` 18 → **19.2.7**, `eslint-config-next` → 15.5.19, `@types/react(-dom)` → 19.
+- **Async request APIs (the breaking change):**
+  - `src/lib/supabase/server.ts` `createClient` is now **async** (`await cookies()`); all **28** server-client call sites updated to `await createClient()`.
+  - Ran the official **`@next/codemod next-async-request-api`** (20 files): route-handler `{ params }` → `props: { params: Promise<…> }` + `const params = await props.params`; page `params`/`searchParams` → awaited Promises. Reviewed the diff — clean.
+  - `tsconfig.json` auto-updated by the build (added `target: ES2017`, reformatted) — harmless.
+- **Why this matters:** clears **all 14 Next.js advisories** (they were fixed only in ≥15.5.16, incl. the CSP-nonce XSS, the WebSocket SSRF, and the RSC/image DoS set). `npm audit`: **18→16 vulns, 4 high→0 high** (remaining 16 are low/moderate transitive: `@ai-sdk/provider-utils` pinned to v4 by design, `uuid`/`jsondiffpatch`/`postcss` tooling — none exploitable in our usage; `audit fix --force` would drag AI SDK to v5 and break the app, so NOT run).
+- **Verified:** `npm run build` ✓, `npm run lint` ✓ (note: `next lint` is deprecated, removed in Next 16 — migrate to ESLint CLI later), `npm test` 50/50 ✓ (triage logic intact). Live: security headers + nonce CSP still applied, `/` 12/12 scripts nonce'd → no CSP breakage on React 19.
+
+### NOT DONE / NEXT
+- **Branch not merged to main.** Recommend a quick manual smoke (login → pet → assessment → chat → export) before merging, since the async change touches every server route. Then merge `migrate/next-15` → main (Vercel redeploys). Optional: push the branch for a Vercel **preview** deploy (needs env vars set for Preview) to test live without touching production.
+- After merge: the post-migration work — UI (Phase 8), monitoring (Phase 11), full manual testing pass — all on the final version. `next lint` → ESLint CLI migration is a small future cleanup.
+
+### FILES MODIFIED (branch only)
+- `package.json` / `package-lock.json` (Next 15 / React 19), `tsconfig.json`, `src/lib/supabase/server.ts`, and 20 codemod-touched route/page files (params/searchParams + await createClient).
+
+---
 ## SESSION 19 — 2026-06-25 — Claude / Opus 4.8 (Phase 10 start — Vitest triage regression set)
 
 ### STARTED WITH

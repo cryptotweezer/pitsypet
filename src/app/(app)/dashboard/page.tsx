@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 export const metadata = { title: "Dashboard · PitsyPet" };
 
 export default async function DashboardPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -13,7 +13,7 @@ const doctorsArraySchema = z.array(vetDoctorSchema).max(20).optional();
 
 // GET /api/vet-contacts — list the owner's clinics.
 export async function GET() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -35,7 +35,7 @@ export async function GET() {
 
 // POST /api/vet-contacts — add a clinic (optionally with doctors).
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

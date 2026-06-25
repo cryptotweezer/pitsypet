@@ -6,9 +6,10 @@ import { vetDoctorUpdateSchema } from "@/lib/validations/vet-doctor";
 // PATCH = edit a doctor.
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { vetId: string; doctorId: string } },
+  props: { params: Promise<{ vetId: string; doctorId: string }> }
 ) {
-  const supabase = createClient();
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -52,9 +53,10 @@ export async function PATCH(
 // only referenced as free text on medications/appointments, never by FK).
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { vetId: string; doctorId: string } },
+  props: { params: Promise<{ vetId: string; doctorId: string }> }
 ) {
-  const supabase = createClient();
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

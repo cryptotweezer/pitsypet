@@ -6,7 +6,7 @@ import { SPECIES } from "@/lib/validations/pet";
 // Breed autocomplete. ILIKE '%q%' is index-backed by the trigram GIN index on
 // breeds(name). Lookup table is readable by any authenticated user (RLS).
 export async function GET(request: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

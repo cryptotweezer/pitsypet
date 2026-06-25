@@ -5,12 +5,13 @@ import { PetForm } from "@/components/pets/pet-form";
 
 export const metadata = { title: "Edit pet · PitsyPet" };
 
-export default async function EditPetPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const supabase = createClient();
+export default async function EditPetPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
+  const supabase = await createClient();
 
   // RLS scopes this to the owner; a non-owned or deleted id returns no row.
   const { data: pet } = await supabase

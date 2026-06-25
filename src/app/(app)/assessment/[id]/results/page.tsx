@@ -100,17 +100,18 @@ function formatDateTime(iso: string): string {
   });
 }
 
-export default async function ResultsPage({
-  params,
-  searchParams,
-}: {
-  params: { id: string };
-  searchParams: { from?: string };
-}) {
+export default async function ResultsPage(
+  props: {
+    params: Promise<{ id: string }>;
+    searchParams: Promise<{ from?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   // Delete is offered only when opening a past assessment from history, not on
   // the just-completed results view.
   const fromHistory = searchParams.from === "history";
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

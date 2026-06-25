@@ -107,7 +107,7 @@ WRITING TO THE RECORD — read carefully:
 Be concise and plain-spoken. One topic at a time.`;
 
 export async function POST(req: Request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

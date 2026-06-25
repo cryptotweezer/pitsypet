@@ -69,7 +69,7 @@ Other rules:
 - Plain English, no clinical jargon unless you explain it.`;
 
 export async function POST(req: Request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

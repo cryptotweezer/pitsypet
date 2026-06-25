@@ -10,11 +10,12 @@ import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata = { title: "Sign in · PitsyPet" };
 
-export default function LoginPage({
-  searchParams,
-}: {
-  searchParams: { error?: string };
-}) {
+export default async function LoginPage(
+  props: {
+    searchParams: Promise<{ error?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md" size="default">

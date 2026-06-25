@@ -9,7 +9,7 @@ const BodySchema = z.object({ petId: z.string().uuid() });
 // assessment_id. (The chat page also creates rows directly server-side; this
 // route exists for client-initiated "start assessment" flows.)
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

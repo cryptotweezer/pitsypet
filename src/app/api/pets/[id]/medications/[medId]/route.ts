@@ -6,9 +6,10 @@ import { medicationUpdateSchema } from "@/lib/validations/medication";
 // PATCH = edit a medication (e.g. dose change, mark inactive).
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string; medId: string } },
+  props: { params: Promise<{ id: string; medId: string }> }
 ) {
-  const supabase = createClient();
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -50,9 +51,10 @@ export async function PATCH(
 // DELETE = soft delete a medication.
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string; medId: string } },
+  props: { params: Promise<{ id: string; medId: string }> }
 ) {
-  const supabase = createClient();
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

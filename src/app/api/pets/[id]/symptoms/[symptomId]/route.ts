@@ -8,9 +8,10 @@ import { activeSymptomUpdateSchema } from "@/lib/validations/active-symptom";
 // severity). Moving to 'resolved' stamps resolved_at; reactivating clears it.
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string; symptomId: string } },
+  props: { params: Promise<{ id: string; symptomId: string }> }
 ) {
-  const supabase = createClient();
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -62,9 +63,10 @@ export async function PATCH(
 // DELETE = soft delete an active symptom.
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string; symptomId: string } },
+  props: { params: Promise<{ id: string; symptomId: string }> }
 ) {
-  const supabase = createClient();
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

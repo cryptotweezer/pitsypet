@@ -11,14 +11,15 @@ export const metadata = { title: "Assessment · PitsyPet" };
 // leaves no orphan rows; only finalized assessments exist. (Sibling route
 // [id]/results/ keys off the assessment id; Next.js requires the same slug name
 // at this path level, hence [id] rather than [petId].)
-export default async function AssessmentPage({
-  params,
-  searchParams,
-}: {
-  params: { id: string };
-  searchParams: { followup?: string };
-}) {
-  const supabase = createClient();
+export default async function AssessmentPage(
+  props: {
+    params: Promise<{ id: string }>;
+    searchParams: Promise<{ followup?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
+  const supabase = await createClient();
 
   const { data: pet } = await supabase
     .from("pets")

@@ -32,12 +32,13 @@ function ageLabel(years: number, months: number | null): string {
   return `${years} ${years === 1 ? "year" : "years"}`;
 }
 
-export default async function PetPage({
-  params,
-}: {
-  params: { id: string; name: string };
-}) {
-  const supabase = createClient();
+export default async function PetPage(
+  props: {
+    params: Promise<{ id: string; name: string }>;
+  }
+) {
+  const params = await props.params;
+  const supabase = await createClient();
 
   const { data: pet } = await supabase
     .from("pets")
