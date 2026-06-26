@@ -40,7 +40,7 @@
 
 ## STATUS
 
-**Current phase:** Phase 7.5 — Pet Clinical History Hub. **Part 1 ✅ committed.** **Part 2 — groups A→B→C ✅ committed (`31c463e`); #8–#12 + Group D + chat fixes ✅ (Session 13).** **Session 14 (global vet clinics + tz dates + assessment prompt fixes) ✅. Session 15 (final test-driven fix batch) ✅. Session 16 (Part 3 — vet PDF export + AI summary) ✅. Session 17 (proposal-vs-implemented audit + security pass round 1) ✅.** Feature work is in the TESTING pass (`docs/TESTING_PROTOCOL.md`, Groups 0–I). **Remaining: Email/Resend (Group E) + RAG-in-chat** (both deferred), **security round 2** (headers + Arcjet), plus the noted **export-summary caching** optimization. See `docs/proposal_vs_implemented.md` for the full proposal coverage map.
+**Current phase:** Phase 7.5 — Pet Clinical History Hub. **Part 1 ✅ committed.** **Part 2 — groups A→B→C ✅ committed (`31c463e`); #8–#12 + Group D + chat fixes ✅ (Session 13).** **Session 14 (global vet clinics + tz dates + assessment prompt fixes) ✅. Session 15 (final test-driven fix batch) ✅. Session 16 (Part 3 — vet PDF export + AI summary) ✅. Session 17 (proposal-vs-implemented audit + security pass round 1) ✅.** Phase 7.5 feature work is **COMPLETE** (all parts committed). The standalone manual-test guide (`docs/TESTING_PROTOCOL.md`) was **removed 2026-06-26** — manual feature verification is folded into the Phase 10/12 manual passes. **Remaining: Email/Resend (Group E) + RAG-in-chat** (both deferred), plus the noted **export-summary caching** optimization. See `docs/proposal_vs_implemented.md` for the full proposal coverage map.
 - **A (bugs):** orphan-assessment fixed (no DB row until COMPLETE — chat route persists only on completion via upsert; page mints a UUID, no pre-insert); chat box fixed-height + scroll, symptom sidebar sticky.
 - **B (pet record):** vet model = **clinic + doctors** (`vet_contacts`→clinic w/ `service_hours` JSONB + `address`; new `vet_doctors`; new `appointments`); meds **editable + labeled** (Dosage/Quantity/Frequency); vet **editable**, structured **opening-hours picker**, clickable **Hours dialog w/ live Open/Closed**, **collapsible doctors**; **Next appointments** section; pet page relaid Vet → Appointments → Medications.
 - **C (assessment context/history):** AI now gets current **meds + last 3 assessments** in extraction + classification (conditions already via formatPet); results page lists **detected symptoms**; history cards show an **abstract** (concern + symptoms + next steps + follow-up count); **follow-ups** = dated sections appended to the same assessment (`follow_ups` JSONB), with a **+ Follow-up** button + timeline on results.
@@ -55,7 +55,8 @@
 **Session 21 (no-blocker work):** `GET /api/health` (Phase 11.3) live; automated tests 50 → **71** (active-symptoms dedup, RAG ranking, medications, formatters). `npm test` green.
 **Session 22:** History search wired — `GET /api/search` + `/history` page + navbar link, behind `searchRateLimiter` (functional click-test → manual pass).
 **Sessions 23–25:** **Monitoring complete (Phase 11).** Sentry (11.1) + PostHog with 3 named events `assessment_started/completed`, `risk_level_shown` (11.2) + `/api/health` with **UptimeRobot 5-min monitor "Up"** (11.3) + **Supabase Auth URLs set for prod** (11.4, Site URL `https://pitsypet.vercel.app` + redirect allowlist prod/localhost). All env vars in Vercel. Only 11.6 (manual prod smoke) left.
-**Next action (RESUME HERE — next session):** **Route-handler integration tests (Phase 10.6)** — automated tests over the API routes (`POST /api/pets` valid→201 / empty→400, unauth→401, search→429), which need **mocking the Supabase server client**. This is the agreed next step. After that: UI polish (Phase 8) + full manual testing pass. Cleanup anytime: `next lint` → ESLint CLI (deprecated in Next 16). Deferred (need accounts/content): RAG (Phase 4), Email/Resend. Very-end: custom domain swap (then update UptimeRobot URL + Supabase Site/redirect URLs). See `docs/proposal_vs_implemented.md` §4/§7.
+**Session 26 (this session):** **Route-handler integration tests (Phase 10.6) ✅ — full CRUD coverage.** Shared mock helper `src/app/api/__tests__/_helpers.ts` (`makeClient` w/ chainable thenable query-builder + `jsonRequest`) drives handlers against `NextRequest`/`NextResponse` in the node env with a mocked cookie-scoped Supabase client. Test files: `pets`, `search`, `medications`, `appointments`, `vet-contacts` (clinic + doctors), `symptoms` (incl. `reconcile`, with `reconcileActiveSymptoms` mocked). Each route covers 401 unauth / 400 bad-JSON / 400 validation / 404 not-found / 2xx success / 409 dup / 500 / 207 partial as applicable. Suite **71 → 136** green; `npx tsc --noEmit` + `next lint` clean. **Also this session:** deleted `docs/TESTING_PROTOCOL.md` (it was a manual-tester guide, not code); scrubbed its references from CLAUDE.md + DEV_LOG STATUS; marked Phase 7.5 feature-complete in the roadmap.
+**Next action (RESUME HERE — next session):** Remaining is mostly manual/human or deferred. Buildable: **Phase 12.5 README**. Manual: Phase 9 verification (9.1 fallback/9.4 cross-tenant/9.6 cost-guard — code exists), 10.8 perf, 11.6 prod smoke, UAT. Deferred by user: RAG (Phase 4), UI/UX (Phase 8), Email/Resend. Cleanup anytime: `next lint` → ESLint CLI (deprecated in Next 16). Deferred (need accounts/content): RAG (Phase 4), Email/Resend. Very-end: custom domain swap (then update UptimeRobot URL + Supabase Site/redirect URLs). See `docs/proposal_vs_implemented.md` §4/§7.
 **Deferred (explicit):** **Email/Resend** — user has **no Resend account or domain yet** (gets one at the end). The manual "request appointment → email doctor" button AND the AI-sent appointment email (with last-assessment summary) are deferred to a dedicated step (needs the chat tools + summary). Build email once, reuse for the deferred custom-SMTP auth too. **Also deferred:** wiring RAG into the assistant chat (no KB content yet); **caching the vet PDF summary** — currently it calls Sonnet on EVERY download (store `vet_summary` on the assessment + a "Regenerate" action so reprints are free; see CLAUDE.md deferred bullet).
 
 ---
@@ -955,3 +956,30 @@ Open risks / things to check (priority order):
 - Type regen: continue using Supabase MCP `generate_typescript_types` (project `xaepzvxrqnqenspnanej`); CLI `gen types --linked` fails under Norton TLS. For tiny schema deltas, hand-edit `database.ts`.
 - Follow-up = dated section in the SAME assessment (immutable original); new assessment = a separate row. This distinction is the crux of PENDING #1.
 ---
+
+---
+## SESSION 26 — 2026-06-26 — Claude / Opus 4.8 (Phase 10.6 — route-handler integration tests)
+
+### STARTED WITH
+- Last session left off at: Phase 10.6 route-handler integration tests (the agreed RESUME action); monitoring (Phase 11) complete bar manual smoke.
+- Blockers: none.
+
+### COMPLETED THIS SESSION
+- [10.6] Route-handler integration tests — first increment. New `src/app/api/__tests__/pets-route.test.ts` (9 tests) and `search-route.test.ts` (5 tests).
+- Mock pattern established: `vi.mock("@/lib/supabase/server")` returns a per-test chainable client (auth.getUser + from().insert().select().single() / from().select().is().order() / rpc()); `vi.mock("@/lib/rate-limit")` stubs `searchRateLimiter.limit`. Handlers run against real `NextRequest`/`NextResponse` in the node env — no Redis, no live session.
+- Coverage: POST /api/pets → 401 / 400 bad-JSON / 400 validation / 400 weight-out-of-bounds / 201 / 409 dup / 500; GET /api/pets → 401 / 200. GET /api/search → 401 / 200 blank (limiter skipped) / 429 / 200 results / 500.
+- Suite 71 → 85 tests, all green. `npx tsc --noEmit` clean.
+
+### IN PROGRESS (not finished)
+- [10.6] Remaining route handlers (assessment, medications, vet-contacts, symptoms, appointments) still untested — same mock pattern applies.
+
+### FILES MODIFIED
+- New: `src/app/api/__tests__/pets-route.test.ts`, `src/app/api/__tests__/search-route.test.ts`.
+- Docs: `docs/DEV_LOG.md` STATUS (next-action line) + this entry.
+
+### NEXT SESSION MUST START WITH
+1. Either extend route tests to `/api/assessment` + `/api/pets/[id]/medications` + `/api/vet-contacts` (reuse the mock helper), or pivot to Phase 8 UI polish + manual testing pass.
+
+### DECISIONS / NOTES
+- Route tests live in `src/app/api/__tests__/` and import the handler via relative `../<route>/route`. The vitest `include` (`src/**/*.test.ts`) already picks them up; no config change needed.
+- Mocking `@/lib/rate-limit` wholesale avoids `Redis.fromEnv()` running at import (no env vars needed in CI).
