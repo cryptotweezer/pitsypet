@@ -142,6 +142,7 @@ export async function POST(req: Request) {
     { data: priorRows },
     { data: apptRows },
     { data: activeSymptomRows },
+    { data: resolvedSymptomRows },
   ] = await Promise.all([
     supabase
       .from("medications")
@@ -172,9 +173,19 @@ export async function POST(req: Request) {
       .from("active_symptoms")
       .select("name, severity, status, detected_at")
       .eq("pet_id", petId)
-      .in("status", ["active", "worsened"])
+      .in("status", ["active", "improving", "worsened"])
       .is("deleted_at", null)
       .order("detected_at", { ascending: false }),
+    // Already-resolved symptoms — fetched so we can tell the AI NOT to re-surface
+    // them as if they were current (that re-asking was creating duplicates).
+    supabase
+      .from("active_symptoms")
+      .select("name")
+      .eq("pet_id", petId)
+      .eq("status", "resolved")
+      .is("deleted_at", null)
+      .order("resolved_at", { ascending: false })
+      .limit(20),
   ]);
 
   // Owner-level vet clinics (shared across pets) — so the AI can reference the
@@ -237,9 +248,20 @@ export async function POST(req: Request) {
       ? `\n\nThe owner's vet clinics (shared across their pets):\n${userClinics.text}`
       : "";
 
+  // Symptoms already marked resolved in earlier assessments. They are NOT active
+  // and must not be carried forward or re-asked as current — only revisit one if
+  // the owner spontaneously brings it back up (then record it fresh).
+  const resolvedSymptoms = resolvedSymptomRows ?? [];
+  const resolvedSymptomsNote =
+    resolvedSymptoms.length > 0
+      ? `\n\nAlready RESOLVED in the past (these are NOT current — do NOT put them in extractedSymptoms or ask how they're doing unless the owner raises one again on their own):\n${resolvedSymptoms
+          .map((s) => `- ${s.name}`)
+          .join("\n")}`
+      : "";
+
   const systemPrompt = clinicalContext
-    ? `${EXTRACTION_SYSTEM_PROMPT}\n\nBackground on this patient (context only — still gather the CURRENT symptoms from the owner):\n${clinicalContext}${clinicsNote}${followUpNote}${trackedSymptomsNote}`
-    : `${EXTRACTION_SYSTEM_PROMPT}${clinicsNote}${followUpNote}${trackedSymptomsNote}`;
+    ? `${EXTRACTION_SYSTEM_PROMPT}\n\nBackground on this patient (context only — still gather the CURRENT symptoms from the owner):\n${clinicalContext}${clinicsNote}${followUpNote}${trackedSymptomsNote}${resolvedSymptomsNote}`
+    : `${EXTRACTION_SYSTEM_PROMPT}${clinicsNote}${followUpNote}${trackedSymptomsNote}${resolvedSymptomsNote}`;
 
   let symptoms: ExtractedSymptom[] = [];
   let complete = false;

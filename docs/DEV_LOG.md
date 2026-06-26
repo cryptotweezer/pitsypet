@@ -56,6 +56,7 @@
 **Session 22:** History search wired — `GET /api/search` + `/history` page + navbar link, behind `searchRateLimiter` (functional click-test → manual pass).
 **Sessions 23–25:** **Monitoring complete (Phase 11).** Sentry (11.1) + PostHog with 3 named events `assessment_started/completed`, `risk_level_shown` (11.2) + `/api/health` with **UptimeRobot 5-min monitor "Up"** (11.3) + **Supabase Auth URLs set for prod** (11.4, Site URL `https://pitsypet.vercel.app` + redirect allowlist prod/localhost). All env vars in Vercel. Only 11.6 (manual prod smoke) left.
 **Session 26 (this session):** **Route-handler integration tests (Phase 10.6) ✅ — full CRUD coverage.** Shared mock helper `src/app/api/__tests__/_helpers.ts` (`makeClient` w/ chainable thenable query-builder + `jsonRequest`) drives handlers against `NextRequest`/`NextResponse` in the node env with a mocked cookie-scoped Supabase client. Test files: `pets`, `search`, `medications`, `appointments`, `vet-contacts` (clinic + doctors), `symptoms` (incl. `reconcile`, with `reconcileActiveSymptoms` mocked). Each route covers 401 unauth / 400 bad-JSON / 400 validation / 404 not-found / 2xx success / 409 dup / 500 / 207 partial as applicable. Suite **71 → 136** green; `npx tsc --noEmit` + `next lint` clean. **Also this session:** deleted `docs/TESTING_PROTOCOL.md` (it was a manual-tester guide, not code); scrubbed its references from CLAUDE.md + DEV_LOG STATUS; marked Phase 7.5 feature-complete in the roadmap.
+**Session 27 (this session) — user-test bug-fix batch + vet calibration protocol ✅.** New `docs/vet_protocol.md` (Spanish-language vet calibration interview — Claude tunes the triage AI module by module: classifier rubric, safety override, extraction prompt, fallback, first-aid, emergency contacts, regression set; code stays English). Fixes from the user's testing pass: (1) **active-symptoms duplicates** — `reconcileActiveSymptoms` now matches detected symptoms against ALL tracked rows (incl. resolved), reactivating/keeping the same row instead of inserting a duplicate; the chat route also feeds the AI a "already RESOLVED — don't re-ask" list and carries `improving` forward. (2) **stall emergency fallback false-positive** — `chat-interface.tsx` suppresses the static emergency block while `analyzing`/`finishing` (legit working states) and raises STALL_MS 10s→18s, so it no longer flashes during the slow classify step. (3) **assistant chat looked frozen** — prompt now requires a visible text reply on every turn (never tool-only). (4) **Medications form** — "Prescribed by" is now two independent comboboxes (clinic + doctor, each list-or-free-text), composed to `prescribed_by` as `Doctor — Clinic` on save (split back on edit); **start date required**; finished meds show a "Finished" badge; **mark-finished fix** — `isCurrent` honours the explicit `active=false` flag so a med ended *today* leaves the current list. (5) **Dashboard pet cards** — equal-height flex cards with footer pinned (`mt-auto`), Conditions row always shown ("None recorded" placeholder), and an **Edit** link straight from the card. (6) **Assistant medication/appointment tools** — `propose_add_medication` now takes `prescribed_clinic`+`prescribed_doctor` (was losing the clinic); `propose_add_appointment` now takes `doctorName`→`doctor_name`; prompt field-lists updated. `tsc`/lint clean; **136 tests** green.
 **Next action (RESUME HERE — next session):** Remaining is mostly manual/human or deferred. Buildable: **Phase 12.5 README**. Manual: Phase 9 verification (9.1 fallback/9.4 cross-tenant/9.6 cost-guard — code exists), 10.8 perf, 11.6 prod smoke, UAT. Deferred by user: RAG (Phase 4), UI/UX (Phase 8), Email/Resend. Cleanup anytime: `next lint` → ESLint CLI (deprecated in Next 16). Deferred (need accounts/content): RAG (Phase 4), Email/Resend. Very-end: custom domain swap (then update UptimeRobot URL + Supabase Site/redirect URLs). See `docs/proposal_vs_implemented.md` §4/§7.
 **Deferred (explicit):** **Email/Resend** — user has **no Resend account or domain yet** (gets one at the end). The manual "request appointment → email doctor" button AND the AI-sent appointment email (with last-assessment summary) are deferred to a dedicated step (needs the chat tools + summary). Build email once, reuse for the deferred custom-SMTP auth too. **Also deferred:** wiring RAG into the assistant chat (no KB content yet); **caching the vet PDF summary** — currently it calls Sonnet on EVERY download (store `vet_summary` on the assessment + a "Regenerate" action so reprints are free; see CLAUDE.md deferred bullet).
 
@@ -983,3 +984,29 @@ Open risks / things to check (priority order):
 ### DECISIONS / NOTES
 - Route tests live in `src/app/api/__tests__/` and import the handler via relative `../<route>/route`. The vitest `include` (`src/**/*.test.ts`) already picks them up; no config change needed.
 - Mocking `@/lib/rate-limit` wholesale avoids `Redis.fromEnv()` running at import (no env vars needed in CI).
+
+---
+## SESSION 27 — 2026-06-26 — Claude / Opus 4.8 (user-test bug-fix batch + vet calibration protocol)
+
+### STARTED WITH
+- Phase 10.6 done (136 tests). User ran a manual testing pass and reported bugs/UX asks.
+
+### COMPLETED THIS SESSION
+- New `docs/vet_protocol.md` — Spanish vet calibration interview; Claude tunes the triage AI module-by-module (rubric/safety/extraction/fallback/first-aid/emergency/regression). Code stays English.
+- Active-symptoms: reconcile matches against ALL tracked rows (incl. resolved) → no more duplicate when a resolved symptom is re-detected; chat route feeds a "already resolved, don't re-ask" list + carries `improving` forward.
+- Assessment stall fallback: suppressed during analyzing/finishing + STALL_MS 10s→18s (no more emergency flash before results land).
+- Assistant chat: prompt now requires a visible text reply every turn (fixes the "frozen, tool-only" turn).
+- Medications form: "Prescribed by" = two comboboxes (clinic + doctor, list-or-free), composed to `Doctor — Clinic`; start date required; "Finished" badge; mark-finished honours `active=false` so a med ended today leaves the current list.
+- Dashboard pet cards: equal-height flex + footer pinned; Conditions always shown (placeholder when none); Edit link from the card.
+- Assistant tools: `propose_add_medication` takes prescribed_clinic + prescribed_doctor; `propose_add_appointment` takes doctorName → doctor_name; prompt field-lists updated.
+
+### FILES MODIFIED
+- New: `docs/vet_protocol.md`.
+- `src/lib/active-symptoms.ts`, `src/app/api/assessment/chat/route.ts`, `src/components/assessment/chat-interface.tsx`, `src/app/api/assistant/route.ts`, `src/components/pets/medications-section.tsx`, `src/components/pets/pet-card.tsx`, `src/app/(app)/pets/[id]/[name]/page.tsx`.
+
+### NEXT SESSION MUST START WITH
+1. Buildable remaining: Phase 12.5 README. Else manual passes (Phase 9 verify / 10.8 perf / 11.6 prod smoke / UAT). Deferred: RAG (Phase 4), UI/UX (Phase 8), Email/Resend.
+
+### DECISIONS / NOTES
+- Medication clinic+doctor stored in the single `prescribed_by` column as "Doctor — Clinic" (no migration); split back on edit via the " — " separator (single token → clinic if it matches a saved clinic, else doctor).
+- `vet_protocol.md` is a SEPARATE live session: run it with a real vet; Claude applies tuning per module + shows a plain-language summary. Safety invariants never weaken.

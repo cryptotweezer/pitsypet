@@ -21,8 +21,10 @@ import {
 } from "@/lib/analytics";
 
 // Reliability (proposal NFR-3): if a turn takes longer than this, surface the
-// static emergency contacts so the owner is never stuck waiting on the AI.
-const STALL_MS = 10_000;
+// static emergency contacts so the owner is never stuck waiting on the AI. Set
+// generously so normal latency (cold start, the RAG+classify finalize step)
+// doesn't trip it — the analyzing/finishing phases are excluded below anyway.
+const STALL_MS = 18_000;
 
 type RiskResult = RiskClassification & { fallbackUsed?: boolean };
 
@@ -129,8 +131,13 @@ export function ChatInterface({
     const t = setTimeout(() => setStalled(true), STALL_MS);
     return () => clearTimeout(t);
   }, [isLoading]);
-  // Surface emergency contacts on an outright error, or a stall before results.
-  const showEmergency = (error != null || stalled) && !done;
+  // Surface emergency contacts on an outright error, or a genuine stall before
+  // results. NOT while we're actively producing results — `analyzing` (RAG +
+  // classify running) and `finishing` (results streaming in) are normal working
+  // states, not a stall, so showing the emergency block there is a false alarm
+  // that flashes and then vanishes once the assessment lands.
+  const showEmergency =
+    (error != null || stalled) && !done && !analyzing && !finishing;
 
   const bottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {

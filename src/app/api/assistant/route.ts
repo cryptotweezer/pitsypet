@@ -83,6 +83,8 @@ const SYSTEM_PROMPT = `You are PitsyPet's assistant — a friendly, careful help
 
 You can SEE each pet's full record below (conditions, active symptoms, medications, vet clinics + doctors, appointments, recent assessments). Use it to answer questions accurately and concretely.
 
+ALWAYS reply with visible text — every single turn, write a short message to the owner in plain text, even when you also call a propose_* tool (e.g. "Sure — here's the medication to confirm:"). NEVER respond with only a tool call and no text: a tool-only reply leaves the chat looking frozen with nothing on screen.
+
 WRITING TO THE RECORD — read carefully:
 - You can NOT write to the database yourself. When the owner wants to add, change, or cancel something — a new pet, a medication, appointment (add OR cancel), vet clinic, doctor, or a symptom update — you MUST call the matching propose_* tool. Calling the tool is what shows the owner the Confirm button.
 - If the owner has no pets yet (or wants to add another), help them create one: gather name, species (Dog or Cat), breed, age, and weight, then call propose_create_pet. Weight is in kilograms — convert from pounds if needed.
@@ -90,8 +92,8 @@ WRITING TO THE RECORD — read carefully:
 - NEVER tell the owner you've "prepared"/"registered"/"saved" anything unless you actually called the propose_* tool in that very message. If you didn't call the tool, you have done nothing yet. (Saying "Confirma abajo" without a tool call is a bug — there will be no button.)
 - COLLECT EVERY FIELD of the thing you're recording before calling the tool. Ask for any field still missing, one short question at a time. Only leave a field blank if the owner says they don't have it or asks to skip it. The fields are:
   • New pet: name, species (Dog or Cat), breed, age (years, optional months), weight (kg), any known ongoing conditions.
-  • Medication: name, dose amount, dose unit, quantity, frequency, prescribed by, start date, end date (or mark ongoing), notes.
-  • Appointment: title, date & time, clinic, reason, your notes.
+  • Medication: name, dose amount, dose unit, quantity, frequency, prescribing CLINIC, prescribing DOCTOR, start date (REQUIRED — always ask for it if not given), end date (or mark ongoing), notes. The clinic and the doctor are SEPARATE fields: pass the clinic to prescribed_clinic and the doctor to prescribed_doctor (either may be blank). e.g. "prescribed by Mavi at Pet Lovers" → prescribed_doctor "Mavi", prescribed_clinic "Pet Lovers".
+  • Appointment: title, date & time, clinic, doctor, reason, your notes. The doctor (doctorName) is separate from the clinic — if a clinic is chosen, the doctor should normally be one of that clinic's doctors (see DOCTORS below), but a free name is fine.
   • Vet clinic: clinic name, phone, email, address, opening hours, notes. When adding a clinic you can also add its doctors in the SAME proposal — pass them in the doctors list; don't make a second card for them.
   • Doctor: clinic, name, specialty, phone, email, notes.
 - A medication's DOSE and its QUANTITY are two different things — never mix them up:
@@ -300,23 +302,42 @@ export async function POST(req: Request) {
                   "How much is given each time: count of the physical form, e.g. '1 tablet', '2 drops', '30 capsules'",
                 ),
               frequency: z.string().optional(),
-              prescribed_by: z.string().optional(),
+              prescribed_clinic: z
+                .string()
+                .optional()
+                .describe("The prescribing clinic's name, e.g. 'Pet Lovers'"),
+              prescribed_doctor: z
+                .string()
+                .optional()
+                .describe("The prescribing doctor's name, e.g. 'Dr Mavi'"),
               started_at: z.string().optional(),
               ended_at: z.string().optional(),
               notes: z.string().optional(),
             }),
-            execute: async ({ petName, ...m }) => {
+            execute: async ({
+              petName,
+              prescribed_clinic,
+              prescribed_doctor,
+              ...m
+            }) => {
               const d = needPet(petName);
               if (typeof d === "string") return d;
               const dose = [m.dosage, m.dosage_unit].filter(Boolean).join(" ");
               const detail = [dose, m.frequency].filter(Boolean).join(" · ");
+              // Store as "Doctor — Clinic" (either part optional) — the same
+              // format the medication form uses, so it round-trips on edit.
+              const prescribed_by = [prescribed_doctor, prescribed_clinic]
+                .map((s) => s?.trim())
+                .filter(Boolean)
+                .join(" — ");
+              const by = prescribed_by ? `, prescribed by ${prescribed_by}` : "";
               return emit(
                 "add_medication",
                 d,
-                `Add medication "${m.name}"${detail ? ` (${detail})` : ""} for ${d.petName}`,
+                `Add medication "${m.name}"${detail ? ` (${detail})` : ""}${by} for ${d.petName}`,
                 {
                   endpoint: `/api/pets/${d.petId}/medications`,
-                  payload: { ...m, active: true },
+                  payload: { ...m, prescribed_by, active: true },
                 },
               );
             },
@@ -331,6 +352,12 @@ export async function POST(req: Request) {
               reason: z.string().optional(),
               notes: z.string().optional(),
               clinicName: z.string().optional(),
+              doctorName: z
+                .string()
+                .optional()
+                .describe(
+                  "The doctor for this visit. If a clinic is chosen, normally one of that clinic's doctors; a free name is fine.",
+                ),
               confirmedOutsideHours: z
                 .boolean()
                 .optional()
@@ -341,6 +368,7 @@ export async function POST(req: Request) {
             execute: async ({
               petName,
               clinicName,
+              doctorName,
               confirmedOutsideHours,
               ...a
             }) => {
@@ -371,13 +399,20 @@ export async function POST(req: Request) {
               const whenStr = Number.isNaN(when.getTime())
                 ? a.scheduled_at
                 : when.toLocaleString();
+              const withWhom = [clinic?.name, doctorName?.trim()]
+                .filter(Boolean)
+                .join(" · ");
               return emit(
                 "add_appointment",
                 d,
-                `Book "${a.title}" for ${d.petName} on ${whenStr}${clinic ? ` at ${clinic.name}` : ""}`,
+                `Book "${a.title}" for ${d.petName} on ${whenStr}${withWhom ? ` at ${withWhom}` : ""}`,
                 {
                   endpoint: `/api/pets/${d.petId}/appointments`,
-                  payload: { ...a, vet_contact_id: clinic?.id },
+                  payload: {
+                    ...a,
+                    vet_contact_id: clinic?.id,
+                    doctor_name: doctorName?.trim() || undefined,
+                  },
                 },
               );
             },

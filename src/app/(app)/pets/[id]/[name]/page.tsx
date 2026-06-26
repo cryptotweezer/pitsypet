@@ -234,6 +234,7 @@ export default async function PetPage(
           petId={pet.pet_id}
           medications={medications}
           doctorOptions={doctorOptions}
+          clinics={clinicOptions}
         />
       </div>
 

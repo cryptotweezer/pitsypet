@@ -82,11 +82,15 @@ export async function reconcileActiveSymptoms(
   detected: ReconcileSymptom[],
   source: "assessment" | "followup" | "chat",
 ): Promise<void> {
+  // Load ALL non-deleted tracked symptoms, INCLUDING resolved ones. Matching a
+  // re-detected symptom against a resolved row (instead of only against active
+  // rows) is what prevents duplicates: if a previously-resolved symptom comes up
+  // again, we update that same row rather than inserting a second copy with the
+  // same name.
   const { data: tracked } = await supabase
     .from("active_symptoms")
     .select("symptom_id, name, severity, status")
     .eq("pet_id", petId)
-    .in("status", ["active", "improving", "worsened"])
     .is("deleted_at", null);
 
   const trackedList = (tracked ?? []).map((t) => ({

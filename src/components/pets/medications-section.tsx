@@ -83,14 +83,24 @@ function formatDosage(m: Pick<Medication, "dosage" | "dosage_unit">): string {
   return [m.dosage, m.dosage_unit].filter(Boolean).join(" ");
 }
 
+export type ClinicOption = {
+  vet_contact_id: string;
+  clinic_name: string | null;
+  doctors: string[];
+};
+
 export function MedicationsSection({
   petId,
   medications,
   doctorOptions = [],
+  clinics = [],
 }: {
   petId: string;
   medications: Medication[];
   doctorOptions?: string[];
+  // Owner's vet clinics (with their doctors) — drive the "Prescribed by"
+  // clinic→doctor pickers. Optional: when empty, the free-text field is used.
+  clinics?: ClinicOption[];
 }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
@@ -105,14 +115,47 @@ export function MedicationsSection({
   // Finished medications are history — collapsed by default.
   const [showFinished, setShowFinished] = useState(false);
   const [finishingId, setFinishingId] = useState<string | null>(null);
+  // "Prescribed by" = clinic, plus a Doctor — two independent combobox fields.
+  // Each can be picked from the saved list OR typed freely (e.g. a clinic not on
+  // file). They are composed into the stored `prescribed_by` only on save; no
+  // live "composed" preview is shown. Stored format: "Doctor — Clinic".
+  const [pbClinic, setPbClinic] = useState("");
+  const [pbDoctor, setPbDoctor] = useState("");
+  // Doctor suggestions follow the chosen clinic when it matches a saved one;
+  // otherwise fall back to every known doctor so free typing still gets hints.
+  const matchedClinic = clinics.find(
+    (c) => (c.clinic_name ?? "").toLowerCase() === pbClinic.trim().toLowerCase(),
+  );
+  const pbDoctorSuggestions =
+    matchedClinic && matchedClinic.doctors.length > 0
+      ? matchedClinic.doctors
+      : doctorOptions;
 
   function set<K extends keyof typeof EMPTY>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  // Split a stored "Doctor — Clinic" value back into the two fields. A single
+  // token (no separator) is treated as a clinic if it matches a saved clinic
+  // name, else as a doctor — so edits repopulate the right boxes.
+  function splitPrescriber(value: string | null): { doctor: string; clinic: string } {
+    const v = (value ?? "").trim();
+    if (!v) return { doctor: "", clinic: "" };
+    const parts = v.split(" — ");
+    if (parts.length >= 2) {
+      return { doctor: parts[0].trim(), clinic: parts.slice(1).join(" — ").trim() };
+    }
+    const isClinic = clinics.some(
+      (c) => (c.clinic_name ?? "").toLowerCase() === v.toLowerCase(),
+    );
+    return isClinic ? { doctor: "", clinic: v } : { doctor: v, clinic: "" };
+  }
+
   function resetForm() {
     setForm(EMPTY);
     setIndefinite(true);
+    setPbClinic("");
+    setPbDoctor("");
   }
 
   function openAdd() {
@@ -125,6 +168,9 @@ export function MedicationsSection({
     setAdding(false);
     setForm(toForm(m));
     setIndefinite(!m.ended_at);
+    const { doctor, clinic } = splitPrescriber(m.prescribed_by);
+    setPbDoctor(doctor);
+    setPbClinic(clinic);
     setEditingId(m.medication_id);
   }
 
@@ -137,6 +183,11 @@ export function MedicationsSection({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (form.name.trim().length === 0) return;
+    // Start date is required — a medication record needs to say when it began.
+    if (form.started_at.trim().length === 0) {
+      toast.error("Please choose a start date.");
+      return;
+    }
     if (
       !indefinite &&
       form.started_at &&
@@ -147,10 +198,15 @@ export function MedicationsSection({
       return;
     }
     setSaving(true);
+    // Compose "Doctor — Clinic" (either part optional) for storage.
+    const prescribed_by = [pbDoctor.trim(), pbClinic.trim()]
+      .filter(Boolean)
+      .join(" — ");
     // Indefinite course → no end date and stays active. A fixed course stays
     // active until its end date passes, so a future end date is still active.
     const payload = {
       ...form,
+      prescribed_by,
       ended_at: indefinite ? "" : form.ended_at,
       active: indefinite ? true : isMedicationActive(form.ended_at || null),
     };
@@ -267,29 +323,49 @@ export function MedicationsSection({
           />
         </div>
       </div>
-      <div className="grid gap-1.5">
-        <Label htmlFor="med-by">Prescribed by</Label>
-        <Input
-          id="med-by"
-          list="med-doctor-options"
-          value={form.prescribed_by}
-          onChange={(e) => set("prescribed_by", e.target.value)}
-          placeholder="Pick a saved doctor or type a name"
-        />
-        {doctorOptions.length > 0 && (
-          <datalist id="med-doctor-options">
-            {doctorOptions.map((name) => (
-              <option key={name} value={name} />
-            ))}
-          </datalist>
-        )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-1.5">
+          <Label htmlFor="med-clinic">Prescribed by (clinic)</Label>
+          <Input
+            id="med-clinic"
+            list="med-clinic-options"
+            value={pbClinic}
+            onChange={(e) => setPbClinic(e.target.value)}
+            placeholder="Pick a clinic or type one"
+          />
+          {clinics.length > 0 && (
+            <datalist id="med-clinic-options">
+              {clinics.map((c) => (
+                <option key={c.vet_contact_id} value={c.clinic_name ?? ""} />
+              ))}
+            </datalist>
+          )}
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="med-doctor">Doctor</Label>
+          <Input
+            id="med-doctor"
+            list="med-doctor-options"
+            value={pbDoctor}
+            onChange={(e) => setPbDoctor(e.target.value)}
+            placeholder="Pick a doctor or type one"
+          />
+          {pbDoctorSuggestions.length > 0 && (
+            <datalist id="med-doctor-options">
+              {pbDoctorSuggestions.map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
+          )}
+        </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
-          <Label htmlFor="med-started">Start date</Label>
+          <Label htmlFor="med-started">Start date *</Label>
           <Input
             id="med-started"
             type="date"
+            required
             value={form.started_at}
             onChange={(e) => set("started_at", e.target.value)}
           />
@@ -334,10 +410,16 @@ export function MedicationsSection({
     </form>
   );
 
-  // Current vs finished is derived from the end date, not the stored flag (which
-  // can go stale when a future end date passes). See isMedicationActive.
-  const active = medications.filter((m) => isMedicationActive(m.ended_at));
-  const finished = medications.filter((m) => !isMedicationActive(m.ended_at));
+  // Current vs finished. A med is current only if its end date hasn't passed
+  // (catches a future end date silently lapsing) AND it wasn't explicitly
+  // finished. "Mark as finished" sets end date = today and active = false; since
+  // a med ending *today* still counts as active by date, we must also honour the
+  // explicit active=false flag, or a just-finished med would stay in the current
+  // list with the button still showing.
+  const isCurrent = (m: Medication) =>
+    isMedicationActive(m.ended_at) && m.active !== false;
+  const active = medications.filter(isCurrent);
+  const finished = medications.filter((m) => !isCurrent(m));
 
   const renderMed = (m: Medication, isFinished: boolean) =>
     editingId === m.medication_id ? (
@@ -389,7 +471,7 @@ export function MedicationsSection({
           {m.notes && (
             <span className="text-xs text-muted-foreground">{m.notes}</span>
           )}
-          {!isFinished && (
+          {!isFinished ? (
             <button
               type="button"
               onClick={() => markFinished(m)}
@@ -401,6 +483,11 @@ export function MedicationsSection({
                 ? "Saving…"
                 : "Mark as finished"}
             </button>
+          ) : (
+            <span className="flex w-fit items-center gap-1 text-xs font-medium text-muted-foreground">
+              <CheckCircle2 className="size-3.5" aria-hidden />
+              Finished
+            </span>
           )}
         </div>
         <div className="flex shrink-0 gap-0.5">

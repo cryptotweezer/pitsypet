@@ -68,7 +68,9 @@ export function PetCard({ pet }: { pet: PetCardData }) {
   }
 
   return (
-    <Card>
+    // h-full + flex column so every card in a grid row is the SAME height and
+    // the footer pins to the bottom regardless of how many conditions show.
+    <Card className="flex h-full flex-col">
       <CardHeader>
         <div className="flex items-center gap-2">
           <span className="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -90,23 +92,31 @@ export function PetCard({ pet }: { pet: PetCardData }) {
         </div>
       </CardHeader>
 
-      <CardContent className="grid gap-2">
+      {/* flex-1 makes the content grow so the footer sits at the bottom; the
+          conditions row always renders (with a placeholder when empty) so cards
+          with and without conditions line up the same. */}
+      <CardContent className="grid flex-1 content-start gap-2">
         <div className="flex gap-4 text-muted-foreground">
           <span>Age: {ageLabel(pet.age_years, pet.age_months)}</span>
           <span>Weight: {pet.weight_kg} kg</span>
         </div>
-        {conditions.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {conditions.map((c, i) => (
-              <Badge key={`${c}-${i}`} variant="secondary">
-                {c}
-              </Badge>
-            ))}
-          </div>
-        )}
+        <div className="grid gap-1.5">
+          <span className="text-xs text-muted-foreground">Conditions</span>
+          {conditions.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {conditions.map((c, i) => (
+                <Badge key={`${c}-${i}`} variant="secondary">
+                  {c}
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <span className="text-sm text-muted-foreground">None recorded</span>
+          )}
+        </div>
       </CardContent>
 
-      <CardFooter className="flex-wrap gap-2">
+      <CardFooter className="mt-auto flex-wrap gap-2">
         <Link
           href={petHref(pet.pet_id, pet.pet_name)}
           className={cn(buttonVariants({ size: "sm" }))}
@@ -118,6 +128,12 @@ export function PetCard({ pet }: { pet: PetCardData }) {
           className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
         >
           New assessment
+        </Link>
+        <Link
+          href={`/pets/${pet.pet_id}/edit`}
+          className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+        >
+          Edit
         </Link>
         <Button
           variant="ghost"
