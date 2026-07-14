@@ -126,3 +126,172 @@
     @apply font-sans;
   }
 }
+
+/* ============================================================================
+   LANDING PAGE — PLACEHOLDER BRAND PALETTE  (⚠️ pending real branding)
+   These colours are TEMPORARY, ported from the Stitch mockup. When branding is
+   decided, change ONLY the hex values below and the whole landing re-skins.
+   New token names (brand*, surface*, on-surface*, outline*, error*) so they do
+   NOT collide with the app's shadcn tokens (primary/secondary/background/…).
+   Do not use these tokens inside the authenticated app UI.
+   ========================================================================= */
+@theme {
+  /* colours */
+  --color-brand: #450076;
+  --color-brand-container: #61189b;
+  --color-brand-secondary: #6e5385;
+  --color-surface: #fff7fd;
+  --color-surface-bright: #fff7fd;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #faf1fb;
+  --color-surface-container: #f5ebf5;
+  --color-surface-container-high: #efe5ef;
+  --color-surface-container-highest: #e9dfea;
+  --color-on-surface: #1e1a21;
+  --color-on-surface-variant: #4c4452;
+  --color-outline: #7e7383;
+  --color-outline-variant: #cfc2d4;
+  --color-secondary-container: #e6c5fe;
+  --color-secondary-fixed: #f1daff;
+  --color-secondary-fixed-dim: #dabaf3;
+  --color-on-secondary-fixed-variant: #553c6b;
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+
+  /* NOTE: no named --spacing-* tokens here. In Tailwind v4 the size names
+     (xs/sm/md/lg/xl/2xl/3xl) are SHARED with the width/max-width scale, so
+     defining --spacing-xl would hijack max-w-xl → 32px and break text wrapping.
+     The landing uses standard numeric spacing (gap-8, py-32, px-4, …) instead. */
+
+  /* radius */
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2.5rem;
+
+  /* display font (Geist, already self-hosted) */
+  --font-display: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
+  /* type scale */
+  --text-display-lg: 48px;
+  --text-display-lg--line-height: 56px;
+  --text-display-lg--letter-spacing: -0.03em;
+  --text-display-lg--font-weight: 800;
+  --text-display-lg-mobile: 36px;
+  --text-display-lg-mobile--line-height: 44px;
+  --text-display-lg-mobile--letter-spacing: -0.03em;
+  --text-display-lg-mobile--font-weight: 800;
+  --text-headline-md: 24px;
+  --text-headline-md--line-height: 32px;
+  --text-headline-md--letter-spacing: -0.01em;
+  --text-headline-md--font-weight: 600;
+  --text-label-caps: 12px;
+  --text-label-caps--line-height: 16px;
+  --text-label-caps--letter-spacing: 0.08em;
+  --text-label-caps--font-weight: 700;
+}
+
+/* Landing component utilities (CSP-safe: real CSS classes, not inline styles) */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+.organic-blob {
+  position: absolute;
+  z-index: -1;
+  filter: blur(60px);
+  opacity: 0.4;
+}
+.pricing-glow {
+  box-shadow: 0 0 40px -10px rgba(97, 24, 155, 0.3);
+}
+
+/* Leaflet emergency map: strip the default white box/border behind our custom
+   brand-purple SVG pin so only the teardrop shows. */
+.leaflet-div-icon.emergency-pin {
+  background: transparent;
+  border: 0;
+}
+
+/* Soft pastel purple/white mesh gradient — diffuse organic blobs of colour on a
+   near-white base, applied to the whole landing page (see reference). */
+.mesh-bg {
+  background-color: #fdf9ff;
+  background-image:
+    radial-gradient(at 8% 12%, rgba(198, 163, 232, 0.55) 0px, transparent 55%),
+    radial-gradient(at 92% 8%, rgba(230, 197, 254, 0.5) 0px, transparent 50%),
+    radial-gradient(at 78% 42%, rgba(160, 120, 210, 0.28) 0px, transparent 55%),
+    radial-gradient(at 15% 62%, rgba(241, 218, 255, 0.6) 0px, transparent 55%),
+    radial-gradient(at 88% 78%, rgba(198, 163, 232, 0.45) 0px, transparent 55%),
+    radial-gradient(at 40% 92%, rgba(230, 197, 254, 0.4) 0px, transparent 55%);
+  background-attachment: fixed;
+}
+
+/* Landing page: full-screen section snapping. Scoped to the landing via
+   :has(.landing-root) so the authenticated app (dashboard/assessment) keeps
+   normal free scrolling. `proximity` (not `mandatory`) snaps each section into
+   place when you settle near its edge, without trapping sections that happen to
+   be taller than the viewport on short screens. Sections carry `snap-start`.
+   The document (<html>) is the scroll container — <main> uses overflow-x-clip
+   (not -hidden) so it never becomes a nested scroller that would steal snap. */
+html:has(.landing-root) {
+  scroll-snap-type: y proximity;
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html:has(.landing-root) {
+    scroll-behavior: auto;
+  }
+}
+
+/* Scroll reveal — progressive enhancement (see scroll-reveal.tsx).
+   Elements are visible by default; only once JS adds `reveal-active` to <html>
+   do we hide-then-reveal them as they enter the viewport.
+
+   The entrance uses a CSS *animation* on the independent `translate`/`opacity`
+   properties — NOT `transform` and NOT a `transition`. That way it never
+   clobbers each element's own `transition-all`/`transform`, so hover effects
+   (Tailwind `hover:scale-105`) keep their original ~150ms feel. `backwards`
+   holds the hidden start during the stagger delay without locking the final
+   state afterwards (which would block hover). */
+.reveal-active .reveal {
+  opacity: 0;
+  translate: 0 28px;
+}
+.reveal-active .reveal-fade {
+  opacity: 0;
+}
+.reveal-active .reveal.is-visible {
+  opacity: 1;
+  translate: 0 0;
+  animation: reveal-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+.reveal-active .reveal-fade.is-visible {
+  opacity: 1;
+  animation: reveal-fade-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+@keyframes reveal-rise {
+  from {
+    opacity: 0;
+    translate: 0 28px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes reveal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-active .reveal,
+  .reveal-active .reveal-fade {
+    opacity: 1;
+    translate: 0 0;
+    animation: none;
+  }
+}

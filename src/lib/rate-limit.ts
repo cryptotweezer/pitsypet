@@ -25,3 +25,12 @@ export const exportRateLimiter = new Ratelimit({
   limiter: Ratelimit.slidingWindow(10, "1 m"),
   prefix: "pitsypet:export",
 });
+
+// Public landing contact form (POST /api/contact). Keyed by client IP, not a
+// user id — the page is unauthenticated. Tight window to blunt spam bursts; a
+// honeypot field in the route catches the rest.
+export const contactRateLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(5, "10 m"),
+  prefix: "pitsypet:contact",
+});

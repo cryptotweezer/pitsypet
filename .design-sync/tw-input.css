@@ -1,0 +1,6 @@
+/* Tailwind compile entry for design-sync previews. Pulls the project's real
+   theme + tokens from globals.css and scans the UI components + authored
+   previews so every utility class they use is emitted as real CSS. */
+@import "../src/app/globals.css";
+@source "../src/components/ui";
+@source "../.design-sync/previews";

@@ -1,0 +1,30 @@
+{
+  "projectId": "0b866cb2-1629-4288-af56-3402dd0b3bcd",
+  "shape": "package",
+  "pkg": "pitsypet",
+  "globalName": "PitsyPetUI",
+  "srcDir": "src/components/ui",
+  "tsconfig": "tsconfig.json",
+  "cssEntry": ".design-sync/compiled.css",
+  "readmeHeader": ".design-sync/conventions.md",
+  "extraEntries": ["./.design-sync/rhf-shim.ts"],
+  "componentSrcMap": {
+    "Avatar": "src/components/ui/avatar.tsx",
+    "Badge": "src/components/ui/badge.tsx",
+    "Button": "src/components/ui/button.tsx",
+    "Card": "src/components/ui/card.tsx",
+    "Dialog": "src/components/ui/dialog.tsx",
+    "Form": "src/components/ui/form.tsx",
+    "Input": "src/components/ui/input.tsx",
+    "Label": "src/components/ui/label.tsx",
+    "Select": "src/components/ui/select.tsx",
+    "Separator": "src/components/ui/separator.tsx",
+    "Sheet": "src/components/ui/sheet.tsx",
+    "Skeleton": "src/components/ui/skeleton.tsx",
+    "Toaster": "src/components/ui/sonner.tsx"
+  },
+  "overrides": {
+    "Dialog": { "cardMode": "single", "viewport": "460x300" },
+    "Sheet": { "cardMode": "single", "viewport": "520x360" }
+  }
+}
