@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const NAV = [
@@ -12,8 +13,11 @@ const NAV = [
 ];
 
 export function LandingHeader() {
+  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [active, setActive] = useState<string>("");
+  const isLogin = pathname === "/login";
+  const isRegister = pathname === "/register";
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -21,7 +25,6 @@ export function LandingHeader() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 px-4 pt-4 sm:pt-5">
@@ -51,10 +54,11 @@ export function LandingHeader() {
         <div className="hidden items-center space-x-8 md:flex">
           {NAV.map((n) => {
             const isActive = active === n.href;
+            const href = pathname === "/" ? n.href : `/${n.href}`;
             return (
-              <a
+              <Link
                 key={n.href}
-                href={n.href}
+                href={href}
                 onClick={() => setActive(n.href)}
                 className={`relative text-sm font-medium tracking-tight transition-colors hover:text-brand ${
                   isActive ? "text-brand" : "text-on-surface-variant"
@@ -66,24 +70,32 @@ export function LandingHeader() {
                     isActive ? "w-full" : "w-0"
                   }`}
                 />
-              </a>
+              </Link>
             );
           })}
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-4">
-          <Link
-            href="/login"
-            className="hidden px-4 py-2 text-sm font-semibold text-on-surface-variant transition-all hover:text-brand sm:block"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/register"
-            className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-brand/20 active:scale-95"
-          >
-            Get started
-          </Link>
+          {!isLogin && (
+            <Link
+              href="/login"
+              className={
+                isRegister
+                  ? "rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-brand/20 active:scale-95"
+                  : "hidden px-4 py-2 text-sm font-semibold text-on-surface-variant transition-all hover:text-brand sm:block"
+              }
+            >
+              Log in
+            </Link>
+          )}
+          {!isRegister && (
+            <Link
+              href="/register"
+              className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-brand/20 active:scale-95"
+            >
+              Get started
+            </Link>
+          )}
         </div>
       </nav>
     </header>

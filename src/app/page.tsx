@@ -149,7 +149,7 @@ export default function Home() {
                   1. Describe symptoms
                 </h3>
                 <p className="leading-relaxed font-light text-on-surface-variant">
-                  Tell us what&apos;s happening in plain English — from
+                  Tell us what&apos;s happening in plain English, from
                   &ldquo;limping&rdquo; to subtle behavioural changes.
                 </p>
               </div>
@@ -216,7 +216,7 @@ export default function Home() {
                   Just describe what&apos;s worrying you in plain language. The AI
                   understands your pet&apos;s symptoms as you chat and tells you
                   whether it&apos;s safe to watch at home, worth booking a vet, or
-                  a real emergency — always erring toward caution when it counts.
+                  a real emergency, always erring toward caution when it counts.
                 </p>
               </div>
               <div className="reveal-fade relative flex flex-col justify-center gap-4 rounded-[2.5rem] border border-outline-variant/20 bg-surface-container-high p-8 transition-all hover:scale-105 hover:border-brand/20 md:col-span-4 md:row-span-2" data-reveal-delay="100">
@@ -293,13 +293,13 @@ export default function Home() {
                   A safety-first approach
                 </h2>
                 <p className="text-xl leading-relaxed font-light text-on-surface-variant">
-                  PitsyPet isn&apos;t a replacement for a vet — it&apos;s the
+                  PitsyPet isn&apos;t a replacement for a vet. It&apos;s the
                   bridge to one. Our triage logic is calibrated with a practising
                   veterinarian.
                 </p>
                 <ul className="space-y-4 pt-4">
                   {[
-                    "A deterministic safety override always escalates a genuine emergency — it can never lower a result.",
+                    "A deterministic safety override always escalates a genuine emergency. It can never lower a result.",
                     "A rule-based backup keeps triage working even if the AI is unavailable.",
                     "Privacy-first: your pet's clinical data is encrypted and isolated per account.",
                   ].map((item) => (
@@ -470,7 +470,7 @@ export default function Home() {
           id="contact"
           className="relative z-10 flex min-h-dvh snap-start items-center bg-white"
         >
-          <div className="mx-auto my-auto w-full max-w-5xl px-4 pt-24 pb-56">
+          <div className="mx-auto my-auto w-full max-w-5xl px-4 pt-40 pb-56">
           <div className="grid grid-cols-1 items-start gap-16 lg:grid-cols-12">
             <div className="reveal space-y-8 lg:col-span-5">
               <h2 className="font-display text-4xl leading-none tracking-tight text-brand md:text-5xl">
@@ -507,7 +507,6 @@ export default function Home() {
             </div>
             <div className="reveal lg:col-span-7" data-reveal-delay="140">
               <div className="glass-card relative overflow-hidden rounded-[3rem] border border-outline-variant/30 p-10 shadow-2xl md:p-12">
-                <div className="absolute -top-24 -right-24 h-48 w-48 rounded-full bg-brand/5" />
                 <ContactForm />
               </div>
             </div>
@@ -533,14 +532,14 @@ export default function Home() {
                 PitsyPet
               </div>
               <p className="max-w-sm text-lg leading-relaxed font-light text-on-surface-variant">
-                Helping Australian pet owners judge how urgent a symptom is —
+                Helping Australian pet owners judge how urgent a symptom is,
                 with safety-first AI triage.
               </p>
               <div className="mt-8 flex gap-4">
                 <a
                   href="#"
                   aria-label="Instagram"
-                  className="glass-card flex h-10 w-10 items-center justify-center rounded-full transition-all hover:bg-brand hover:text-white"
+                  className="glass-card flex h-10 w-10 items-center justify-center rounded-full transition-all hover:scale-110"
                 >
                   <svg
                     viewBox="0 0 24 24"
@@ -554,7 +553,7 @@ export default function Home() {
                 <a
                   href="#"
                   aria-label="Twitter"
-                  className="glass-card flex h-10 w-10 items-center justify-center rounded-full transition-all hover:bg-brand hover:text-white"
+                  className="glass-card flex h-10 w-10 items-center justify-center rounded-full transition-all hover:scale-110"
                 >
                   <svg
                     viewBox="0 0 24 24"
@@ -568,7 +567,7 @@ export default function Home() {
                 <a
                   href="#"
                   aria-label="Facebook"
-                  className="glass-card flex h-10 w-10 items-center justify-center rounded-full transition-all hover:bg-brand hover:text-white"
+                  className="glass-card flex h-10 w-10 items-center justify-center rounded-full transition-all hover:scale-110"
                 >
                   <svg
                     viewBox="0 0 24 24"

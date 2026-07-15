@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { ArrowLeft } from "lucide-react";
+import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -47,6 +48,7 @@ type RegisterValues = z.infer<typeof registerSchema>;
 export function RegisterForm() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1);
 
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
@@ -78,9 +80,7 @@ export function RegisterForm() {
       return;
     }
 
-    // Supabase suppresses the duplicate-email error to prevent account
-    // enumeration: for an already-registered, confirmed email it returns a
-    // success with an empty `identities` array instead of an error.
+    // Supabase returns an empty identities array for an existing confirmed email.
     if (data.user && data.user.identities && data.user.identities.length === 0) {
       setServerError("Email already registered. Try logging in instead.");
       return;
@@ -89,11 +89,37 @@ export function RegisterForm() {
     setSubmitted(true);
   }
 
+  // Name/email live on step 1 and are not rendered on step 2, so their errors
+  // would be invisible — send the user back to the step that owns them.
+  function onInvalid(errors: FieldErrors<RegisterValues>) {
+    if (errors.name || errors.email) setStep(1);
+  }
+
+  async function advanceToAccountSetup() {
+    const isValid = await form.trigger(["name", "email"], {
+      shouldFocus: true,
+    });
+
+    if (isValid) {
+      setStep(2);
+    }
+  }
+
+  function returnToDetails() {
+    setServerError(null);
+    setStep(1);
+  }
+
   if (submitted) {
     return (
-      <div className="rounded-lg border bg-muted/40 p-4 text-sm" role="status">
-        <p className="font-medium">Check your email to activate your account.</p>
-        <p className="mt-1 text-muted-foreground">
+      <div
+        className="flex flex-1 flex-col justify-center py-4"
+        role="status"
+      >
+        <p className="font-display text-xl font-semibold text-brand">
+          Check your email to activate your account.
+        </p>
+        <p className="mt-2 text-base leading-relaxed font-light text-on-surface-variant">
           We sent a confirmation link to your inbox. Click it to finish setting
           up your PitsyPet account.
         </p>
@@ -103,105 +129,182 @@ export function RegisterForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
+      <form
+        onSubmit={
+          step === 1
+            ? (event) => {
+                event.preventDefault();
+                void advanceToAccountSetup();
+              }
+            : form.handleSubmit(onSubmit, onInvalid)
+        }
+        className="grid gap-5"
+      >
+        <div>
+          <div
+            className="mb-2 flex items-center justify-between text-[10px] font-bold tracking-[0.2em] text-brand uppercase"
+            aria-live="polite"
+          >
+            <span>Step {step} of 2</span>
+            <span>{step === 1 ? "Your details" : "Account setup"}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2" aria-hidden="true">
+            <span className="h-1 rounded-full bg-brand" />
+            <span
+              className={`h-1 rounded-full ${
+                step === 2 ? "bg-brand" : "bg-outline-variant/40"
+              }`}
+            />
+          </div>
+        </div>
+
         {serverError && (
           <p
-            className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            className="rounded-2xl bg-error-container px-4 py-3 text-sm font-medium text-error"
             role="alert"
           >
             {serverError}
           </p>
         )}
 
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Your name" autoComplete="name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {step === 1 ? (
+          <>
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem className="gap-0">
+                  <FormLabel className="mb-3 text-[10px] font-bold tracking-[0.2em] text-brand uppercase">
+                    Full name
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Jane Doe"
+                      autoComplete="name"
+                      className="h-auto rounded-none border-0 border-b-2 border-outline-variant/20 bg-white px-0 py-3 text-lg placeholder:text-on-surface-variant/30 autofill:bg-white focus-visible:border-brand focus-visible:bg-white focus-visible:ring-0 aria-invalid:border-error aria-invalid:ring-0"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage className="mt-2 text-sm font-medium text-error" />
+                </FormItem>
+              )}
+            />
 
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input
-                  type="email"
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem className="gap-0">
+                  <FormLabel className="mb-3 text-[10px] font-bold tracking-[0.2em] text-brand uppercase">
+                    Email address
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder="jane@example.com"
+                      autoComplete="email"
+                      className="h-auto rounded-none border-0 border-b-2 border-outline-variant/20 bg-white px-0 py-3 text-lg placeholder:text-on-surface-variant/30 autofill:bg-white focus-visible:border-brand focus-visible:bg-white focus-visible:ring-0 aria-invalid:border-error aria-invalid:ring-0"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage className="mt-2 text-sm font-medium text-error" />
+                </FormItem>
+              )}
+            />
 
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input
-                  type="password"
-                  placeholder="At least 8 characters"
-                  autoComplete="new-password"
-                  {...field}
-                />
-              </FormControl>
-              <FormDescription>
-                Use upper and lower case, a number, and a special character.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            <Button
+              type="submit"
+              className="h-auto w-full rounded-2xl bg-brand py-5 text-lg font-bold text-white hover:bg-brand hover:shadow-xl hover:shadow-brand/30"
+            >
+              Continue
+            </Button>
+          </>
+        ) : (
+          <>
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem className="gap-0">
+                  <FormLabel className="mb-3 text-[10px] font-bold tracking-[0.2em] text-brand uppercase">
+                    Password
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="password"
+                      placeholder="At least 8 characters"
+                      autoComplete="new-password"
+                      autoFocus
+                      className="h-auto rounded-none border-0 border-b-2 border-outline-variant/20 bg-white px-0 py-3 text-lg placeholder:text-on-surface-variant/30 autofill:bg-white focus-visible:border-brand focus-visible:bg-white focus-visible:ring-0 aria-invalid:border-error aria-invalid:ring-0"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription className="mt-3 text-sm leading-relaxed font-light text-on-surface-variant">
+                    Use upper and lower case, a number, and a special character.
+                  </FormDescription>
+                  <FormMessage className="mt-2 text-sm font-medium text-error" />
+                </FormItem>
+              )}
+            />
 
-        <FormField
-          control={form.control}
-          name="state"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>State (optional)</FormLabel>
-              <Select
-                value={field.value ?? null}
-                onValueChange={(value) => field.onChange(value ?? undefined)}
+            <FormField
+              control={form.control}
+              name="state"
+              render={({ field }) => (
+                <FormItem className="gap-0">
+                  <FormLabel className="mb-3 text-[10px] font-bold tracking-[0.2em] text-brand uppercase">
+                    State (optional)
+                  </FormLabel>
+                  <Select
+                    value={field.value ?? null}
+                    onValueChange={(value) =>
+                      field.onChange(value ?? undefined)
+                    }
+                  >
+                    <FormControl>
+                      <SelectTrigger className="h-auto w-full rounded-none border-0 border-b-2 border-outline-variant/20 bg-white px-0 py-3 text-lg focus-visible:border-brand focus-visible:bg-white focus-visible:ring-0 data-placeholder:text-on-surface-variant/30 aria-invalid:border-error aria-invalid:ring-0">
+                        <SelectValue placeholder="Select your state" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {AU_STATES.map((state) => (
+                        <SelectItem key={state} value={state}>
+                          {state}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription className="mt-3 text-sm leading-relaxed font-light text-on-surface-variant">
+                    Helps us show local emergency vet contacts later.
+                  </FormDescription>
+                  <FormMessage className="mt-2 text-sm font-medium text-error" />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={returnToDetails}
+                className="h-auto w-14 self-stretch rounded-2xl border-brand/20 text-brand hover:bg-brand/5 hover:text-brand"
+                aria-label="Back to your details"
+                title="Back"
               >
-                <FormControl>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select your state" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {AU_STATES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormDescription>
-                Helps us show local emergency vet contacts later.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <Button type="submit" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? "Creating account…" : "Create account"}
-        </Button>
+                <ArrowLeft />
+              </Button>
+              <Button
+                type="submit"
+                disabled={form.formState.isSubmitting}
+                className="h-auto flex-1 rounded-2xl bg-brand py-5 text-lg font-bold text-white hover:bg-brand hover:shadow-xl hover:shadow-brand/30"
+              >
+                {form.formState.isSubmitting
+                  ? "Creating account..."
+                  : "Create account"}
+              </Button>
+            </div>
+          </>
+        )}
       </form>
     </Form>
   );

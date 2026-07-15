@@ -66,7 +66,7 @@ export function ContactForm() {
         </div>
         <h3 className="font-display text-2xl text-brand">Message sent!</h3>
         <p className="max-w-xs font-light text-on-surface-variant">
-          Thanks for reaching out — we&apos;ll get back to you soon.
+          Thanks for reaching out! We&apos;ll get back to you soon.
         </p>
         <button
           type="button"
@@ -112,7 +112,7 @@ export function ContactForm() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Jane Doe"
-            className="w-full border-0 border-b-2 border-outline-variant/20 bg-white/50 px-0 py-3 text-lg transition-all placeholder:text-on-surface-variant/30 focus:border-brand focus:ring-0"
+            className="w-full border-0 border-b-2 border-outline-variant/20 bg-white/50 px-0 py-3 text-lg transition-all placeholder:text-on-surface-variant/30 focus:border-brand focus:ring-0 focus:outline-none"
           />
         </div>
         <div>
@@ -131,7 +131,7 @@ export function ContactForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="jane@example.com"
-            className="w-full border-0 border-b-2 border-outline-variant/20 bg-white/50 px-0 py-3 text-lg transition-all placeholder:text-on-surface-variant/30 focus:border-brand focus:ring-0"
+            className="w-full border-0 border-b-2 border-outline-variant/20 bg-white/50 px-0 py-3 text-lg transition-all placeholder:text-on-surface-variant/30 focus:border-brand focus:ring-0 focus:outline-none"
           />
         </div>
       </div>
@@ -151,7 +151,7 @@ export function ContactForm() {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="How can we help?"
-          className="w-full border-0 border-b-2 border-outline-variant/20 bg-white/50 px-0 py-3 text-lg transition-all placeholder:text-on-surface-variant/30 focus:border-brand focus:ring-0"
+          className="w-full border-0 border-b-2 border-outline-variant/20 bg-white/50 px-0 py-3 text-lg transition-all placeholder:text-on-surface-variant/30 focus:border-brand focus:ring-0 focus:outline-none"
         />
       </div>
 

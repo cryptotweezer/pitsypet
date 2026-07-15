@@ -56,10 +56,10 @@ export function LoginForm({ initialError }: { initialError?: boolean }) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6">
         {serverError && (
           <p
-            className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            className="rounded-2xl bg-error-container px-4 py-3 text-sm font-medium text-error"
             role="alert"
           >
             {serverError}
@@ -70,17 +70,20 @@ export function LoginForm({ initialError }: { initialError?: boolean }) {
           control={form.control}
           name="email"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
+            <FormItem className="gap-0">
+              <FormLabel className="mb-3 text-[10px] font-bold tracking-[0.2em] text-brand uppercase">
+                Email address
+              </FormLabel>
               <FormControl>
                 <Input
                   type="email"
                   placeholder="you@example.com"
                   autoComplete="email"
+                  className="h-auto rounded-none border-0 border-b-2 border-outline-variant/20 bg-white px-0 py-3 text-lg placeholder:text-on-surface-variant/30 autofill:bg-white focus-visible:border-brand focus-visible:bg-white focus-visible:ring-0 aria-invalid:border-error aria-invalid:ring-0"
                   {...field}
                 />
               </FormControl>
-              <FormMessage />
+              <FormMessage className="mt-2 text-sm font-medium text-error" />
             </FormItem>
           )}
         />
@@ -89,21 +92,28 @@ export function LoginForm({ initialError }: { initialError?: boolean }) {
           control={form.control}
           name="password"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
+            <FormItem className="gap-0">
+              <FormLabel className="mb-3 text-[10px] font-bold tracking-[0.2em] text-brand uppercase">
+                Password
+              </FormLabel>
               <FormControl>
                 <Input
                   type="password"
                   autoComplete="current-password"
+                  className="h-auto rounded-none border-0 border-b-2 border-outline-variant/20 bg-white px-0 py-3 text-lg placeholder:text-on-surface-variant/30 autofill:bg-white focus-visible:border-brand focus-visible:bg-white focus-visible:ring-0 aria-invalid:border-error aria-invalid:ring-0"
                   {...field}
                 />
               </FormControl>
-              <FormMessage />
+              <FormMessage className="mt-2 text-sm font-medium text-error" />
             </FormItem>
           )}
         />
 
-        <Button type="submit" disabled={form.formState.isSubmitting}>
+        <Button
+          type="submit"
+          disabled={form.formState.isSubmitting}
+          className="h-auto w-full rounded-2xl bg-brand py-5 text-lg font-bold text-white hover:bg-brand hover:shadow-xl hover:shadow-brand/30"
+        >
           {form.formState.isSubmitting ? "Signing in…" : "Sign in"}
         </Button>
       </form>
