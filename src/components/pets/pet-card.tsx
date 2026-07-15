@@ -30,6 +30,7 @@ import { cn, petHref } from "@/lib/utils";
 export type PetCardData = {
   pet_id: string;
   pet_name: string;
+  slug: string;
   species: string;
   breed: string;
   age_years: number;
@@ -70,22 +71,23 @@ export function PetCard({ pet }: { pet: PetCardData }) {
   return (
     // h-full + flex column so every card in a grid row is the SAME height and
     // the footer pins to the bottom regardless of how many conditions show.
-    <Card className="flex h-full flex-col">
+    // Landing card language: big radius, lavender outline, gentle hover lift.
+    <Card className="flex h-full flex-col rounded-[2rem] border border-outline-variant/20 bg-white ring-0 transition-all hover:scale-[1.02] hover:border-brand/20 hover:shadow-lg">
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <span className="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <Icon className="size-4" />
+        <div className="flex items-center gap-3">
+          <span className="flex size-10 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+            <Icon className="size-5" />
           </span>
           <div className="grid">
-            <CardTitle>
+            <CardTitle className="font-display text-lg text-brand">
               <Link
-                href={petHref(pet.pet_id, pet.pet_name)}
+                href={petHref(pet.slug)}
                 className="hover:underline"
               >
                 {pet.pet_name}
               </Link>
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="font-light text-on-surface-variant">
               {pet.breed} · {pet.species}
             </CardDescription>
           </div>
@@ -118,7 +120,7 @@ export function PetCard({ pet }: { pet: PetCardData }) {
 
       <CardFooter className="mt-auto flex-wrap gap-2">
         <Link
-          href={petHref(pet.pet_id, pet.pet_name)}
+          href={petHref(pet.slug)}
           className={cn(buttonVariants({ size: "sm" }))}
         >
           Open record
@@ -130,7 +132,7 @@ export function PetCard({ pet }: { pet: PetCardData }) {
           New assessment
         </Link>
         <Link
-          href={`/pets/${pet.pet_id}/edit`}
+          href={`/pets/${pet.slug}/edit`}
           className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
         >
           Edit

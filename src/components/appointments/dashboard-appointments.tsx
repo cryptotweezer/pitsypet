@@ -4,7 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { CalendarClock, Plus, Trash2, Pencil } from "lucide-react";
+import {
+  CalendarClock,
+  History as HistoryIcon,
+  Plus,
+  Trash2,
+  Pencil,
+} from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +31,7 @@ export type DashboardAppointment = {
   appointment_id: string;
   pet_id: string;
   pet_name: string;
+  pet_slug: string;
   title: string;
   scheduled_at: string;
   reason: string | null;
@@ -59,15 +66,16 @@ function toLocalInput(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// Deterministic English format — toLocaleString varies between the server's
+// and the browser's ICU data ("Jul" vs "July"), which breaks SSR hydration.
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 function formatWhen(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const d = new Date(iso);
+  const h = d.getHours();
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  const min = String(d.getMinutes()).padStart(2, "0");
+  return `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${h12}:${min} ${h >= 12 ? "pm" : "am"}`;
 }
 
 // All of the owner's appointments across every pet, with a pet picker on the
@@ -94,6 +102,8 @@ export function DashboardAppointments({
   const [pendingDelete, setPendingDelete] =
     useState<DashboardAppointment | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // View filter — "all" or a pet_id; narrows both upcoming and past lists.
+  const [filterPetId, setFilterPetId] = useState("all");
 
   function set<K extends keyof typeof EMPTY>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -185,10 +195,14 @@ export function DashboardAppointments({
   // once the form's date is in the past.
   const formIsPast =
     form.scheduled_at !== "" && Date.parse(form.scheduled_at) < nowMs;
-  const upcoming = appointments
+  const visible =
+    filterPetId === "all"
+      ? appointments
+      : appointments.filter((a) => a.pet_id === filterPetId);
+  const upcoming = visible
     .filter((a) => Date.parse(a.scheduled_at) >= nowMs)
     .sort((a, b) => Date.parse(a.scheduled_at) - Date.parse(b.scheduled_at));
-  const past = appointments
+  const past = visible
     .filter((a) => Date.parse(a.scheduled_at) < nowMs)
     .sort((a, b) => Date.parse(b.scheduled_at) - Date.parse(a.scheduled_at));
   // Doctors of the clinic currently chosen in the form → datalist suggestions.
@@ -343,7 +357,7 @@ export function DashboardAppointments({
       >
         <div className="grid gap-0.5">
           <Link
-            href={`/pets/${a.pet_id}/${encodeURIComponent(a.pet_name)}`}
+            href={`/pets/${a.pet_slug}`}
             className="font-semibold text-primary hover:underline"
           >
             {a.pet_name}
@@ -407,62 +421,87 @@ export function DashboardAppointments({
     );
 
   return (
-    <section className="grid gap-3 rounded-xl border p-4">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
-          <CalendarClock className="size-5" aria-hidden /> Appointments
-        </h2>
-        {!adding && (
-          <Button variant="outline" size="sm" onClick={openAdd}>
-            <Plus className="size-4" aria-hidden /> Add
-          </Button>
-        )}
-      </div>
-
-      {upcoming.length === 0 && !adding && (
-        <p className="text-sm text-muted-foreground">No upcoming appointments.</p>
-      )}
-
-      {upcoming.length > 0 && (
-        <ul className="grid gap-2">{upcoming.map((a) => renderItem(a, false))}</ul>
-      )}
-
-      {adding &&
-        (pets.length > 0 ? (
-          formFields
-        ) : (
-          <div className="grid gap-2 rounded-lg border border-dashed p-4 text-center text-sm">
-            <p className="font-medium">Add a pet first</p>
-            <p className="text-muted-foreground">
-              Appointments belong to a pet, so you&apos;ll need to create one
-              before booking a visit.
-            </p>
-            <div className="flex justify-center gap-2 pt-1">
-              <Link
-                href="/pets/new"
-                className={cn(buttonVariants({ size: "sm" }))}
+    <div className="grid gap-6">
+      {/* Upcoming — nearest date first (sorted ascending above). */}
+      <section className="grid gap-3 rounded-[2rem] border border-outline-variant/20 bg-white p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 font-display text-xl tracking-tight text-brand">
+            <CalendarClock className="size-5" aria-hidden /> Appointments
+          </h2>
+          <div className="flex items-center gap-2">
+            {pets.length > 0 && (
+              <select
+                value={filterPetId}
+                onChange={(e) => setFilterPetId(e.target.value)}
+                aria-label="Filter appointments by pet"
+                className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                Add a pet
-              </Link>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={closeForm}
-              >
-                Cancel
+                <option value="all">All pets</option>
+                {pets.map((p) => (
+                  <option key={p.pet_id} value={p.pet_id}>
+                    {p.pet_name}
+                  </option>
+                ))}
+              </select>
+            )}
+            {!adding && (
+              <Button variant="outline" size="sm" onClick={openAdd}>
+                <Plus className="size-4" aria-hidden /> Add
               </Button>
-            </div>
+            )}
           </div>
-        ))}
-
-      {past.length > 0 && (
-        <div className="grid gap-2 border-t pt-3">
-          <h3 className="text-sm font-semibold text-muted-foreground">
-            Past appointments
-          </h3>
-          <ul className="grid gap-2">{past.map((a) => renderItem(a, true))}</ul>
         </div>
+
+        {upcoming.length === 0 && !adding && (
+          <p className="text-sm text-muted-foreground">
+            No upcoming appointments.
+          </p>
+        )}
+
+        {upcoming.length > 0 && (
+          <ul className="grid gap-2">
+            {upcoming.map((a) => renderItem(a, false))}
+          </ul>
+        )}
+
+        {adding &&
+          (pets.length > 0 ? (
+            formFields
+          ) : (
+            <div className="grid gap-2 rounded-lg border border-dashed p-4 text-center text-sm">
+              <p className="font-medium">Add a pet first</p>
+              <p className="text-muted-foreground">
+                Appointments belong to a pet, so you&apos;ll need to create one
+                before booking a visit.
+              </p>
+              <div className="flex justify-center gap-2 pt-1">
+                <Link
+                  href="/dashboard/pets"
+                  className={cn(buttonVariants({ size: "sm" }))}
+                >
+                  Add a pet
+                </Link>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={closeForm}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ))}
+      </section>
+
+      {/* Past — its own card, most recent visit first. */}
+      {past.length > 0 && (
+        <section className="grid gap-3 rounded-[2rem] border border-outline-variant/20 bg-white p-6">
+          <h2 className="flex items-center gap-2 font-display text-xl tracking-tight text-brand">
+            <HistoryIcon className="size-5" aria-hidden /> Past appointments
+          </h2>
+          <ul className="grid gap-2">{past.map((a) => renderItem(a, true))}</ul>
+        </section>
       )}
 
       <Dialog
@@ -488,6 +527,6 @@ export function DashboardAppointments({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </section>
+    </div>
   );
 }

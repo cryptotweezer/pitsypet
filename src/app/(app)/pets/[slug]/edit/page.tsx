@@ -7,19 +7,19 @@ export const metadata = { title: "Edit pet · PitsyPet" };
 
 export default async function EditPetPage(
   props: {
-    params: Promise<{ id: string }>;
+    params: Promise<{ slug: string }>;
   }
 ) {
   const params = await props.params;
   const supabase = await createClient();
 
-  // RLS scopes this to the owner; a non-owned or deleted id returns no row.
+  // RLS scopes this to the owner; a non-owned or deleted slug returns no row.
   const { data: pet } = await supabase
     .from("pets")
     .select(
       "pet_id, pet_name, species, breed, age_years, age_months, weight_kg, medical_conditions",
     )
-    .eq("pet_id", params.id)
+    .eq("slug", params.slug)
     .is("deleted_at", null)
     .maybeSingle();
 

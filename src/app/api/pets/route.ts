@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
+import { nextPetSlug } from "@/lib/pet-slug";
 import { petApiSchema } from "@/lib/validations/pet";
 
 // All pet access goes through the cookie-scoped server client, so RLS already
@@ -52,9 +53,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const slug = await nextPetSlug(supabase, user.id, parsed.data.pet_name);
   const { data: pet, error } = await supabase
     .from("pets")
-    .insert({ ...parsed.data, user_id: user.id })
+    .insert({ ...parsed.data, user_id: user.id, slug })
     .select()
     .single();
 

@@ -115,6 +115,37 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* ============================================================================
+   AUTHENTICATED APP THEME — shadcn tokens remapped to the brand palette.
+   Scoped via :root:has(.app-shell) (same pattern as the landing scroll-snap)
+   so it activates ONLY when the (app) layout is mounted — the public landing
+   and auth pages keep the stock neutral tokens above. Setting the variables on
+   :root (not on the wrapper div) means portalled UI (dialogs, toasts) inherits
+   them too. Hexes mirror the landing @theme block below — keep them in sync
+   when branding changes.
+   ========================================================================= */
+:root:has(.app-shell) {
+  --radius: 1rem;
+  --background: #fdf9ff; /* mesh-bg base */
+  --foreground: #1e1a21; /* on-surface */
+  --card: #ffffff;
+  --card-foreground: #1e1a21;
+  --popover: #ffffff;
+  --popover-foreground: #1e1a21;
+  --primary: #450076; /* brand */
+  --primary-foreground: #ffffff;
+  --secondary: #f1daff; /* secondary-fixed */
+  --secondary-foreground: #553c6b; /* on-secondary-fixed-variant */
+  --muted: #f5ebf5; /* surface-container */
+  --muted-foreground: #4c4452; /* on-surface-variant */
+  --accent: #faf1fb; /* surface-container-low */
+  --accent-foreground: #1e1a21;
+  --destructive: #ba1a1a; /* error */
+  --border: rgb(207 194 212 / 0.55); /* outline-variant, softened */
+  --input: rgb(207 194 212 / 0.75);
+  --ring: #61189b; /* brand-container */
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -128,12 +159,15 @@
 }
 
 /* ============================================================================
-   LANDING PAGE — PLACEHOLDER BRAND PALETTE  (⚠️ pending real branding)
+   BRAND PALETTE  (⚠️ pending real branding)
    These colours are TEMPORARY, ported from the Stitch mockup. When branding is
-   decided, change ONLY the hex values below and the whole landing re-skins.
-   New token names (brand*, surface*, on-surface*, outline*, error*) so they do
-   NOT collide with the app's shadcn tokens (primary/secondary/background/…).
-   Do not use these tokens inside the authenticated app UI.
+   decided, change ONLY the hex values below (and the matching hexes in the
+   shadcn :root block above) and the whole site re-skins.
+   Token names (brand*, surface*, on-surface*, outline*, error*) don't collide
+   with the shadcn tokens (primary/secondary/background/…). Since the dashboard
+   restyle these ARE shared with the authenticated app — the app-shell shadcn
+   overrides above map to the same hexes, and app pages may use the brand and
+   on-surface classes directly (auth pages + dashboard already do).
    ========================================================================= */
 @theme {
   /* colours */

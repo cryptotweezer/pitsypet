@@ -43,13 +43,18 @@ type PetInitial = {
 interface PetFormProps {
   mode: "create" | "edit";
   pet?: PetInitial;
+  /** Inline usage (e.g. the dashboard Pets tab): called after a successful
+   *  save instead of navigating away. The router is still refreshed. */
+  onDone?: () => void;
+  /** Inline usage: called on Cancel instead of navigating to the dashboard. */
+  onCancel?: () => void;
 }
 
 function toConditions(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((c): c is string => typeof c === "string") : [];
 }
 
-export function PetForm({ mode, pet }: PetFormProps) {
+export function PetForm({ mode, pet, onDone, onCancel }: PetFormProps) {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
   const [conditionInput, setConditionInput] = useState("");
@@ -119,8 +124,13 @@ export function PetForm({ mode, pet }: PetFormProps) {
     // TODO(Phase 5): on create, if this is the user's first pet, redirect to
     // /assessment/[newPetId] instead of the dashboard (route doesn't exist yet).
     toast.success(mode === "edit" ? "Pet updated" : "Pet added");
-    router.push("/dashboard");
-    router.refresh();
+    if (onDone) {
+      router.refresh();
+      onDone();
+    } else {
+      router.push("/dashboard/pets");
+      router.refresh();
+    }
   }
 
   return (
@@ -310,7 +320,9 @@ export function PetForm({ mode, pet }: PetFormProps) {
           <Button
             type="button"
             variant="ghost"
-            onClick={() => router.push("/dashboard")}
+            onClick={() =>
+              onCancel ? onCancel() : router.push("/dashboard/pets")
+            }
           >
             Cancel
           </Button>

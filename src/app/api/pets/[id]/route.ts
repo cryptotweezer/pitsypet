@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
+import { nextPetSlug } from "@/lib/pet-slug";
 import { petApiSchema } from "@/lib/validations/pet";
 
 // PATCH = update fields. DELETE = soft delete (deleted_at = now()). RLS scopes
@@ -31,9 +32,17 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
     );
   }
 
+  // Renames regenerate the slug (old /pets/<slug> links stop resolving — by
+  // design). Unchanged names resolve back to the pet's current slug.
+  const slug = await nextPetSlug(
+    supabase,
+    user.id,
+    parsed.data.pet_name,
+    params.id,
+  );
   const { data: pet, error } = await supabase
     .from("pets")
-    .update(parsed.data)
+    .update({ ...parsed.data, slug })
     .eq("pet_id", params.id)
     .eq("user_id", user.id)
     .is("deleted_at", null)

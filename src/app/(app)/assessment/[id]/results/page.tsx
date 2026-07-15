@@ -143,7 +143,7 @@ export default async function ResultsPage(
 
   const { data: pet } = await supabase
     .from("pets")
-    .select("pet_name, age_years")
+    .select("pet_name, slug, age_years")
     .eq("pet_id", assessment.pet_id)
     .maybeSingle();
 
@@ -217,7 +217,8 @@ export default async function ResultsPage(
     })),
   );
 
-  const recordHref = petHref(assessment.pet_id, pet?.pet_name ?? "pet");
+  // Fall back to the dashboard if the pet was hard-deleted since.
+  const recordHref = pet?.slug ? petHref(pet.slug) : "/dashboard";
 
   return (
     <section className="mx-auto grid max-w-2xl gap-5">

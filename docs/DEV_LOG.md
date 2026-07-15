@@ -59,7 +59,9 @@
 **Session 27 (this session) — user-test bug-fix batch + vet calibration protocol ✅.** New `docs/vet_protocol.md` (Spanish-language vet calibration interview — Claude tunes the triage AI module by module: classifier rubric, safety override, extraction prompt, fallback, first-aid, emergency contacts, regression set; code stays English). Fixes from the user's testing pass: (1) **active-symptoms duplicates** — `reconcileActiveSymptoms` now matches detected symptoms against ALL tracked rows (incl. resolved), reactivating/keeping the same row instead of inserting a duplicate; the chat route also feeds the AI a "already RESOLVED — don't re-ask" list and carries `improving` forward. (2) **stall emergency fallback false-positive** — `chat-interface.tsx` suppresses the static emergency block while `analyzing`/`finishing` (legit working states) and raises STALL_MS 10s→18s, so it no longer flashes during the slow classify step. (3) **assistant chat looked frozen** — prompt now requires a visible text reply on every turn (never tool-only). (4) **Medications form** — "Prescribed by" is now two independent comboboxes (clinic + doctor, each list-or-free-text), composed to `prescribed_by` as `Doctor — Clinic` on save (split back on edit); **start date required**; finished meds show a "Finished" badge; **mark-finished fix** — `isCurrent` honours the explicit `active=false` flag so a med ended *today* leaves the current list. (5) **Dashboard pet cards** — equal-height flex cards with footer pinned (`mt-auto`), Conditions row always shown ("None recorded" placeholder), and an **Edit** link straight from the card. (6) **Assistant medication/appointment tools** — `propose_add_medication` now takes `prescribed_clinic`+`prescribed_doctor` (was losing the clinic); `propose_add_appointment` now takes `doctorName`→`doctor_name`; prompt field-lists updated. `tsc`/lint clean; **136 tests** green.
 **Session 28 — Landing page (branch `feat/landing-page` — MERGED TO MAIN in Session 29):** built out the public marketing landing (`/`) — floating pill navbar, every section made fullscreen (removed rounded reveals + negative margins), hero/section copy tweaks, cartoon stickers (`cartoon1/2/3/7/8.png`), Features copy rewrite (no colour talk; RAG/utility focus) + unified grey-border/hover, First-aid recolored to brand purple. **Emergency section is now a REAL interactive map** — Leaflet + OpenStreetMap (new dep, landing-only, `ssr:false`) with the 8 real clinics + click-to-call (curated static list; new `src/components/landing/emergency-*.{ts,tsx}`; no CSP change needed). Pricing plan limits updated + **Plan tiers spec recorded in CLAUDE.md (NOT enforced in code yet)**. Footer: Newsletter removed, socials → Instagram/Twitter/Facebook (inline SVGs). `tsc`/lint/build green. Outstanding landing polish: real social URLs, simplify `hero-carousel.tsx` to a plain image, exact clinic coords.
 **Session 29 (this session) — landing UX polish + working contact form; MERGED TO MAIN + pushed for Vercel.** (1) **Section fit / scroll-snap:** every landing section → `min-h-dvh` + `snap-start` under `html:has(.landing-root){scroll-snap-type:y proximity}` (scoped so the app is untouched); `<main>` → `overflow-x-clip` (NOT `-hidden`, which would make it a nested scroller and steal snap); content centred with `my-auto` so on short laptops the section **anchors its heading below the floating navbar** instead of hiding it (fixes "Everything…"/"Simple, transparent plans" titles going under the pill); compacted oversized paddings (Features bento `128→116px` rows, How-it-works `pt-40→py-24` + smaller card stagger, Contact `pb-72→pb-56`). (2) **Scroll-reveal** (`src/components/landing/scroll-reveal.tsx` + globals.css): IntersectionObserver adds `.is-visible` once per element; entrance is a CSS `@keyframes` on the **independent `translate`/`opacity`** props (NOT `transform`/`transition`) so it never clobbers Tailwind `hover:scale` on cards; `reveal-active` gate = progressive-enhancement + no-flash (hero fills viewport, carries no reveal) + reduced-motion respected; per-item stagger via `data-reveal-delay` → `el.style.animationDelay` (CSSOM, CSP-safe). (3) **"Get in touch" email WORKS:** new `POST /api/contact` — **Nodemailer + Gmail SMTP (App Password)**, zod-validated, honeypot field + IP-keyed `contactRateLimiter` (5/10min); `ContactForm` client island with sending/success/error states + redirect-guard. **Middleware bugfix:** `/api/contact` added to the public allow-list in `src/lib/supabase/middleware.ts` (it was 307→`/login`, which `fetch` silently follows to a 200 → false "Message sent!"). `tsc`/lint/build green; **live-tested locally** (`response: 250 OK`, `accepted:[andreshenao.tech@gmail.com]`, email delivered). New deps: `nodemailer` (+ `@types/nodemailer`).
-**Next action (RESUME HERE — next session):** Remaining is mostly manual/human or deferred. Buildable: **Phase 12.5 README**. Manual: Phase 9 verification (9.1 fallback/9.4 cross-tenant/9.6 cost-guard — code exists), 10.8 perf, 11.6 prod smoke, UAT. Deferred by user: RAG (Phase 4), UI/UX (Phase 8), Email/Resend. Cleanup anytime: `next lint` → ESLint CLI (deprecated in Next 16). Deferred (need accounts/content): RAG (Phase 4), Email/Resend. Very-end: custom domain swap (then update UptimeRobot URL + Supabase Site/redirect URLs). See `docs/proposal_vs_implemented.md` §4/§7.
+**Sessions 30–31 — auth pages (login / register), uncommitted:** Session 30 (Codex) gave `/login` + `/register` the public landing navbar via a new `(auth)/layout.tsx` (route-aware `LandingHeader`: section links become `/#…` off-landing, only the opposite CTA shows), a landing-matching restyle, a **two-step register form**, and decorative cartoons. Session 31 (review pass) fixed four defects in it: **focus indicator had been neutralised** (WCAG 2.4.7 — restored `focus-visible:border-brand` on login/register/contact fields), **horizontal overflow at 768–850px** (cartoons `md:`→`lg:`, `overflow-x-clip` on `<main>`), `priority` preloading a mobile-hidden image, and a **silent submit dead-end** when a step-1 field failed final validation (`onInvalid` → back to step 1). `tsc`/lint/build/**136 tests** green; `/login` + `/register` driven live (200). **Owed: manual auth UAT** (full signup + confirmation callback + mobile viewport).
+**Session 32 — Dashboard rework (COMMITTED + PUSHED to main → Vercel prod):** the authenticated app now shares the landing's brand (shadcn tokens remapped, **scoped** via `:root:has(.app-shell)` — the landing/auth pages keep stock tokens; beware: a `*/` inside a CSS comment once silently killed the landing `@theme` block). Dashboard restructured into its own route group `(dashboard)` with a **full-height left sidebar** (Home → landing, Dashboard, Pets, Vet clinics, Appointments, History; bottom: Help = contact form, user email, Log off), no top navbar, mobile drawer; sections are routes (soft navigation). New **Overview** at `/dashboard`: stat tiles + per-pet cards (active symptoms, latest risk w/ follow-up override + recommendation, next appointment, current meds; attention-first sort + "Check on" badge). **Pet URLs are now slugs** (`/pets/max`) — migration `20260715000000_pet_slugs` applied, types regenerated, slugs assigned in pets POST/PATCH, routes `pets/[slug](/edit)`. Pets tab: inline Add pet + name filter. Clinics: one card per clinic (Open/Closed inline). Appointments: pet filter + separate Past card + deterministic date format (hydration fix). History: full default list + pet filter + RPC search. **136 tests / tsc / lint green; every tab browser-verified.**
+**Next action (RESUME HERE — next session):** (1) user visual pass on prod; (2) **extend the brand re-skin to the remaining (app) pages** (pet record, assessment chat, results — still the old neutral look). Then the standing queue: buildable **Phase 12.5 README**; manual Phase 9 verification (9.1 fallback/9.4 cross-tenant/9.6 cost-guard — code exists), 10.8 perf, 11.6 prod smoke, auth UAT (Sessions 30–31). Cleanup anytime: `next lint` → ESLint CLI (deprecated in Next 16). Deferred (need accounts/content): RAG (Phase 4), Email/Resend. Very-end: custom domain swap (then update UptimeRobot URL + Supabase Site/redirect URLs). See `docs/proposal_vs_implemented.md` §4/§7.
 **Deferred (explicit):** **Email/Resend** — user has **no Resend account or domain yet** (gets one at the end). *(The landing "Get in touch" contact form email is separate and DONE in Session 29 via Nodemailer + Gmail SMTP.)* The manual "request appointment → email doctor" button AND the AI-sent appointment email (with last-assessment summary) are deferred to a dedicated step (needs the chat tools + summary). Build email once, reuse for the deferred custom-SMTP auth too. **Also deferred:** wiring RAG into the assistant chat (no KB content yet); **caching the vet PDF summary** — currently it calls Sonnet on EVERY download (store `vet_summary` on the assessment + a "Regenerate" action so reprints are free; see CLAUDE.md deferred bullet).
 
 ---
@@ -1086,3 +1088,110 @@ Open risks / things to check (priority order):
 - Emergency map uses a **curated static** clinic list (Option A), not a live Supabase read — RLS on `emergency_contacts` is authenticated-only and the landing is public; going live would need a public-read policy (deferred, user's call).
 - User works the landing **conversationally in small increments** and dislikes the AskUserQuestion selector for design — keep it prose.
 - **NOT committed / NOT pushed** this session (user asked to hold off).
+
+---
+## SESSION 30 — 2026-07-14 — Codex / GPT-5 (Auth navigation + login/register visual polish)
+
+### STARTED WITH
+- Landing work from Session 29 already merged; `/login` and `/register` had no public navbar or direct route back to the landing.
+- Existing uncommitted landing-page/contact-form edits were present and intentionally left untouched. Blockers: none.
+
+### COMPLETED THIS SESSION
+- Added root `AGENTS.md`, a 351-word repository-specific contributor guide covering structure, commands, conventions, tests, commits/PRs, and Supabase/security rules.
+- Added shared `(auth)` layout with the public floating navbar on login and register. `LandingHeader` is now route-aware: landing section links use `/#...` from auth pages, the logo returns home, and each auth page shows only the opposite CTA. Auth pages inherit the landing's Geist typography and hero purple gradient.
+- Restyled both auth cards to match the landing's **Get in touch** language: white cards/inputs, display headings, uppercase labels, underlined fields, brand-purple buttons, responsive spacing, and consistent error/success states.
+- Registration is now a compact **two-step flow**: Step 1 validates name + email before continuing; Step 2 collects password + optional state; progress bars and an icon back button preserve entered values. The email-confirmation state reuses the same full-width, stable-height outer card so the adjacent illustration keeps its proportions. Supabase signup payload, callback URL, duplicate-email handling, and schema remain unchanged.
+- Added decorative peeking illustrations outside the cards: `cartoon13.png` (cat) on login and `cartoon14.png` (dog) on register. Their wall edges slightly overlap the card to avoid a purple gap; responsive sizes prevent tablet overflow and both are hidden below `md`.
+- Verification: `npm run lint`, `npx tsc --noEmit`, `npm test` (**136/136**) and a clean `npm run build` pass. Desktop renders were inspected with local headless-Chrome screenshots; `/login` and `/register` both returned HTTP 200. The first build hit a stale `.next` missing-chunk error; deleting only `.next` and rebuilding resolved it.
+
+### IN PROGRESS (not finished)
+- Full interactive UAT remains: complete both registration steps against Supabase, confirm activation email/callback, and check short real-device mobile viewports.
+
+### BLOCKED
+- None.
+
+### FILES MODIFIED
+- New: `AGENTS.md`, `src/app/(auth)/layout.tsx`; user-provided assets `public/cartoon13.png`, `public/cartoon14.png` are now used.
+- Changed: `src/app/(auth)/login/page.tsx`, `src/app/(auth)/register/page.tsx`, `src/components/auth/login-form.tsx`, `src/components/auth/register-form.tsx`, `src/components/landing/landing-header.tsx`.
+
+### NEXT SESSION MUST START WITH
+1. Manually test login and the complete two-step registration/confirmation flow on desktop and a real mobile viewport; verify no unintended page scroll or horizontal overflow.
+2. Continue Phase 8 UI/UX work only after auth UAT; keep unrelated landing/contact edits intact.
+
+### DECISIONS / NOTES
+- Public auth pages reuse `LandingHeader`; the authenticated dashboard navbar remains separate.
+- No API, database, RLS, validation-rule, or authentication-contract changes were introduced.
+- Auth illustrations are decorative (`alt=""`, `aria-hidden`) and hidden on small screens where an outside-card placement would overflow.
+
+---
+## SESSION 31 — 2026-07-14 — Claude / Opus 4.8 (Review + fix pass over the Codex auth work)
+
+### STARTED WITH
+- Session 30 (Codex) left `/login` + `/register` restyled, a new `(auth)` layout with the public navbar, a two-step register form, and decorative cartoons — all **uncommitted**. User asked for a correctness/quality review of those two pages, fixes applied, and a log entry. No push.
+- Blockers: none.
+
+### COMPLETED THIS SESSION
+Reviewed the whole Codex diff (auth pages/forms, `(auth)/layout.tsx`, `landing-header.tsx`, plus the incidental `page.tsx`/`contact-form.tsx` edits). Structure, route-awareness of the navbar, Supabase signup contract, `force-dynamic`, and the design-token usage all check out. **Four real defects fixed:**
+
+1. **Focus indicator was removed (WCAG 2.4.7 fail).** Every restyled field overrode the base `Input`'s focus ring with `focus-visible:border-outline-variant/20 focus-visible:ring-0` — i.e. the focus border was set to the *same colour as the resting border*, so a keyboard user got **zero** visual focus. Same on the register `SelectTrigger`, and `contact-form.tsx` had its `focus:border-brand` swapped for `focus:border-outline-variant/20`. Restored a visible (but still ring-free, on-brand) indicator: **`focus-visible:border-brand`** / `focus:border-brand`. The chunky default `ring-3` stays suppressed, which is what the restyle actually wanted.
+2. **Horizontal overflow on tablets.** The cartoons are absolutely positioned at `left-full` and were shown from `md:` up. At ~768–850px the card (`max-w-lg`) + the translated image extend past the viewport → horizontal scrollbar. (The Session-30 note claimed responsive sizes prevented this; they don't.) Fixed: images now `lg:block` (the width at which the geometry actually fits) **and** both `<main>` wrappers got `overflow-x-clip` as a hard safety net (`clip`, not `hidden` — same reason as the landing `<main>`).
+3. **Wasted mobile preload.** The decorative cartoons carried `priority`, which emits a `<link rel=preload>` regardless of `display:none` — mobile users downloaded ~116 KB / ~196 KB of an image they never see. Dropped `priority`; being in-viewport on desktop, they still load immediately.
+4. **Silent dead-end in the two-step register.** `handleSubmit(onSubmit)` on step 2 re-validates *all* fields, but `name`/`email` are unmounted there, so their `FormMessage`s can't render — a failure would abort the submit with no feedback. Added an `onInvalid` handler that sends the user back to **step 1** when a step-1 field is at fault.
+
+Also: `aria-label` on the step wrapper `<div>` (a no-op for AT on a role-less div) replaced with **`aria-live="polite"`** on the step text so the change is announced, and the password field gets `autoFocus` on step 2 so keyboard focus follows the step.
+
+### VERIFICATION
+- `npx tsc --noEmit` clean · `next lint` clean · **136/136 Vitest** green · `npm run build` green (every route still `ƒ` dynamic, as the strict-dynamic CSP requires).
+- Dev server driven: `GET /login` → **200** (renders "Welcome back" + cartoon13, navbar shows only "Get started"), `GET /register` → **200** (renders "Create your account" + cartoon14, navbar shows only "Log in"). Route-aware CTA logic confirmed live.
+
+### IN PROGRESS (not finished)
+- Interactive UAT still owed (inherited from Session 30): a real signup through both steps against Supabase + the confirmation-email callback, and a real-device mobile viewport check.
+
+### FILES MODIFIED
+- `src/components/auth/login-form.tsx` — focus indicator restored on both fields.
+- `src/components/auth/register-form.tsx` — focus indicator (3 inputs + select trigger); `onInvalid` → back to step 1; `aria-live` step announcement; `autoFocus` on password.
+- `src/components/landing/contact-form.tsx` — focus indicator restored on the 3 fields.
+- `src/app/(auth)/login/page.tsx`, `src/app/(auth)/register/page.tsx` — `overflow-x-clip` on `<main>`; cartoons `md:block`→`lg:block`; `priority` removed.
+
+### NEXT SESSION MUST START WITH
+1. Manual UAT of the auth flow (both register steps → confirmation email → `/auth/callback` → dashboard), plus a mobile-viewport pass.
+2. Then back to the standing queue: Phase 12.5 README (buildable) / Phase 9 verification tasks.
+
+### DECISIONS / NOTES
+- **Rule of thumb recorded:** a restyle may replace the focus indicator, never delete it. If the shadcn `ring-3` is too heavy for a design, swap it for a colour/weight change on the underline — do not neutralise `focus-visible` to the resting style.
+- The uncommitted `src/app/page.tsx` + `contact-form.tsx` edits (em-dash → comma copy pass, footer social hover → `hover:scale-110`, contact card's decorative circle removed, contact section `pt-24`→`pt-40`) predate this review and were left as-is apart from the focus fix.
+- `AGENTS.md` (new, from Codex) left in place, untracked — it's a contributor guide for Codex; harmless, but it duplicates parts of `CLAUDE.md`, so keep the two from drifting or drop one.
+- **NOT committed / NOT pushed** (user asked to hold off).
+
+---
+## SESSION 32 — 2026-07-15 — Claude / Fable 5 (Dashboard rework: brand re-skin, sidebar shell, overview, pet-slug URLs)
+
+### STARTED WITH
+- Session 31 left the Codex auth restyle reviewed/fixed, all uncommitted. User goal this session: bring the landing's visual language into the authenticated app, then restructure the dashboard into a real sidebar dashboard.
+
+### COMPLETED THIS SESSION
+1. **Brand re-skin of the authenticated app.** The shadcn tokens (`--primary`, `--secondary`, `--muted`, `--border`, `--ring`, `--radius`…) are remapped to the landing palette — but **scoped via `:root:has(.app-shell)`** (same pattern as the landing scroll-snap) so the public landing/auth pages keep the stock tokens. First attempt remapped `:root` globally and visibly changed the landing; second bug: the rewritten palette comment contained the literal sequence `*/` (in `brand*/on-surface*`), which **closed the CSS comment early and silently killed the whole landing `@theme` block** (no brand colours, no display type scale). Diagnosed by fetching the compiled CSS from the dev server; fixed by rewording the comment. Landing verified pixel-identical afterwards.
+2. **Pet slug URLs.** `/pets/max` (and `/pets/max/edit`) replace `/pets/<uuid>/<name>`. Migration `20260715000000_pet_slugs` (applied to remote): `pets.slug` backfilled (lowercase, accent-stripped, per-user dedupe `-2`, reserved `new` → `new-pet`), partial unique index `(user_id, slug) WHERE deleted_at IS NULL`; assignment logic in `src/lib/pet-slug.ts` scans ALL rows (soft-deleted included) so restores can't collide. `POST /api/pets` + `PATCH /api/pets/[id]` assign/regenerate the slug (rename ⇒ new slug, old link 404s — by design). Page routes moved `pets/[id]/[name]` → `pets/[slug]`; `petHref(slug)`; API routes still key on the UUID. Types regenerated (NOTE: use `cmd /c "npx supabase gen types … > …"` — PowerShell `>` writes UTF-16 and git sees binary).
+3. **Dashboard sidebar shell.** Dashboard moved to its own route group `src/app/(dashboard)/dashboard/**` with NO top navbar: full-height left rail (`src/components/dashboard/sidebar.tsx`) — logo, **Home** (→ landing), **Dashboard**, **Pets**, **Vet clinics**, **Appointments**, **History**; bottom block **Help** + user email + **Log off**. Mobile = slim top bar + hamburger drawer. Sections are routes (soft client-side navigation — the rail persists, no reload). `(app)` keeps the floating pill navbar for pet record/assessment/results pages. `/history` and old `/dashboard` behaviour preserved via redirects.
+4. **Overview (default `/dashboard`).** 4 stat tiles (pets / active symptoms / upcoming appointments / active medications) + a per-pet summary card: non-resolved symptoms as status pills (worsening/active/improving), latest completed assessment's risk (follow-up override rule reused) + recommended action + link, next appointment (with clinic), current medications (honours explicit `active=false` + `ended_at`). Pets needing review sort first with a "Check on" badge.
+5. **Section pages.** Pets: name filter + **inline Add pet** (`PetForm` gained `onDone`/`onCancel`; no more full-page `/pets/new` hop; page kept for deep links) + Recently deleted. Vet clinics: page legend + **each clinic is now its own card** (brand-styled title, Open/Closed from `service_hours`, doctors block inside); Add clinic pill + "New clinic" form card. Appointments: page legend + pet filter (now shown whenever ≥1 pet) + upcoming card (nearest-first) and **Past appointments as a separate titled card**; "Add a pet first" now links to `/dashboard/pets`. History: shows ALL completed assessments by default (was search-only), pet dropdown filter + the RPC text search.
+6. **Fixes en route:** hydration mismatch in appointment dates (`toLocaleString` ICU drift server vs browser) → deterministic English formatter; results page `recordHref` now falls back to `/dashboard` if the pet is gone; navbar simplified (nav links moved to the rail).
+
+### VERIFICATION
+- `npx tsc --noEmit` clean · `next lint` clean · **136/136 Vitest** green (`_helpers` builder extended with `like/neq/not/in`; pets-route mock got the slug-lookup chain).
+- Browser-driven on the live dev server: landing restored end-to-end; all dashboard tabs rendered with real data (overview tiles + Lola/Mugres cards, clinics Open/Closed, upcoming vs past appointment cards, inline add-pet form, Help contact form).
+
+### FILES MODIFIED (high level)
+- `src/app/globals.css` (scoped app theme), `supabase/migrations/20260715000000_pet_slugs.sql`, `src/types/database.ts`, `src/lib/pet-slug.ts`, `src/lib/utils.ts`
+- `src/app/(dashboard)/dashboard/**` (layout, overview, pets, clinics, appointments, history, help), `src/app/(app)/**` (layout, history redirect, pets/[slug] pages), `src/components/dashboard/sidebar.tsx`, `src/components/shared/navbar.tsx`
+- `src/components/pets/{pet-form,pets-grid,pet-card,deleted-pet-card}.tsx`, `src/components/appointments/dashboard-appointments.tsx`, `src/components/vet/vet-contacts-manager.tsx`, `src/components/history/history-search.tsx`, `src/app/api/pets/**`, `src/app/api/__tests__/*`
+
+### NEXT SESSION MUST START WITH
+1. User visual pass over the deployed dashboard (this session pushed to main → Vercel prod).
+2. Extend the brand re-skin to the remaining (app) pages (pet record, assessment chat, results) — they still use the old neutral look under the pill navbar.
+3. Standing queue: manual auth UAT (Session 30/31), Phase 12.5 README, Phase 9 verification tasks.
+
+### DECISIONS / NOTES
+- CSS comments must never contain `*/` mid-text (e.g. `brand*/on-surface*`) — it truncates the comment and can swallow whole `@theme` blocks downstream. The failure mode is silent (build stays green; utilities just vanish).
+- Pet renames regenerate the slug; old pet links intentionally die. Reserved slug: `new`.
+- Plan-tier enforcement note: the pet-create cap (Basic = 1 pet) will need to hook the INLINE add flow too (same `POST /api/pets`, so the enforcement point is unchanged).

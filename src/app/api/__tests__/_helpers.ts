@@ -14,7 +14,7 @@ type Result = { data: unknown; error: unknown };
 // soft-delete/list chains that `await` without a terminal `.single()`.
 export function queryBuilder(result: Result) {
   const builder: Record<string, unknown> = {};
-  for (const m of ["select", "insert", "update", "delete", "eq", "is", "order", "limit"]) {
+  for (const m of ["select", "insert", "update", "delete", "eq", "neq", "is", "in", "not", "like", "order", "limit"]) {
     builder[m] = () => builder;
   }
   builder.single = () => Promise.resolve(result);

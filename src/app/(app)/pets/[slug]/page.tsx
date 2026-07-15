@@ -34,18 +34,19 @@ function ageLabel(years: number, months: number | null): string {
 
 export default async function PetPage(
   props: {
-    params: Promise<{ id: string; name: string }>;
+    params: Promise<{ slug: string }>;
   }
 ) {
   const params = await props.params;
   const supabase = await createClient();
 
+  // Slug is unique per user among active pets; RLS scopes the lookup.
   const { data: pet } = await supabase
     .from("pets")
     .select(
-      "pet_id, pet_name, species, breed, age_years, age_months, weight_kg, medical_conditions",
+      "pet_id, pet_name, slug, species, breed, age_years, age_months, weight_kg, medical_conditions",
     )
-    .eq("pet_id", params.id)
+    .eq("slug", params.slug)
     .is("deleted_at", null)
     .maybeSingle();
   if (!pet) notFound();
@@ -202,7 +203,7 @@ export default async function PetPage(
             Start new assessment
           </Link>
           <Link
-            href={`/pets/${pet.pet_id}/edit`}
+            href={`/pets/${pet.slug}/edit`}
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
             Edit profile

@@ -18,20 +18,26 @@ import { POST, GET } from "../pets/route";
 type InsertResult = { data: unknown; error: unknown };
 
 // A chainable stand-in for the supabase-js builder used by the route:
-//   .from("pets").insert({...}).select().single()  → InsertResult
-//   .from("pets").select("*").is(...).order(...)    → InsertResult
+//   .from("pets").insert({...}).select().single()      → InsertResult
+//   .from("pets").select("*").is(...).order(...)        → InsertResult
+//   .from("pets").select("slug").eq(...).like(...)      → slugResult (nextPetSlug)
 function makeClient(opts: {
   user: { id: string } | null;
   insertResult?: InsertResult;
   listResult?: InsertResult;
+  slugResult?: InsertResult;
 }) {
   const single = vi.fn().mockResolvedValue(opts.insertResult ?? { data: null, error: null });
   const order = vi.fn().mockResolvedValue(opts.listResult ?? { data: [], error: null });
+  const like = vi.fn().mockResolvedValue(opts.slugResult ?? { data: [], error: null });
   return {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: opts.user } }) },
     from: vi.fn(() => ({
       insert: vi.fn(() => ({ select: vi.fn(() => ({ single })) })),
-      select: vi.fn(() => ({ is: vi.fn(() => ({ order })) })),
+      select: vi.fn(() => ({
+        is: vi.fn(() => ({ order })),
+        eq: vi.fn(() => ({ like })),
+      })),
     })),
   };
 }

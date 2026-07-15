@@ -71,15 +71,17 @@ export function DeletedPetCard({ pet }: { pet: DeletedPetData }) {
   }
 
   return (
-    <Card className="opacity-80">
+    <Card className="rounded-[2rem] border border-outline-variant/20 bg-white opacity-80 ring-0 transition-all hover:opacity-100">
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <span className="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <Icon className="size-4" />
+        <div className="flex items-center gap-3">
+          <span className="flex size-10 items-center justify-center rounded-2xl bg-muted text-on-surface-variant">
+            <Icon className="size-5" />
           </span>
           <div className="grid">
-            <CardTitle>{pet.pet_name}</CardTitle>
-            <CardDescription>
+            <CardTitle className="font-display text-lg text-brand/70">
+              {pet.pet_name}
+            </CardTitle>
+            <CardDescription className="font-light text-on-surface-variant">
               {pet.breed} · {pet.species}
             </CardDescription>
           </div>

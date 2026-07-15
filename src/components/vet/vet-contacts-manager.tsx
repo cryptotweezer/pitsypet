@@ -502,40 +502,47 @@ export function VetContactsManager({ contacts }: { contacts: VetContact[] }) {
   );
 
   return (
-    <section className="grid gap-3 rounded-xl border p-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="grid gap-0.5">
-          <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
-            <Stethoscope className="size-5" aria-hidden /> Vet clinics
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Shared across all your pets.
-          </p>
-        </div>
-        {!clinicOpen && (
-          <Button variant="outline" size="sm" onClick={openAddClinic}>
+    <div className="grid gap-6">
+      {!clinicOpen && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={openAddClinic}
+            className="flex items-center gap-1.5 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-brand/20 active:scale-95"
+          >
             <Plus className="size-4" aria-hidden /> Add clinic
-          </Button>
-        )}
-      </div>
+          </button>
+        </div>
+      )}
 
       {contacts.length === 0 && !clinicOpen && (
-        <p className="text-sm text-muted-foreground">No vet clinics yet.</p>
+        <p className="rounded-[2rem] border border-dashed border-outline-variant/50 py-10 text-center text-sm font-light text-on-surface-variant">
+          No vet clinics yet.
+        </p>
       )}
 
       {contacts.length > 0 && (
-        <ul className="grid gap-3">
+        <ul className="grid gap-6">
           {contacts.map((c) =>
             editingClinicId === c.vet_contact_id ? (
-              <li key={c.vet_contact_id}>{clinicForm_ui}</li>
-            ) : (
               <li
                 key={c.vet_contact_id}
-                className="grid gap-3 rounded-lg border p-3 text-sm"
+                className="rounded-[2rem] border border-outline-variant/20 bg-white p-6"
+              >
+                {clinicForm_ui}
+              </li>
+            ) : (
+              // Each clinic is its own card, titled like the other sections.
+              <li
+                key={c.vet_contact_id}
+                className="grid gap-3 rounded-[2rem] border border-outline-variant/20 bg-white p-6 text-sm"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="grid gap-1">
-                    <span className="font-medium">{c.clinic_name}</span>
+                    <h2 className="mb-1 flex items-center gap-2 font-display text-xl tracking-tight text-brand">
+                      <Stethoscope className="size-5" aria-hidden />
+                      {c.clinic_name}
+                    </h2>
                     {c.phone && (
                       <a
                         href={`tel:${c.phone.replace(/[^\d+]/g, "")}`}
@@ -729,7 +736,14 @@ export function VetContactsManager({ contacts }: { contacts: VetContact[] }) {
         </ul>
       )}
 
-      {clinicOpen && editingClinicId === null && clinicForm_ui}
+      {clinicOpen && editingClinicId === null && (
+        <div className="grid gap-3 rounded-[2rem] border border-outline-variant/20 bg-white p-6">
+          <h2 className="flex items-center gap-2 font-display text-xl tracking-tight text-brand">
+            <Stethoscope className="size-5" aria-hidden /> New clinic
+          </h2>
+          {clinicForm_ui}
+        </div>
+      )}
 
       <Dialog
         open={pendingDeleteClinic !== null}
@@ -827,6 +841,6 @@ export function VetContactsManager({ contacts }: { contacts: VetContact[] }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </section>
+    </div>
   );
 }

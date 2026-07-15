@@ -5,8 +5,8 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// Cosmetic, URL-safe slug of a pet name for /pets/[id]/[name]. The id is the
-// authoritative key; this is only for readability, so an empty result is fine.
+// URL-safe slug of a pet name. Stored slugs (pets.slug, assigned via
+// src/lib/pet-slug.ts) are built from this same normalisation.
 export function petSlug(name: string): string {
   return (
     name
@@ -18,6 +18,7 @@ export function petSlug(name: string): string {
   )
 }
 
-export function petHref(id: string, name: string): string {
-  return `/pets/${id}/${petSlug(name)}`
+// Pet pages are addressed by the STORED slug (unique per user), not the id.
+export function petHref(slug: string): string {
+  return `/pets/${slug}`
 }
