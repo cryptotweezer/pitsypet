@@ -34,9 +34,14 @@ export function buildCsp(nonce: string, isDev: boolean): string {
 
   // In dev, Next's HMR/React-Refresh relies on eval and inline scripts, so we
   // relax script-src. Production gets the strict nonce + strict-dynamic policy.
+  // `'wasm-unsafe-eval'` (prod) permits WebAssembly compilation ONLY — it does
+  // NOT allow JS eval(). Needed by the client-side vet-PDF renderer:
+  // @react-pdf/renderer's yoga-layout engine is a WASM module, and without this
+  // the strict CSP rejects WebAssembly.instantiate() (prod-only failure; dev
+  // already had it implicitly via 'unsafe-eval').
   const scriptSrc = isDev
     ? ["'self'", "'unsafe-eval'", "'unsafe-inline'"]
-    : ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'"];
+    : ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", "'wasm-unsafe-eval'"];
 
   const directives: Record<string, string[] | true> = {
     "default-src": ["'self'"],
