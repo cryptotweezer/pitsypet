@@ -13,6 +13,10 @@ export type HistoryItem = {
   risk_classification: string | null;
   primary_concern: string | null;
   created_at: string;
+  // Canonical results URL (/pets/<slug>/results/<seq>) when the caller can
+  // build it (default listing). RPC search results fall back to the legacy
+  // UUID URL, which redirects to the canonical one.
+  href?: string;
 };
 
 type SearchResult = HistoryItem & { relevance: number };
@@ -161,7 +165,9 @@ export function HistorySearch({
             return (
               <li key={r.assessment_id}>
                 <Link
-                  href={`/assessment/${r.assessment_id}/results?from=history`}
+                  href={
+                    r.href ?? `/assessment/${r.assessment_id}/results?from=history`
+                  }
                   className="grid gap-1 rounded-2xl border border-outline-variant/20 bg-white p-4 transition-all hover:border-brand/20 hover:shadow-md"
                 >
                   <div className="flex items-center justify-between gap-3">

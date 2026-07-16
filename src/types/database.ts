@@ -179,6 +179,7 @@ export type Database = {
           recommended_action: string | null
           red_flags: Json
           risk_classification: string | null
+          seq: number
           tokens_used: number
           user_id: string
           user_saved: boolean
@@ -203,6 +204,7 @@ export type Database = {
           recommended_action?: string | null
           red_flags?: Json
           risk_classification?: string | null
+          seq?: number
           tokens_used?: number
           user_id: string
           user_saved?: boolean
@@ -227,6 +229,7 @@ export type Database = {
           recommended_action?: string | null
           red_flags?: Json
           risk_classification?: string | null
+          seq?: number
           tokens_used?: number
           user_id?: string
           user_saved?: boolean

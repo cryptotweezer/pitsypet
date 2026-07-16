@@ -4,6 +4,9 @@ import { cn, cleanAiText } from "@/lib/utils";
 
 export type AssessmentSummary = {
   assessment_id: string;
+  // Canonical results address: the pet's slug + the assessment's per-pet seq.
+  pet_slug: string;
+  seq: number;
   pet_name: string;
   risk_classification: string | null;
   primary_concern: string | null;
@@ -32,7 +35,7 @@ export function AssessmentCard({ item }: { item: AssessmentSummary }) {
   const risk = item.risk_classification ?? "—";
   return (
     <Link
-      href={`/assessment/${item.assessment_id}/results?from=history`}
+      href={`/pets/${item.pet_slug}/results/${item.seq}?from=history`}
       className="grid content-start gap-2 rounded-[2rem] border border-outline-variant/20 bg-white p-5 transition-all hover:border-brand/20 hover:shadow-lg"
     >
       <div className="flex items-center justify-between gap-3">

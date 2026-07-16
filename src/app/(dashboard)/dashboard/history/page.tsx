@@ -20,21 +20,33 @@ export default async function DashboardHistoryPage() {
     supabase
       .from("assessments")
       .select(
-        "assessment_id, risk_classification, primary_concern, created_at, pets(pet_name)",
+        "assessment_id, seq, risk_classification, primary_concern, created_at, pets(pet_name, slug, deleted_at)",
       )
       .not("completed_at", "is", null)
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
   ]);
 
-  const initialItems: HistoryItem[] = (assessmentRows ?? []).map((a) => ({
-    assessment_id: a.assessment_id,
-    pet_name:
-      (a.pets as unknown as { pet_name: string } | null)?.pet_name ?? "—",
-    risk_classification: a.risk_classification,
-    primary_concern: a.primary_concern,
-    created_at: a.created_at,
-  }));
+  const initialItems: HistoryItem[] = (assessmentRows ?? []).map((a) => {
+    const pet = a.pets as unknown as {
+      pet_name: string;
+      slug: string;
+      deleted_at: string | null;
+    } | null;
+    return {
+      assessment_id: a.assessment_id,
+      pet_name: pet?.pet_name ?? "—",
+      risk_classification: a.risk_classification,
+      primary_concern: a.primary_concern,
+      created_at: a.created_at,
+      // Canonical URL when the pet is still active; a soft-deleted pet has no
+      // slug route, so those fall back to the legacy UUID link.
+      href:
+        pet && !pet.deleted_at
+          ? `/pets/${pet.slug}/results/${a.seq}?from=history`
+          : undefined,
+    };
+  });
 
   return (
     <section className="grid gap-6">

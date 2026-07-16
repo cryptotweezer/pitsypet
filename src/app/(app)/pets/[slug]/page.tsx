@@ -60,7 +60,7 @@ export default async function PetPage(
     supabase
       .from("assessments")
       .select(
-        "assessment_id, risk_classification, primary_concern, recommended_action, extracted_symptoms, follow_ups, created_at",
+        "assessment_id, seq, risk_classification, primary_concern, recommended_action, extracted_symptoms, follow_ups, created_at",
       )
       .eq("pet_id", pet.pet_id)
       .not("completed_at", "is", null)
@@ -128,6 +128,8 @@ export default async function PetPage(
         : a.risk_classification;
     return {
       assessment_id: a.assessment_id,
+      pet_slug: pet.slug,
+      seq: a.seq,
       pet_name: pet.pet_name,
       risk_classification: latestRisk,
       primary_concern: a.primary_concern,
