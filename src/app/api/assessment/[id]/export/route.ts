@@ -3,9 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isMedicationActive } from "@/lib/medications";
 import { exportRateLimiter } from "@/lib/rate-limit";
-import { checkDailyCap } from "@/lib/cost-guard";
-import { arcjetGuard } from "@/lib/arcjet";
-import { generateVetSummary } from "@/lib/ai/vet-summary";
+import { buildVetSummary } from "@/lib/export/summary";
+import { cleanAiText } from "@/lib/utils";
 import type {
   ExportBlock,
   ExportMedication,
@@ -35,10 +34,19 @@ function parseSymptoms(raw: unknown): ExportSymptom[] {
 }
 
 function strArray(raw: unknown): string[] {
-  return Array.isArray(raw) ? raw.map(String) : [];
+  return Array.isArray(raw) ? raw.map((f) => cleanAiText(String(f))) : [];
 }
 
-// POST /api/assessment/[id]/export — assemble the vet-facing record + AI summary.
+// The stored AI prose may carry markdown markers / em dashes — the PDF renders
+// plain text, so scrub them here (same rule as the results page).
+function clean(text: unknown): string | null {
+  return text ? cleanAiText(String(text)) : null;
+}
+
+// POST /api/assessment/[id]/export — assemble the vet-facing record + summary.
+// Fully deterministic: everything comes from the stored assessment (the triage
+// AI wrote the clinical prose when the assessment completed), so exporting
+// makes NO model call — it is instant, free, and can't time out on Vercel.
 export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const supabase = await createClient();
@@ -49,18 +57,8 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Arcjet shield + bot detection before any DB/AI work.
-  const blocked = await arcjetGuard(request);
-  if (blocked) return blocked;
-
-  // This route calls Claude (the vet summary), so it is bounded like the other
-  // AI routes: the global daily spend cap, then a per-user rate limit.
-  if (await checkDailyCap()) {
-    return NextResponse.json(
-      { error: "Service temporarily unavailable — please try again later." },
-      { status: 503 },
-    );
-  }
+  // No AI spend here anymore, so no arcjet/daily-cap like the AI routes — the
+  // same protection as every other data route (auth + RLS) plus a rate limit.
   const { success } = await exportRateLimiter.limit(user.id);
   if (!success) {
     return NextResponse.json(
@@ -125,10 +123,10 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     label: "Initial assessment",
     date: assessment.created_at,
     risk: assessment.risk_classification,
-    primaryConcern: assessment.primary_concern,
-    clinicalReasoning: assessment.clinical_reasoning,
-    aboutSymptoms: assessment.about_symptoms,
-    recommendedAction: assessment.recommended_action,
+    primaryConcern: clean(assessment.primary_concern),
+    clinicalReasoning: clean(assessment.clinical_reasoning),
+    aboutSymptoms: clean(assessment.about_symptoms),
+    recommendedAction: clean(assessment.recommended_action),
     redFlags: strArray(assessment.red_flags),
     symptoms: parseSymptoms(assessment.extracted_symptoms),
   };
@@ -143,14 +141,10 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
       label: "Follow-up",
       date: String(f.created_at ?? assessment.created_at),
       risk: f.risk_classification ? String(f.risk_classification) : null,
-      primaryConcern: f.primary_concern ? String(f.primary_concern) : null,
-      clinicalReasoning: f.clinical_reasoning
-        ? String(f.clinical_reasoning)
-        : null,
-      aboutSymptoms: f.about_symptoms ? String(f.about_symptoms) : null,
-      recommendedAction: f.recommended_action
-        ? String(f.recommended_action)
-        : null,
+      primaryConcern: clean(f.primary_concern),
+      clinicalReasoning: clean(f.clinical_reasoning),
+      aboutSymptoms: clean(f.about_symptoms),
+      recommendedAction: clean(f.recommended_action),
       redFlags: strArray(f.red_flags),
       symptoms: parseSymptoms(f.extracted_symptoms),
     }));
@@ -183,7 +177,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     generatedAt: new Date().toISOString(),
   };
 
-  const summary = await generateVetSummary(record);
+  const summary = buildVetSummary(record);
 
   const payload: ExportPayload = { priority, summary, record };
   return NextResponse.json(payload);

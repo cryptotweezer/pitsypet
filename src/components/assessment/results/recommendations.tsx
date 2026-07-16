@@ -2,7 +2,7 @@ import { Phone, MapPin, Clock } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, cleanAiText } from "@/lib/utils";
 import type { RiskLevel } from "@/components/assessment/results/risk-badge";
 
 export type FirstAid = {
@@ -33,7 +33,7 @@ function RedFlags({ flags }: { flags: string[] }) {
       <p className="font-medium">When to seek care</p>
       <ul className="list-inside list-disc text-muted-foreground">
         {flags.map((f, i) => (
-          <li key={i}>{f}</li>
+          <li key={i}>{cleanAiText(f)}</li>
         ))}
       </ul>
     </div>
@@ -54,9 +54,9 @@ export function Recommendations({
   emergencyContacts: EmergencyContact[];
 }) {
   return (
-    <Card>
+    <Card className="rounded-[2rem] border border-outline-variant/20 bg-white ring-0">
       <CardHeader>
-        <CardTitle className="font-heading text-lg">
+        <CardTitle className="font-display text-xl font-normal tracking-tight text-brand">
           Recommended next steps
         </CardTitle>
       </CardHeader>
@@ -69,7 +69,7 @@ export function Recommendations({
                 : "text-muted-foreground",
             )}
           >
-            {recommendedAction}
+            {cleanAiText(recommendedAction)}
           </p>
         )}
 
@@ -105,7 +105,7 @@ export function Recommendations({
                 {emergencyContacts.map((c) => (
                   <li
                     key={c.contact_id}
-                    className="grid gap-1 rounded-lg border p-3"
+                    className="grid gap-1 rounded-2xl border border-outline-variant/30 p-3"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-medium">{c.name}</span>
@@ -128,7 +128,7 @@ export function Recommendations({
                 ))}
               </ul>
             ) : (
-              <div className="grid gap-1 rounded-lg border p-3">
+              <div className="grid gap-1 rounded-2xl border border-outline-variant/30 p-3">
                 <span className="font-medium">
                   Animal Emergency Australia (National Hotline)
                 </span>

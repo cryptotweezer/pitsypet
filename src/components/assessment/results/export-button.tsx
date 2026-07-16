@@ -4,12 +4,12 @@ import { useState } from "react";
 import { FileDown } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
 import type { ExportPayload } from "@/lib/export/types";
 
-// Downloads a vet-facing PDF for one assessment (+ its follow-ups). The AI
-// summary + record are assembled server-side; the heavy @react-pdf renderer is
-// dynamically imported here so it never ships in the page's initial bundle.
+// Downloads a vet-facing PDF for one assessment (+ its follow-ups). The record
+// + summary are assembled server-side from the STORED assessment (no AI call);
+// the heavy @react-pdf renderer is dynamically imported here so it never ships
+// in the page's initial bundle.
 export function ExportButton({
   assessmentId,
   petName,
@@ -56,14 +56,14 @@ export function ExportButton({
   }
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
+    <button
+      type="button"
       onClick={handleExport}
       disabled={loading}
+      className="flex items-center gap-1.5 rounded-full border border-outline-variant/40 bg-white px-4 py-2 text-sm font-semibold text-brand transition-all hover:border-brand/40 active:scale-95 disabled:opacity-60"
     >
       <FileDown className="size-4" aria-hidden />
       {loading ? "Preparing…" : "Export for vet (PDF)"}
-    </Button>
+    </button>
   );
 }

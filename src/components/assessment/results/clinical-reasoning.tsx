@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { cleanAiText } from "@/lib/utils";
 
 export type SymptomItem = {
   name: string;
@@ -23,10 +24,10 @@ export function ClinicalReasoning({
   symptoms?: SymptomItem[];
 }) {
   return (
-    <Card>
+    <Card className="rounded-[2rem] border border-outline-variant/20 bg-white ring-0">
       <CardHeader>
-        <CardTitle className="font-heading text-lg">
-          {primaryConcern ?? "Assessment summary"}
+        <CardTitle className="font-display text-xl font-normal tracking-tight text-brand">
+          {primaryConcern ? cleanAiText(primaryConcern) : "Assessment summary"}
         </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4 text-sm">
@@ -56,12 +57,16 @@ export function ClinicalReasoning({
           </div>
         )}
         {clinicalReasoning && (
-          <p className="text-muted-foreground">{clinicalReasoning}</p>
+          <p className="text-muted-foreground">
+            {cleanAiText(clinicalReasoning)}
+          </p>
         )}
         {aboutSymptoms && (
           <div className="grid gap-1">
             <p className="font-medium">About These Symptoms</p>
-            <p className="text-muted-foreground">{aboutSymptoms}</p>
+            <p className="text-muted-foreground">
+              {cleanAiText(aboutSymptoms)}
+            </p>
           </div>
         )}
       </CardContent>

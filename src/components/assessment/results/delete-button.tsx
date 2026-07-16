@@ -47,14 +47,13 @@ export function DeleteButton({
 
   return (
     <>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="text-destructive"
+      <button
+        type="button"
         onClick={() => setOpen(true)}
+        className="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-destructive transition-all hover:bg-destructive/10 active:scale-95"
       >
         <Trash2 className="size-4" aria-hidden /> Delete
-      </Button>
+      </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

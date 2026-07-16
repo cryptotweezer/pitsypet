@@ -31,7 +31,7 @@ export function RiskBadge({ risk }: { risk: RiskLevel }) {
     <div
       role="status"
       className={cn(
-        "flex items-center gap-3 rounded-xl border px-4 py-3",
+        "flex items-center gap-3 rounded-[2rem] border px-5 py-4",
         className,
       )}
     >

@@ -7,11 +7,12 @@ import { useChat } from "@ai-sdk/react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, cleanAiText } from "@/lib/utils";
 import type { ExtractedSymptom, RiskClassification } from "@/lib/ai/schemas";
 import {
   SymptomSidebar,
   type KnownMedication,
+  type KnownAppointment,
 } from "@/components/assessment/symptom-sidebar";
 import { ProgressIndicator } from "@/components/assessment/progress-indicator";
 import { EmergencyFallback } from "@/components/assessment/emergency-fallback";
@@ -62,38 +63,52 @@ function readStream(data: unknown[] | undefined): {
 
 export function ChatInterface({
   petId,
+  petSlug,
   assessmentId,
   petName,
   isFollowUp = false,
   greeting,
   conditions = [],
   medications = [],
+  appointments = [],
   initialSymptoms = [],
 }: {
   petId: string;
+  // The pet's URL slug — used for the "back to record" link.
+  petSlug: string;
   assessmentId: string;
   petName: string;
   isFollowUp?: boolean;
   greeting?: string;
   conditions?: string[];
   medications?: KnownMedication[];
+  // Upcoming (never past) appointments, shown in the sidebar.
+  appointments?: KnownAppointment[];
   // The pet's already-tracked symptoms, shown before the AI's first turn.
   initialSymptoms?: ExtractedSymptom[];
 }) {
-  const { messages, input, handleInputChange, handleSubmit, append, data, isLoading, error } =
-    useChat({
-      api: "/api/assessment/chat",
-      body: { assessmentId, petId, isFollowUp },
-      initialMessages: [
-        {
-          id: "greeting",
-          role: "assistant",
-          content:
-            greeting ??
-            `Hi! I'm here to help check on ${petName}. What symptoms have you noticed?`,
-        },
-      ],
-    });
+  const {
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    append,
+    data,
+    isLoading,
+    error,
+  } = useChat({
+    api: "/api/assessment/chat",
+    body: { assessmentId, petId, isFollowUp },
+    initialMessages: [
+      {
+        id: "greeting",
+        role: "assistant",
+        content:
+          greeting ??
+          `Hi! I'm here to help check on ${petName}. What symptoms have you noticed?`,
+      },
+    ],
+  });
 
   const { symptoms, suggestedReplies, classification } = useMemo(
     () => readStream(data),
@@ -108,7 +123,11 @@ export function ChatInterface({
       ? suggestedReplies
       : [];
 
-  const stage: 0 | 1 | 2 = classification ? 2 : isLoading && symptoms.length > 0 ? 1 : 0;
+  const stage: 0 | 1 | 2 = classification
+    ? 2
+    : isLoading && symptoms.length > 0
+      ? 1
+      : 0;
   const analyzing = isLoading && symptoms.length > 0 && !classification;
 
   // Once classified, the assessment is done: the AI posts a final message with a
@@ -157,117 +176,137 @@ export function ChatInterface({
   useEffect(() => {
     if (!done || completedRef.current) return;
     completedRef.current = true;
-    trackAssessmentCompleted({ riskLevel: classification!.riskLevel, isFollowUp });
+    trackAssessmentCompleted({
+      riskLevel: classification!.riskLevel,
+      isFollowUp,
+    });
   }, [done, classification, isFollowUp]);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
-      <div className="grid content-start gap-4">
-        <div className="flex items-center justify-between gap-4">
-          <h1 className="font-heading text-xl font-semibold">
+    <div className="grid gap-6">
+      {/* Header spans the full width so the chat box and the symptom sidebar
+          below start at the same height. */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="grid gap-1">
+          <span className="block text-label-caps font-bold text-brand opacity-70">
+            {isFollowUp ? "FOLLOW-UP" : "ASSESSMENT"}
+          </span>
+          <h1 className="font-display text-2xl tracking-tight text-brand md:text-3xl">
             {petName}&apos;s {isFollowUp ? "follow-up" : "assessment"}
           </h1>
-          <ProgressIndicator stage={stage} />
+          <Link
+            href={`/pets/${petSlug}`}
+            className="w-fit text-sm font-semibold text-brand hover:underline"
+          >
+            ← Back to {petName}&apos;s record
+          </Link>
         </div>
-
-        <div
-          className="grid max-h-[55vh] content-start gap-3 overflow-y-auto rounded-xl border p-4"
-          aria-live="polite"
-          aria-label="Conversation"
-        >
-          {messages.map((m) => (
-            <div
-              key={m.id}
-              className={cn(
-                "max-w-[85%] rounded-lg px-3 py-2 text-sm",
-                m.role === "user"
-                  ? "justify-self-end bg-primary text-primary-foreground"
-                  : "justify-self-start bg-muted",
-              )}
-            >
-              {m.content}
-            </div>
-          ))}
-          {analyzing && (
-            <div className="justify-self-start rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
-              Analyzing {petName}&apos;s symptoms…
-            </div>
-          )}
-          {finishing && (
-            <div className="justify-self-start rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
-              Preparing {petName}&apos;s results…
-            </div>
-          )}
-          {done && (
-            <div className="grid max-w-[85%] justify-items-start gap-2 justify-self-start rounded-lg bg-muted px-3 py-2 text-sm">
-              <p>
-                All done — I&apos;ve finished {petName}&apos;s{" "}
-                {isFollowUp ? "follow-up" : "assessment"}. You can view the full
-                results and recommendations whenever you&apos;re ready.
-              </p>
-              <Button
-                size="sm"
-                render={
-                  <Link href={`/assessment/${assessmentId}/results`} />
-                }
-              >
-                View {petName}&apos;s results
-                <ArrowRight className="size-4" aria-hidden />
-              </Button>
-            </div>
-          )}
-          <div ref={bottomRef} />
-        </div>
-
-        {showEmergency && (
-          <EmergencyFallback
-            note={
-              error != null
-                ? "Something went wrong with the assessment. If this might be an emergency, don't wait."
-                : undefined
-            }
-          />
-        )}
-
-        {replies.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {replies.map((r) => (
-              <Button
-                key={r}
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => append({ role: "user", content: r })}
-              >
-                {r}
-              </Button>
-            ))}
-          </div>
-        )}
-
-        {!classification && (
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <Input
-              value={input}
-              onChange={handleInputChange}
-              placeholder={`Describe ${petName}'s symptoms…`}
-              disabled={isLoading}
-              aria-label="Message"
-            />
-            <Button type="submit" disabled={isLoading || input.trim().length === 0}>
-              {isLoading ? "…" : "Send"}
-            </Button>
-          </form>
-        )}
+        <ProgressIndicator stage={stage} />
       </div>
 
-      <div className="h-fit lg:sticky lg:top-6">
-        <SymptomSidebar
-          symptoms={displaySymptoms}
-          analyzing={analyzing}
-          conditions={conditions}
-          medications={medications}
-        />
+      <div className="grid items-start gap-6 lg:grid-cols-[1fr_18rem]">
+        <div className="grid content-start gap-4">
+          <div
+            className="grid max-h-[55vh] content-start gap-3 overflow-y-auto rounded-[2rem] border border-outline-variant/20 bg-white p-4 sm:p-5"
+            aria-live="polite"
+            aria-label="Conversation"
+          >
+            {messages.map((m) => (
+              <div
+                key={m.id}
+                className={cn(
+                  "max-w-[85%] rounded-2xl px-3.5 py-2 text-sm",
+                  m.role === "user"
+                    ? "justify-self-end bg-primary text-primary-foreground"
+                    : "justify-self-start bg-muted",
+                )}
+              >
+                {m.role === "assistant" ? cleanAiText(m.content) : m.content}
+              </div>
+            ))}
+            {analyzing && (
+              <div className="justify-self-start rounded-2xl bg-muted px-3.5 py-2 text-sm text-muted-foreground">
+                Analyzing {petName}&apos;s symptoms…
+              </div>
+            )}
+            {finishing && (
+              <div className="justify-self-start rounded-2xl bg-muted px-3.5 py-2 text-sm text-muted-foreground">
+                Preparing {petName}&apos;s results…
+              </div>
+            )}
+            {done && (
+              <div className="grid max-w-[85%] justify-items-start gap-2 justify-self-start rounded-2xl bg-muted px-3.5 py-2 text-sm">
+                <p>
+                  All done! I&apos;ve finished {petName}&apos;s{" "}
+                  {isFollowUp ? "follow-up" : "assessment"}. You can view the
+                  full results and recommendations whenever you&apos;re ready.
+                </p>
+                <Button
+                  size="sm"
+                  render={<Link href={`/assessment/${assessmentId}/results`} />}
+                >
+                  View {petName}&apos;s results
+                  <ArrowRight className="size-4" aria-hidden />
+                </Button>
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+
+          {showEmergency && (
+            <EmergencyFallback
+              note={
+                error != null
+                  ? "Something went wrong with the assessment. If this might be an emergency, don't wait."
+                  : undefined
+              }
+            />
+          )}
+
+          {replies.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {replies.map((r) => (
+                <Button
+                  key={r}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => append({ role: "user", content: r })}
+                >
+                  {r}
+                </Button>
+              ))}
+            </div>
+          )}
+
+          {!classification && (
+            <form onSubmit={handleSubmit} className="flex gap-2">
+              <Input
+                value={input}
+                onChange={handleInputChange}
+                placeholder={`Describe ${petName}'s symptoms…`}
+                disabled={isLoading}
+                aria-label="Message"
+              />
+              <Button
+                type="submit"
+                disabled={isLoading || input.trim().length === 0}
+              >
+                {isLoading ? "…" : "Send"}
+              </Button>
+            </form>
+          )}
+        </div>
+
+        <div className="h-fit lg:sticky lg:top-6">
+          <SymptomSidebar
+            symptoms={displaySymptoms}
+            analyzing={analyzing}
+            conditions={conditions}
+            medications={medications}
+            appointments={appointments}
+          />
+        </div>
       </div>
     </div>
   );

@@ -22,12 +22,13 @@ export default async function AppLayout({
 
   return (
     // Same visual base as the landing: soft purple mesh background + brand
-    // typography. Top padding clears the fixed pill navbar. `app-shell`
-    // switches the shadcn tokens to the brand palette for this route group
-    // only (see :root:has(.app-shell) in globals.css).
+    // typography. The pill navbar is static (in flow), so the main content
+    // only needs a small gap below it. `app-shell` switches the shadcn tokens
+    // to the brand palette for this route group only (see :root:has(.app-shell)
+    // in globals.css).
     <div className="app-shell mesh-bg min-h-dvh font-sans text-on-surface">
       <Navbar email={user.email ?? ""} />
-      <main className="mx-auto max-w-5xl px-4 pt-24 pb-16 sm:pt-28">
+      <main className="mx-auto max-w-5xl px-4 pt-8 pb-16 sm:pt-10">
         {children}
       </main>
       <Toaster />

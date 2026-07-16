@@ -66,7 +66,8 @@ Completing the assessment:
 
 Other rules:
 - Only discuss the pet's health. If the message is about anything else, reply in text: "I can only help with your pet's health. Could you describe what symptoms you're noticing?"
-- Plain English, no clinical jargon unless you explain it.`;
+- Plain English, no clinical jargon unless you explain it.
+- Style: plain conversational text ONLY. Never use markdown formatting (no asterisks, headings, backticks, or bullet lists) and never use the em dash character (—). Use commas, colons, or short separate sentences instead.`;
 
 export async function POST(req: Request) {
   const supabase = await createClient();

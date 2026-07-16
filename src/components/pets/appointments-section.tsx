@@ -175,7 +175,7 @@ export function AppointmentsSection({
     clinics.find((c) => c.vet_contact_id === form.vet_contact_id)?.doctors ?? [];
 
   const formFields = (
-    <form onSubmit={handleSubmit} className="grid gap-3 rounded-lg border p-3">
+    <form onSubmit={handleSubmit} className="grid gap-3 rounded-2xl border border-outline-variant/30 p-3">
       <div className="grid gap-1.5">
         <Label htmlFor="appt-title">Title</Label>
         <Input
@@ -296,7 +296,7 @@ export function AppointmentsSection({
     ) : (
       <li
         key={a.appointment_id}
-        className="flex items-start justify-between gap-3 rounded-lg border p-3 text-sm"
+        className="flex items-start justify-between gap-3 rounded-2xl border border-outline-variant/30 p-3 text-sm"
       >
         <div className="grid gap-0.5">
           <span className="font-medium">{a.title}</span>
@@ -358,9 +358,9 @@ export function AppointmentsSection({
     );
 
   return (
-    <section className="grid gap-3 rounded-xl border p-4">
+    <section className="grid gap-3 rounded-[2rem] border border-outline-variant/20 bg-white p-6">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
+        <h2 className="flex items-center gap-2 font-display text-xl tracking-tight text-brand">
           <CalendarClock className="size-5" aria-hidden /> Next appointments
         </h2>
         {!adding && (

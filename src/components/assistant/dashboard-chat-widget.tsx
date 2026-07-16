@@ -14,8 +14,8 @@ export function DashboardChatWidget({ hasPets = true }: { hasPets?: boolean }) {
   const [open, setOpen] = useState(false);
 
   const greeting = hasPets
-    ? "Hi! I can help across all your pets — ask me anything, or tell me what to record (a medication, appointment, symptom update…). I'll always check which pet first."
-    : "Hi! You don't have any pets yet. Tell me about your dog or cat — their name, breed, age and weight — and I'll set up their profile for you. You can also ask me anything about pet care.";
+    ? "Hi! I can help across all your pets. Ask me anything, or tell me what to record (a medication, appointment, symptom update…). I'll always check which pet first."
+    : "Hi! You don't have any pets yet. Tell me about your dog or cat (their name, breed, age and weight) and I'll set up their profile for you. You can also ask me anything about pet care.";
 
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">

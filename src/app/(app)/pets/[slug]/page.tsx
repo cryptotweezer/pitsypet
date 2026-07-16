@@ -3,9 +3,7 @@ import { notFound } from "next/navigation";
 import { Dog, Cat, Sparkles } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
-import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import {
   AssessmentCard,
   type AssessmentSummary,
@@ -180,31 +178,34 @@ export default async function PetPage(
 
   return (
     <section className="grid gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <Icon className="size-6" aria-hidden />
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="grid gap-1.5">
+          <span className="block text-label-caps font-bold text-brand opacity-70">
+            PET RECORD
           </span>
-          <div className="grid gap-0.5">
-            <h1 className="font-heading text-2xl font-semibold">
+          <div className="flex items-center gap-3">
+            <span className="flex size-11 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+              <Icon className="size-6" aria-hidden />
+            </span>
+            <h1 className="font-display text-3xl tracking-tight text-brand md:text-4xl">
               {pet.pet_name}
             </h1>
-            <p className="text-sm text-muted-foreground">
-              {pet.breed} · {pet.species} · {ageLabel(pet.age_years, pet.age_months)}{" "}
-              · {pet.weight_kg} kg
-            </p>
           </div>
+          <p className="font-light text-on-surface-variant">
+            {pet.breed} · {pet.species} · {ageLabel(pet.age_years, pet.age_months)}{" "}
+            · {pet.weight_kg} kg
+          </p>
         </div>
         <div className="flex gap-2">
           <Link
-            href={`/assessment/${pet.pet_id}`}
-            className={cn(buttonVariants({ size: "sm" }))}
+            href={`/assessment/${pet.slug}`}
+            className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-brand/20 active:scale-95"
           >
             Start new assessment
           </Link>
           <Link
             href={`/pets/${pet.slug}/edit`}
-            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+            className="rounded-full border border-outline-variant/40 bg-white px-5 py-2.5 text-sm font-semibold text-brand transition-all hover:border-brand/40 active:scale-95"
           >
             Edit profile
           </Link>
@@ -240,7 +241,9 @@ export default async function PetPage(
       </div>
 
       <div className="grid gap-3">
-        <h2 className="font-heading text-lg font-semibold">Assessment history</h2>
+        <h2 className="font-display text-xl tracking-tight text-brand">
+          Assessment history
+        </h2>
         {assessments.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2">
             {assessments.map((a) => (
@@ -248,25 +251,34 @@ export default async function PetPage(
             ))}
           </div>
         ) : (
-          <p className="rounded-xl border border-dashed py-10 text-center text-sm text-muted-foreground">
+          <p className="rounded-[2rem] border border-dashed border-outline-variant/50 py-10 text-center text-sm font-light text-on-surface-variant">
             No assessments yet. Start one to begin {pet.pet_name}&apos;s clinical
             history.
           </p>
         )}
       </div>
 
-      <div className="grid gap-3 rounded-xl border p-4">
-        <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
+      <div className="grid gap-3 rounded-[2rem] border border-outline-variant/20 bg-white p-6">
+        <h2 className="flex items-center gap-2 font-display text-xl tracking-tight text-brand">
           <Sparkles className="size-5" aria-hidden /> Ask about {pet.pet_name}
         </h2>
         <AssistantChat
           scope="pet"
           petId={pet.pet_id}
           petName={pet.pet_name}
-          greeting={`Hi! Ask me anything about ${pet.pet_name}, or tell me what to record — a medication, appointment, vet, or a symptom update. I'll show a Confirm button before saving anything.`}
+          greeting={`Hi! Ask me anything about ${pet.pet_name}, or tell me what to record: a medication, appointment, vet, or a symptom update. I'll show a Confirm button before saving anything.`}
           inputPlaceholder={`Ask about ${pet.pet_name}…`}
           className="h-[28rem]"
         />
+      </div>
+
+      <div>
+        <Link
+          href="/dashboard"
+          className="inline-block rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-brand/20 active:scale-95"
+        >
+          ← Back to dashboard
+        </Link>
       </div>
     </section>
   );

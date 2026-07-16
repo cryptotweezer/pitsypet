@@ -2,8 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
-import { buttonVariants } from "@/components/ui/button";
-import { cn, petHref } from "@/lib/utils";
+import { petHref, cleanAiText } from "@/lib/utils";
 import {
   RiskBadge,
   type RiskLevel,
@@ -223,10 +222,15 @@ export default async function ResultsPage(
   return (
     <section className="mx-auto grid max-w-2xl gap-5">
       <TrackRiskShown risk={risk} assessmentId={assessment.assessment_id} />
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-heading text-2xl font-semibold">
-          {pet?.pet_name ? `${pet.pet_name}'s results` : "Assessment results"}
-        </h1>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="grid gap-1">
+          <span className="block text-label-caps font-bold text-brand opacity-70">
+            RESULTS
+          </span>
+          <h1 className="font-display text-2xl tracking-tight text-brand md:text-3xl">
+            {pet?.pet_name ? `${pet.pet_name}'s results` : "Assessment results"}
+          </h1>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <ExportButton
             assessmentId={assessment.assessment_id}
@@ -235,8 +239,8 @@ export default async function ResultsPage(
           {fromHistory && (
             <>
               <Link
-                href={`/assessment/${assessment.pet_id}?followup=${assessment.assessment_id}`}
-                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                href={`/assessment/${pet?.slug ?? assessment.pet_id}?followup=${assessment.assessment_id}`}
+                className="rounded-full border border-outline-variant/40 bg-white px-4 py-2 text-sm font-semibold text-brand transition-all hover:border-brand/40 active:scale-95"
               >
                 + Follow-up
               </Link>
@@ -252,13 +256,13 @@ export default async function ResultsPage(
       {/* Follow-ups, newest first — the pet's most recent state leads. */}
       {followUps.length > 0 && (
         <div className="grid gap-4">
-          <h2 className="font-heading text-lg font-semibold">
+          <h2 className="font-display text-xl tracking-tight text-brand">
             Follow-ups ({followUps.length})
           </h2>
           {followUpData.map((f, i) => (
             <div
               key={i}
-              className="grid gap-3 rounded-xl border border-dashed p-4"
+              className="grid gap-3 rounded-[2rem] border border-dashed border-outline-variant/50 bg-white/60 p-5"
             >
               <span className="text-sm font-medium text-muted-foreground">
                 Follow-up · {formatDateTime(f.created_at)}
@@ -283,7 +287,7 @@ export default async function ResultsPage(
                   <div className="grid gap-1 text-sm">
                     <p className="font-medium">Recommended next steps</p>
                     <p className="text-muted-foreground">
-                      {f.recommended_action}
+                      {cleanAiText(f.recommended_action)}
                     </p>
                   </div>
                 )
@@ -296,7 +300,7 @@ export default async function ResultsPage(
       {/* The original assessment renders last so the page reads newest → initial.
           Once there are follow-ups it's the historical starting point, so label it. */}
       {followUps.length > 0 && (
-        <h2 className="font-heading text-lg font-semibold">
+        <h2 className="font-display text-xl tracking-tight text-brand">
           Initial assessment · {formatDateTime(assessment.created_at)}
         </h2>
       )}
@@ -321,12 +325,15 @@ export default async function ResultsPage(
       <Disclaimer />
 
       <div className="flex flex-wrap items-center gap-2">
-        <Link href={recordHref} className={cn(buttonVariants())}>
+        <Link
+          href={recordHref}
+          className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-brand/20 active:scale-95"
+        >
           ← Back to {pet?.pet_name ? `${pet.pet_name}'s` : "the"} record
         </Link>
         <Link
           href="/dashboard"
-          className={cn(buttonVariants({ variant: "outline" }))}
+          className="rounded-full border border-outline-variant/40 bg-white px-5 py-2.5 text-sm font-semibold text-brand transition-all hover:border-brand/40 active:scale-95"
         >
           Dashboard
         </Link>

@@ -5,12 +5,17 @@ import { ChatInterface } from "@/components/assessment/chat-interface";
 
 export const metadata = { title: "Assessment · PitsyPet" };
 
-// The [id] slug here is a pet id. We mint a fresh assessment id here but do NOT
-// insert a row — an assessment is only written to the DB once it COMPLETES (the
-// chat route's onFinish upserts it). That way abandoning or refreshing mid-chat
-// leaves no orphan rows; only finalized assessments exist. (Sibling route
-// [id]/results/ keys off the assessment id; Next.js requires the same slug name
-// at this path level, hence [id] rather than [petId].)
+// The [id] slug here identifies the PET — normally its URL slug (/assessment/max,
+// same addressing as /pets/max), with a fallback to the pet UUID so older links
+// keep working. We mint a fresh assessment id here but do NOT insert a row — an
+// assessment is only written to the DB once it COMPLETES (the chat route's
+// onFinish upserts it). That way abandoning or refreshing mid-chat leaves no
+// orphan rows; only finalized assessments exist. (Sibling route [id]/results/
+// keys off the assessment id; Next.js requires the same slug name at this path
+// level, hence [id] rather than [petSlug].)
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default async function AssessmentPage(
   props: {
     params: Promise<{ id: string }>;
@@ -21,12 +26,14 @@ export default async function AssessmentPage(
   const params = await props.params;
   const supabase = await createClient();
 
-  const { data: pet } = await supabase
+  const petQuery = supabase
     .from("pets")
-    .select("pet_id, pet_name, medical_conditions")
-    .eq("pet_id", params.id)
-    .is("deleted_at", null)
-    .maybeSingle();
+    .select("pet_id, pet_name, slug, medical_conditions")
+    .is("deleted_at", null);
+  const { data: pet } = await (UUID_RE.test(params.id)
+    ? petQuery.eq("pet_id", params.id)
+    : petQuery.eq("slug", params.id)
+  ).maybeSingle();
   if (!pet) {
     notFound();
   }
@@ -49,6 +56,20 @@ export default async function AssessmentPage(
     name: m.name,
     dosage: [m.dosage, m.dosage_unit].filter(Boolean).join(" ") || null,
     frequency: m.frequency,
+  }));
+
+  // Upcoming appointments only (never past ones) — shown in the sidebar so the
+  // owner sees the AI knows a vet visit is already booked.
+  const { data: apptRows } = await supabase
+    .from("appointments")
+    .select("title, scheduled_at")
+    .eq("pet_id", pet.pet_id)
+    .gte("scheduled_at", new Date().toISOString())
+    .is("deleted_at", null)
+    .order("scheduled_at", { ascending: true });
+  const appointments = (apptRows ?? []).map((a) => ({
+    title: a.title,
+    scheduled_at: a.scheduled_at,
   }));
 
   // Pre-load the pet's currently tracked symptoms so they already show in the
@@ -104,18 +125,20 @@ export default async function AssessmentPage(
   // sees the AI is aware and can report how each has changed.
   if (initialSymptoms.length > 0) {
     const names = initialSymptoms.map((s) => s.name).join(", ");
-    greeting += ` I'm already tracking these for ${pet.pet_name}: ${names}. How are they now — better, worse, or gone? And is there anything new?`;
+    greeting += ` I'm already tracking these for ${pet.pet_name}: ${names}. How are they now: better, worse, or gone? And is there anything new?`;
   }
 
   return (
     <ChatInterface
       petId={pet.pet_id}
+      petSlug={pet.slug}
       assessmentId={assessmentId}
       petName={pet.pet_name}
       isFollowUp={isFollowUp}
       greeting={greeting}
       conditions={conditions}
       medications={medications}
+      appointments={appointments}
       initialSymptoms={initialSymptoms}
     />
   );

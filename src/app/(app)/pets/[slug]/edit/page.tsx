@@ -29,13 +29,20 @@ export default async function EditPetPage(
 
   return (
     <section className="mx-auto grid max-w-lg gap-6">
-      <div className="grid gap-1">
-        <h1 className="font-heading text-2xl font-semibold">
+      <div className="grid gap-1.5">
+        <span className="block text-label-caps font-bold text-brand opacity-70">
+          EDIT PET
+        </span>
+        <h1 className="font-display text-2xl tracking-tight text-brand md:text-3xl">
           Edit {pet.pet_name}
         </h1>
-        <p className="text-muted-foreground">Update your pet&apos;s details.</p>
+        <p className="font-light text-on-surface-variant">
+          Update your pet&apos;s details.
+        </p>
       </div>
-      <PetForm mode="edit" pet={pet} />
+      <div className="rounded-[2rem] border border-outline-variant/20 bg-white p-6">
+        <PetForm mode="edit" pet={pet} />
+      </div>
     </section>
   );
 }

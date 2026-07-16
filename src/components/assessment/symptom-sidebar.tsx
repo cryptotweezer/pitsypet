@@ -30,47 +30,74 @@ export type KnownMedication = {
   frequency?: string | null;
 };
 
+// An UPCOMING appointment (past ones never reach the sidebar).
+export type KnownAppointment = {
+  title: string;
+  scheduled_at: string;
+};
+
+function formatWhen(iso: string): string {
+  return new Date(iso).toLocaleString("en-AU", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function SymptomSidebar({
   symptoms,
   analyzing,
   conditions = [],
   medications = [],
+  appointments = [],
 }: {
   symptoms: ExtractedSymptom[];
   analyzing: boolean;
   conditions?: string[];
   medications?: KnownMedication[];
+  appointments?: KnownAppointment[];
 }) {
   return (
-    <aside className="grid gap-4 rounded-xl border p-4">
+    <aside className="grid gap-4 rounded-[2rem] border border-outline-variant/20 bg-white p-5">
       <div>
-        <h2 className="font-heading text-sm font-semibold">Symptoms noticed</h2>
+        <h2 className="text-xs font-bold tracking-widest text-brand/60 uppercase">
+          Symptoms noticed
+        </h2>
 
         {symptoms.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">
             Symptoms will appear here as we chat.
           </p>
         ) : (
-          <ul className="mt-3 grid gap-2">
+          <ul className="mt-3 grid gap-2.5">
             {symptoms.map((s, i) => {
               const status = STATUS_LABEL[s.status ?? "present"];
               return (
-                <li
-                  key={`${s.name}-${i}`}
-                  className="flex items-center justify-between gap-2 text-sm"
-                >
-                  <span className={cn("capitalize", status?.className)}>
+                // Name on its own line, tags underneath — long symptom names
+                // wrap cleanly instead of colliding with the badges.
+                <li key={`${s.name}-${i}`} className="grid gap-1">
+                  <span
+                    className={cn(
+                      "text-sm capitalize",
+                      s.status === "resolved" &&
+                        "text-muted-foreground line-through",
+                    )}
+                  >
                     {s.name}
                   </span>
-                  <span className="flex items-center gap-1.5">
-                    {status && (
-                      <span className={cn("text-xs font-medium", status.className)}>
-                        {status.text}
-                      </span>
-                    )}
+                  <span className="flex flex-wrap items-center gap-1.5">
                     <Badge variant={SEVERITY_VARIANT[s.severity] ?? "outline"}>
                       {s.severity}
                     </Badge>
+                    {status && (
+                      <span
+                        className={cn("text-xs font-medium", status.className)}
+                      >
+                        {status.text}
+                      </span>
+                    )}
                   </span>
                 </li>
               );
@@ -89,11 +116,13 @@ export function SymptomSidebar({
 
       {/* Known context the AI already has — surfaced so the owner sees we're
           accounting for it. */}
-      {(conditions.length > 0 || medications.length > 0) && (
+      {(conditions.length > 0 ||
+        medications.length > 0 ||
+        appointments.length > 0) && (
         <div className="grid gap-3 border-t pt-3">
           {conditions.length > 0 && (
             <div>
-              <h3 className="text-xs font-semibold text-muted-foreground">
+              <h3 className="text-xs font-bold tracking-widest text-brand/60 uppercase">
                 Known conditions
               </h3>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -107,7 +136,7 @@ export function SymptomSidebar({
           )}
           {medications.length > 0 && (
             <div>
-              <h3 className="text-xs font-semibold text-muted-foreground">
+              <h3 className="text-xs font-bold tracking-widest text-brand/60 uppercase">
                 Current medications
               </h3>
               <ul className="mt-1.5 grid gap-1 text-sm">
@@ -119,11 +148,28 @@ export function SymptomSidebar({
                     <li key={`${m.name}-${i}`}>
                       <span className="font-medium">{m.name}</span>
                       {detail && (
-                        <span className="text-muted-foreground"> — {detail}</span>
+                        <span className="text-muted-foreground"> · {detail}</span>
                       )}
                     </li>
                   );
                 })}
+              </ul>
+            </div>
+          )}
+          {appointments.length > 0 && (
+            <div>
+              <h3 className="text-xs font-bold tracking-widest text-brand/60 uppercase">
+                Upcoming appointments
+              </h3>
+              <ul className="mt-1.5 grid gap-1 text-sm">
+                {appointments.map((a, i) => (
+                  <li key={`${a.title}-${i}`} className="grid">
+                    <span className="font-medium">{a.title}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatWhen(a.scheduled_at)}
+                    </span>
+                  </li>
+                ))}
               </ul>
             </div>
           )}

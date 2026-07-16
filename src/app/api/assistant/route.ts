@@ -29,7 +29,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const PET_COLUMNS =
-  "pet_id, pet_name, species, breed, age_years, age_months, weight_kg, medical_conditions";
+  "pet_id, pet_name, slug, species, breed, age_years, age_months, weight_kg, medical_conditions";
 
 function canon(s: string): string {
   return s.trim().toLowerCase();
@@ -83,7 +83,9 @@ const SYSTEM_PROMPT = `You are PitsyPet's assistant — a friendly, careful help
 
 You can SEE each pet's full record below (conditions, active symptoms, medications, vet clinics + doctors, appointments, recent assessments). Use it to answer questions accurately and concretely.
 
-ALWAYS reply with visible text — every single turn, write a short message to the owner in plain text, even when you also call a propose_* tool (e.g. "Sure — here's the medication to confirm:"). NEVER respond with only a tool call and no text: a tool-only reply leaves the chat looking frozen with nothing on screen.
+ALWAYS reply with visible text — every single turn, write a short message to the owner in plain text, even when you also call a propose_* tool (e.g. "Sure, here's the medication to confirm:"). NEVER respond with only a tool call and no text: a tool-only reply leaves the chat looking frozen with nothing on screen.
+
+STYLE: plain conversational text ONLY. Never use markdown formatting (no asterisks, headings, backticks, or bullet lists) and never use the em dash character (—). Use commas, colons, or short separate sentences instead.
 
 WRITING TO THE RECORD — read carefully:
 - You can NOT write to the database yourself. When the owner wants to add, change, or cancel something — a new pet, a medication, appointment (add OR cancel), vet clinic, doctor, or a symptom update — you MUST call the matching propose_* tool. Calling the tool is what shows the owner the Confirm button.
@@ -632,7 +634,7 @@ export async function POST(req: Request) {
                 "start_assessment",
                 d,
                 `Start a new assessment for ${d.petName}`,
-                { href: `/assessment/${d.petId}` },
+                { href: `/assessment/${d.slug}` },
               );
             },
           }),

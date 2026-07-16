@@ -8,7 +8,7 @@ import { Check, X, Sparkles, ArrowRight, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, cleanAiText } from "@/lib/utils";
 import type { ProposedAction } from "@/lib/ai/assistant";
 
 type ActionStatus = "pending" | "working" | "done" | "cancelled" | "error";
@@ -301,7 +301,7 @@ export function AssistantChat({
       <div
         key={a.id}
         className={cn(
-          "rounded-lg border border-dashed p-3 text-sm",
+          "rounded-2xl border border-dashed p-3 text-sm",
           done ? "opacity-70" : "bg-accent/40",
         )}
       >
@@ -367,7 +367,7 @@ export function AssistantChat({
         </div>
       )}
       <div
-        className="flex-1 space-y-3 overflow-y-auto rounded-lg border bg-background/50 p-3"
+        className="flex-1 space-y-3 overflow-y-auto rounded-2xl border bg-background/50 p-3"
         aria-live="polite"
       >
         {messages.length === 0 && !greeting && (
@@ -380,13 +380,13 @@ export function AssistantChat({
           <div key={m.id} className="space-y-3">
             <div
               className={cn(
-                "max-w-[88%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
+                "max-w-[88%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap",
                 m.role === "user"
                   ? "ml-auto bg-primary text-primary-foreground"
                   : "bg-muted",
               )}
             >
-              {m.content}
+              {m.role === "assistant" ? cleanAiText(m.content) : m.content}
             </div>
             {/* Proposed writes appear right after the turn that suggested them. */}
             {(actionsByAnchor.get(m.id) ?? []).map(renderCard)}
@@ -396,7 +396,7 @@ export function AssistantChat({
         {unanchored.map(renderCard)}
 
         {isLoading && (
-          <div className="w-fit rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+          <div className="w-fit rounded-2xl bg-muted px-3 py-2 text-sm text-muted-foreground">
             Thinking…
           </div>
         )}

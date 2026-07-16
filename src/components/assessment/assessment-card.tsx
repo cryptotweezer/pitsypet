@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { cn } from "@/lib/utils";
+import { cn, cleanAiText } from "@/lib/utils";
 
 export type AssessmentSummary = {
   assessment_id: string;
@@ -33,10 +33,10 @@ export function AssessmentCard({ item }: { item: AssessmentSummary }) {
   return (
     <Link
       href={`/assessment/${item.assessment_id}/results?from=history`}
-      className="grid content-start gap-2 rounded-xl border p-4 transition-colors hover:bg-muted/50"
+      className="grid content-start gap-2 rounded-[2rem] border border-outline-variant/20 bg-white p-5 transition-all hover:border-brand/20 hover:shadow-lg"
     >
       <div className="flex items-center justify-between gap-3">
-        <span className="font-medium">{item.pet_name}</span>
+        <span className="font-display text-brand">{item.pet_name}</span>
         <span
           className={cn(
             "rounded-full border px-2 py-0.5 text-xs font-medium",
@@ -60,7 +60,8 @@ export function AssessmentCard({ item }: { item: AssessmentSummary }) {
 
       {item.recommended_action && (
         <p className="line-clamp-2 text-xs text-muted-foreground">
-          <span className="font-medium">Next:</span> {item.recommended_action}
+          <span className="font-medium">Next:</span>{" "}
+          {cleanAiText(item.recommended_action)}
         </p>
       )}
 

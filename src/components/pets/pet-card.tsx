@@ -126,7 +126,7 @@ export function PetCard({ pet }: { pet: PetCardData }) {
           Open record
         </Link>
         <Link
-          href={`/assessment/${pet.pet_id}`}
+          href={`/assessment/${pet.slug}`}
           className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
         >
           New assessment

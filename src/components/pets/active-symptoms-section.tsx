@@ -171,7 +171,7 @@ export function ActiveSymptomsSection({
   }
 
   const formFields = (
-    <form onSubmit={handleSubmit} className="grid gap-3 rounded-lg border p-3">
+    <form onSubmit={handleSubmit} className="grid gap-3 rounded-2xl border border-outline-variant/30 p-3">
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label htmlFor="sym-name">Symptom</Label>
@@ -236,7 +236,7 @@ export function ActiveSymptomsSection({
       <li
         key={s.symptom_id}
         className={cn(
-          "flex items-start justify-between gap-3 rounded-lg border p-3 text-sm",
+          "flex items-start justify-between gap-3 rounded-2xl border border-outline-variant/30 p-3 text-sm",
           s.status === "resolved" && "opacity-60",
         )}
       >
@@ -341,9 +341,9 @@ export function ActiveSymptomsSection({
     );
 
   return (
-    <section className="grid gap-3 rounded-xl border p-4">
+    <section className="grid gap-3 rounded-[2rem] border border-outline-variant/20 bg-white p-6">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
+        <h2 className="flex items-center gap-2 font-display text-xl tracking-tight text-brand">
           <Activity className="size-5" aria-hidden /> Active symptoms
         </h2>
         {!adding && (

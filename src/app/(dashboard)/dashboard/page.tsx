@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
-import { cn, petHref } from "@/lib/utils";
+import { cn, petHref, cleanAiText } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard · PitsyPet" };
 
@@ -164,21 +164,47 @@ export default async function DashboardOverviewPage() {
     (a, b) => attentionScore(b.pet_id) - attentionScore(a.pet_id),
   );
 
+  // Per-pet breakdown for the stat tiles: with several pets, the owner should
+  // see at a glance WHICH pets carry each count, not just the total. Rows for
+  // deleted pets are skipped, so each tile's total matches its breakdown.
+  const nameById = new Map(activePets.map((p) => [p.pet_id, p.pet_name]));
+  function breakdown(petIds: string[]): { name: string; count: number }[] {
+    const counts = new Map<string, number>();
+    for (const id of petIds) {
+      const name = nameById.get(id);
+      if (!name) continue;
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    return Array.from(counts, ([name, count]) => ({ name, count })).sort(
+      (a, b) => b.count - a.count,
+    );
+  }
+  const total = (b: { count: number }[]) => b.reduce((n, x) => n + x.count, 0);
+
+  const symptomsByPetCount = breakdown((symptomRows ?? []).map((s) => s.pet_id));
+  const apptsByPetCount = breakdown((apptRows ?? []).map((a) => a.pet_id));
+  const medsByPetCount = breakdown(currentMeds.map((m) => m.pet_id));
+
   const stats = [
-    { label: "Pets", value: activePets.length, icon: PawPrint },
+    { label: "Pets", value: activePets.length, icon: PawPrint, byPet: [] },
     {
       label: "Active symptoms",
-      value: (symptomRows ?? []).length,
+      value: total(symptomsByPetCount),
       icon: Activity,
+      byPet: symptomsByPetCount,
     },
     {
       label: "Upcoming appointments",
-      value: (apptRows ?? []).filter((a) =>
-        activePets.some((p) => p.pet_id === a.pet_id),
-      ).length,
+      value: total(apptsByPetCount),
       icon: CalendarClock,
+      byPet: apptsByPetCount,
     },
-    { label: "Active medications", value: currentMeds.length, icon: Pill },
+    {
+      label: "Active medications",
+      value: total(medsByPetCount),
+      icon: Pill,
+      byPet: medsByPetCount,
+    },
   ];
 
   return (
@@ -197,7 +223,7 @@ export default async function DashboardOverviewPage() {
 
       {/* Stat tiles */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {stats.map(({ label, value, icon: Icon }) => (
+        {stats.map(({ label, value, icon: Icon, byPet }) => (
           <div
             key={label}
             className="rounded-[2rem] border border-outline-variant/20 bg-white p-5"
@@ -207,6 +233,11 @@ export default async function DashboardOverviewPage() {
             <p className="text-xs font-medium tracking-wide text-on-surface-variant">
               {label}
             </p>
+            {byPet.length > 0 && (
+              <p className="mt-1.5 text-xs font-light text-on-surface-variant">
+                {byPet.map((b) => `${b.name} (${b.count})`).join(" · ")}
+              </p>
+            )}
           </div>
         ))}
       </div>
@@ -307,14 +338,8 @@ export default async function DashboardOverviewPage() {
                       Latest recommendation
                     </p>
                     <p className="line-clamp-2 text-sm font-light">
-                      {latest.action}
+                      {cleanAiText(latest.action)}
                     </p>
-                    <Link
-                      href={`/assessment/${latest.assessment_id}/results?from=history`}
-                      className="text-xs font-semibold text-brand hover:underline"
-                    >
-                      View assessment →
-                    </Link>
                   </div>
                 )}
 
@@ -374,6 +399,13 @@ export default async function DashboardOverviewPage() {
                     </p>
                   )}
                 </div>
+
+                <Link
+                  href={petHref(pet.slug)}
+                  className="text-sm font-semibold text-brand hover:underline"
+                >
+                  Open {pet.pet_name}&apos;s record →
+                </Link>
               </div>
             );
           })}

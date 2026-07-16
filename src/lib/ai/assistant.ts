@@ -39,6 +39,7 @@ export type ProposedAction = {
 export type PetRow = {
   pet_id: string;
   pet_name: string;
+  slug: string;
   species: string;
   breed: string;
   age_years: number;
@@ -53,6 +54,7 @@ export type PetRow = {
 export type PetDossier = {
   petId: string;
   petName: string;
+  slug: string;
   text: string;
   appointments: { id: string; title: string; scheduled_at: string }[];
 };
@@ -281,6 +283,7 @@ export async function loadPetDossier(
   return {
     petId: pet.pet_id,
     petName: pet.pet_name,
+    slug: pet.slug,
     text: sections.join("\n\n"),
     appointments: (apptRows ?? []).map((a) => ({
       id: a.appointment_id,
