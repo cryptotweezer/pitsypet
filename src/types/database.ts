@@ -467,21 +467,36 @@ export type Database = {
           created_at: string
           id: string
           name: string | null
+          plan: string
+          plan_cancel_at_period_end: boolean
+          plan_renews_at: string | null
           state: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           id: string
           name?: string | null
+          plan?: string
+          plan_cancel_at_period_end?: boolean
+          plan_renews_at?: string | null
           state?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string | null
+          plan?: string
+          plan_cancel_at_period_end?: boolean
+          plan_renews_at?: string | null
           state?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           updated_at?: string
         }
         Relationships: []

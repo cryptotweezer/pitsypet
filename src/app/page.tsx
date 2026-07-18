@@ -24,6 +24,7 @@ import { ContactForm } from "@/components/landing/contact-form";
 import { HeroCarousel } from "@/components/landing/hero-carousel";
 import { LandingHeader } from "@/components/landing/landing-header";
 import { ScrollReveal } from "@/components/landing/scroll-reveal";
+import { createClient } from "@/lib/supabase/server";
 
 // Render per-request so this page receives the middleware's per-request CSP
 // nonce (our script-src uses 'strict-dynamic', which ignores 'self' — a
@@ -31,10 +32,17 @@ import { ScrollReveal } from "@/components/landing/scroll-reveal";
 // page added under this CSP must be dynamic too. See src/lib/security/csp.ts.
 export const dynamic = "force-dynamic";
 
-export default function Home() {
+export default async function Home() {
+  // The landing is public but session-aware: signed-in visitors get
+  // email + Dashboard + Log off in the navbar instead of Login/Get started.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <div className="landing-root mesh-bg font-sans text-on-surface">
-      <LandingHeader />
+      <LandingHeader email={user?.email ?? null} />
       <ScrollReveal />
 
       <main className="overflow-x-clip">
@@ -394,9 +402,10 @@ export default function Home() {
                 <ul className="mb-8 flex-grow space-y-4">
                   {[
                     "2 AI triage sessions / month",
-                    "First-aid steps & emergency vet contacts",
-                    "2 vet PDF exports / month",
+                    "10 AI assistant messages / day",
+                    "Unlimited vet PDF exports",
                     "1 pet profile",
+                    "Low / Medium / High risk assessment",
                     "24/7 access, any device",
                   ].map((f) => (
                     <li
@@ -438,10 +447,10 @@ export default function Home() {
                 </div>
                 <ul className="mb-8 flex-grow space-y-4">
                   {[
-                    "Everything in Basic, unlimited",
-                    "Unlimited pets",
-                    "Unlimited records & clinical history",
-                    "Vet PDF reports",
+                    "Everything in PitsyBasic",
+                    "Unlimited AI triage sessions",
+                    "Unlimited AI assistant chat",
+                    "Unlimited pets & clinical records",
                     "Priority support",
                   ].map((f) => (
                     <li
@@ -453,9 +462,11 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                {/* Wired to Stripe Checkout (test mode) in a later step. */}
+                {/* ?checkout=1 sends signed-in users STRAIGHT to the Stripe
+                    payment page (already-premium users just see their plan);
+                    the auth guard routes logged-out visitors through /login. */}
                 <Link
-                  href="/register"
+                  href="/dashboard/billing?checkout=1"
                   className="w-full rounded-2xl bg-white py-4 text-center text-lg font-bold text-brand shadow-xl shadow-black/20 transition-all hover:scale-[1.02] active:scale-95"
                 >
                   Go Premium

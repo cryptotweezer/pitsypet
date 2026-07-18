@@ -46,12 +46,15 @@ export async function updateSession(request: NextRequest) {
   const isAuthRoute =
     path.startsWith("/login") || path.startsWith("/register");
   // Unauthenticated public endpoints — must not redirect to /login:
-  // /api/health is the uptime probe; /api/contact is the public landing form.
+  // /api/health is the uptime probe; /api/contact is the public landing form;
+  // /api/billing/webhook is Stripe's server-to-server callback (authenticated
+  // by its own signature check, not a session).
   const isPublic =
     path === "/" ||
     path.startsWith("/auth") ||
     path === "/api/health" ||
-    path === "/api/contact";
+    path === "/api/contact" ||
+    path === "/api/billing/webhook";
 
   if (!user && !isAuthRoute && !isPublic) {
     return NextResponse.redirect(new URL("/login", request.url));

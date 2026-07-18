@@ -2,8 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+
+import { createClient } from "@/lib/supabase/client";
 
 const NAV = [
   { href: "#how-it-works", label: "How it works" },
@@ -12,12 +14,25 @@ const NAV = [
   { href: "#contact", label: "Contact" },
 ];
 
-export function LandingHeader() {
+// `email` comes from the server (landing page fetches the session) — when set,
+// the auth corner swaps Login/Get started for email + Dashboard + Log off.
+export function LandingHeader({ email }: { email?: string | null }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [active, setActive] = useState<string>("");
+  const [signingOut, setSigningOut] = useState(false);
   const isLogin = pathname === "/login";
   const isRegister = pathname === "/register";
+
+  async function handleLogout() {
+    setSigningOut(true);
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    // Re-render the server tree so the header falls back to Login/Get started.
+    router.refresh();
+    setSigningOut(false);
+  }
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -75,28 +90,53 @@ export function LandingHeader() {
           })}
         </div>
 
-        <div className="flex items-center space-x-2 sm:space-x-4">
-          {!isLogin && (
-            <Link
-              href="/login"
-              className={
-                isRegister
-                  ? "rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-brand/20 active:scale-95"
-                  : "hidden px-4 py-2 text-sm font-semibold text-on-surface-variant transition-all hover:text-brand sm:block"
-              }
+        {email ? (
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            <span
+              className="hidden max-w-40 truncate text-sm font-light text-on-surface-variant lg:block"
+              title={email}
             >
-              Log in
-            </Link>
-          )}
-          {!isRegister && (
+              {email}
+            </span>
             <Link
-              href="/register"
+              href="/dashboard"
               className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-brand/20 active:scale-95"
             >
-              Get started
+              Dashboard
             </Link>
-          )}
-        </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={signingOut}
+              className="px-2 py-2 text-sm font-semibold text-on-surface-variant transition-all hover:text-brand disabled:opacity-60 sm:px-4"
+            >
+              {signingOut ? "Signing out…" : "Log off"}
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            {!isLogin && (
+              <Link
+                href="/login"
+                className={
+                  isRegister
+                    ? "rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-brand/20 active:scale-95"
+                    : "hidden px-4 py-2 text-sm font-semibold text-on-surface-variant transition-all hover:text-brand sm:block"
+                }
+              >
+                Log in
+              </Link>
+            )}
+            {!isRegister && (
+              <Link
+                href="/register"
+                className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-brand/20 active:scale-95"
+              >
+                Get started
+              </Link>
+            )}
+          </div>
+        )}
       </nav>
     </header>
   );

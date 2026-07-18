@@ -26,6 +26,14 @@ export const exportRateLimiter = new Ratelimit({
   prefix: "pitsypet:export",
 });
 
+// Stripe checkout/portal session creation — deliberate, occasional clicks;
+// bounded so a stuck client can't spam Stripe API calls on our account.
+export const billingRateLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(10, "1 m"),
+  prefix: "pitsypet:billing",
+});
+
 // Public landing contact form (POST /api/contact). Keyed by client IP, not a
 // user id — the page is unauthenticated. Tight window to blunt spam bursts; a
 // honeypot field in the route catches the rest.

@@ -20,6 +20,12 @@ import { classifyRisk } from "@/lib/ai/classifier";
 import { reconcileActiveSymptoms } from "@/lib/active-symptoms";
 import { loadUserClinics } from "@/lib/ai/assistant";
 import {
+  BASIC_LIMITS,
+  getUserPlan,
+  LIMIT_MESSAGES,
+  triageSessionsThisMonth,
+} from "@/lib/plan-limits";
+import {
   formatSymptoms,
   formatPet,
   formatChunks,
@@ -113,6 +119,28 @@ export async function POST(req: Request) {
       { error: "Too many requests — please slow down." },
       { status: 429 },
     );
+  }
+
+  // PitsyBasic: 2 triage sessions per month. The cap gates STARTING a new
+  // assessment only — a session already under way (or a follow-up, which
+  // belongs to an existing assessment row) is never cut off mid-conversation.
+  // "New" is decided server-side by whether the row exists (rows are written
+  // only on completion), not by the client's isFollowUp flag.
+  if ((await getUserPlan(supabase, user.id)) !== "premium") {
+    const { data: existingRow } = await supabase
+      .from("assessments")
+      .select("assessment_id")
+      .eq("assessment_id", assessmentId)
+      .maybeSingle();
+    if (!existingRow) {
+      const used = await triageSessionsThisMonth(supabase);
+      if (used >= BASIC_LIMITS.triageSessionsPerMonth) {
+        return NextResponse.json(
+          { error: LIMIT_MESSAGES.triage, code: "plan_limit" },
+          { status: 403 },
+        );
+      }
+    }
   }
 
   // Re-fetch the pet through the cookie-scoped client — never trust client data.

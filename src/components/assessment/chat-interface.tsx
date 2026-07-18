@@ -7,7 +7,7 @@ import { useChat } from "@ai-sdk/react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn, cleanAiText } from "@/lib/utils";
+import { cn, cleanAiText, parseApiError } from "@/lib/utils";
 import type { ExtractedSymptom, RiskClassification } from "@/lib/ai/schemas";
 import {
   SymptomSidebar,
@@ -155,8 +155,18 @@ export function ChatInterface({
   // classify running) and `finishing` (results streaming in) are normal working
   // states, not a stall, so showing the emergency block there is a false alarm
   // that flashes and then vanishes once the assessment lands.
+  // A PitsyBasic allowance 403 is a business message, not a failure — it gets
+  // its own upgrade notice and must NOT trigger the emergency-contacts block.
+  const planLimitMessage =
+    error != null && parseApiError(error).code === "plan_limit"
+      ? parseApiError(error).message
+      : null;
   const showEmergency =
-    (error != null || stalled) && !done && !analyzing && !finishing;
+    (error != null || stalled) &&
+    planLimitMessage == null &&
+    !done &&
+    !analyzing &&
+    !finishing;
 
   const bottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -252,6 +262,20 @@ export function ChatInterface({
             )}
             <div ref={bottomRef} />
           </div>
+
+          {planLimitMessage && (
+            <div className="rounded-2xl border border-brand/20 bg-brand/5 p-4 text-sm">
+              <p className="text-on-surface-variant">{planLimitMessage}</p>
+              <Button
+                size="sm"
+                className="mt-3"
+                render={<Link href="/dashboard/billing?checkout=1" />}
+              >
+                Go Premium
+                <ArrowRight className="size-4" aria-hidden />
+              </Button>
+            </div>
+          )}
 
           {showEmergency && (
             <EmergencyFallback

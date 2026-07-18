@@ -1,6 +1,13 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Crown } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
+import {
+  BASIC_LIMITS,
+  getUserPlan,
+  triageSessionsThisMonth,
+} from "@/lib/plan-limits";
 import { ChatInterface } from "@/components/assessment/chat-interface";
 
 export const metadata = { title: "Assessment · PitsyPet" };
@@ -118,6 +125,55 @@ export default async function AssessmentPage(
       greeting = original.primary_concern
         ? `Let's follow up on ${pet.pet_name}'s previous assessment (${original.primary_concern}). How have they been since then?`
         : `Let's follow up on ${pet.pet_name}'s previous assessment. How have they been since then?`;
+    }
+  }
+
+  // PitsyBasic monthly triage cap — checked here so an over-limit user gets a
+  // friendly upgrade screen instead of a chat that errors on the first message.
+  // Follow-ups belong to an existing session and are never gated. The chat
+  // route re-checks server-side (this page check is UX, not the enforcement).
+  if (!isFollowUp) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user && (await getUserPlan(supabase, user.id)) !== "premium") {
+      const used = await triageSessionsThisMonth(supabase);
+      if (used >= BASIC_LIMITS.triageSessionsPerMonth) {
+        return (
+          <section className="mx-auto grid w-full max-w-xl gap-6 px-4 py-16">
+            <div className="rounded-[2.5rem] border border-outline-variant/20 bg-white p-8 text-center md:p-10">
+              <Crown className="mx-auto size-10 text-brand" aria-hidden />
+              <h1 className="mt-4 font-display text-2xl tracking-tight text-brand">
+                You&apos;ve used this month&apos;s free triage sessions
+              </h1>
+              <p className="mt-3 text-sm font-light text-on-surface-variant">
+                PitsyBasic includes {BASIC_LIMITS.triageSessionsPerMonth} AI
+                triage sessions per month across all your pets, and
+                you&apos;ve used them. Your allowance resets at the start of
+                next month, or you can go Premium for unlimited sessions.
+              </p>
+              <p className="mt-3 text-sm font-semibold text-on-surface">
+                If you think this is an emergency, don&apos;t wait for an
+                assessment — call your vet or nearest emergency clinic now.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                <Link
+                  href="/dashboard/billing?checkout=1"
+                  className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-bold text-white shadow-md shadow-brand/20 transition-all hover:scale-[1.02] hover:bg-brand/90"
+                >
+                  Go Premium
+                </Link>
+                <Link
+                  href={`/pets/${pet.slug}`}
+                  className="inline-flex items-center gap-2 rounded-full border border-outline-variant/40 bg-white px-6 py-3 text-sm font-bold text-brand transition-all hover:bg-muted"
+                >
+                  Back to {pet.pet_name}&apos;s record
+                </Link>
+              </div>
+            </div>
+          </section>
+        );
+      }
     }
   }
 

@@ -18,25 +18,38 @@ import { POST, GET } from "../pets/route";
 type InsertResult = { data: unknown; error: unknown };
 
 // A chainable stand-in for the supabase-js builder used by the route:
-//   .from("pets").insert({...}).select().single()      → InsertResult
-//   .from("pets").select("*").is(...).order(...)        → InsertResult
-//   .from("pets").select("slug").eq(...).like(...)      → slugResult (nextPetSlug)
+//   .from("pets").insert({...}).select().single()          → insertResult
+//   .from("pets").select("*").is(...).order(...)            → listResult
+//   .from("pets").select("slug").eq(...).like(...)          → slugResult (nextPetSlug)
+//   .from("profiles").select("plan").eq(...).maybeSingle()  → planResult (plan gate)
+//   .from("pets").select("pet_id", {count}).is(...)         → countResult (pet cap; awaited)
 function makeClient(opts: {
   user: { id: string } | null;
   insertResult?: InsertResult;
   listResult?: InsertResult;
   slugResult?: InsertResult;
+  planResult?: InsertResult;
+  countResult?: { count: number };
 }) {
   const single = vi.fn().mockResolvedValue(opts.insertResult ?? { data: null, error: null });
   const order = vi.fn().mockResolvedValue(opts.listResult ?? { data: [], error: null });
   const like = vi.fn().mockResolvedValue(opts.slugResult ?? { data: [], error: null });
+  const maybeSingle = vi.fn().mockResolvedValue(opts.planResult ?? { data: null, error: null });
+  // `.is()` is both awaited directly (head-count query) and chained with
+  // `.order()` (GET list) — a promise carrying an `order` method covers both.
+  const is = vi.fn(() =>
+    Object.assign(
+      Promise.resolve({ count: opts.countResult?.count ?? 0, data: null, error: null }),
+      { order },
+    ),
+  );
   return {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: opts.user } }) },
     from: vi.fn(() => ({
       insert: vi.fn(() => ({ select: vi.fn(() => ({ single })) })),
       select: vi.fn(() => ({
-        is: vi.fn(() => ({ order })),
-        eq: vi.fn(() => ({ like })),
+        is,
+        eq: vi.fn(() => ({ like, maybeSingle })),
       })),
     })),
   };
@@ -104,6 +117,30 @@ describe("POST /api/pets", () => {
     const res = await POST(postRequest(validBody));
     expect(res.status).toBe(201);
     await expect(res.json()).resolves.toEqual({ pet: created });
+  });
+
+  it("returns 403 when a basic user already has their 1 pet", async () => {
+    currentClient = makeClient({
+      user: { id: "u1" },
+      planResult: { data: { plan: "basic" }, error: null },
+      countResult: { count: 1 },
+    });
+    const res = await POST(postRequest(validBody));
+    expect(res.status).toBe(403);
+    const json = await res.json();
+    expect(json.code).toBe("plan_limit");
+  });
+
+  it("lets a premium user create pets past the basic cap", async () => {
+    const created = { id: "p9", ...validBody, user_id: "u1" };
+    currentClient = makeClient({
+      user: { id: "u1" },
+      planResult: { data: { plan: "premium" }, error: null },
+      countResult: { count: 5 },
+      insertResult: { data: created, error: null },
+    });
+    const res = await POST(postRequest(validBody));
+    expect(res.status).toBe(201);
   });
 
   it("returns 409 on a duplicate pet name (unique violation)", async () => {

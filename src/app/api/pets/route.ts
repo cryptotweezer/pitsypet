@@ -2,6 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
 import { nextPetSlug } from "@/lib/pet-slug";
+import {
+  BASIC_LIMITS,
+  getUserPlan,
+  LIMIT_MESSAGES,
+} from "@/lib/plan-limits";
 import { petApiSchema } from "@/lib/validations/pet";
 
 // All pet access goes through the cookie-scoped server client, so RLS already
@@ -51,6 +56,21 @@ export async function POST(request: NextRequest) {
       { error: "Validation failed", issues: parsed.error.flatten() },
       { status: 400 },
     );
+  }
+
+  // PitsyBasic includes 1 pet profile. Existing extra pets are never touched —
+  // only creating beyond the cap is blocked.
+  if ((await getUserPlan(supabase, user.id)) !== "premium") {
+    const { count } = await supabase
+      .from("pets")
+      .select("pet_id", { count: "exact", head: true })
+      .is("deleted_at", null);
+    if ((count ?? 0) >= BASIC_LIMITS.maxPets) {
+      return NextResponse.json(
+        { error: LIMIT_MESSAGES.pets, code: "plan_limit" },
+        { status: 403 },
+      );
+    }
   }
 
   const slug = await nextPetSlug(supabase, user.id, parsed.data.pet_name);

@@ -15,6 +15,11 @@ import { chatRateLimiter } from "@/lib/rate-limit";
 import { checkDailyCap } from "@/lib/cost-guard";
 import { arcjetGuard } from "@/lib/arcjet";
 import {
+  consumeAssistantMessage,
+  getUserPlan,
+  LIMIT_MESSAGES,
+} from "@/lib/plan-limits";
+import {
   loadPetDossier,
   loadUserClinics,
   clinicOpenAt,
@@ -154,6 +159,18 @@ export async function POST(req: Request) {
       { error: "Too many requests — please slow down." },
       { status: 429 },
     );
+  }
+
+  // PitsyBasic: 10 assistant messages per day (their local day). Premium is
+  // unlimited and never touches the counter.
+  if ((await getUserPlan(supabase, user.id)) !== "premium") {
+    const allowed = await consumeAssistantMessage(user.id, timeZone);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: LIMIT_MESSAGES.assistant, code: "plan_limit" },
+        { status: 403 },
+      );
+    }
   }
 
   // Vet clinics are owner-level (shared across all pets), loaded once.

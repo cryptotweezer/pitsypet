@@ -36,3 +36,16 @@ export function cleanAiText(text: string): string {
     .replace(/\s+[—–]\s+/g, ", ") // spaced em/en dash → comma
     .replace(/[—–]/g, "-") // any leftover dash → hyphen
 }
+
+// useChat surfaces a non-2xx response as an Error whose message is the raw
+// body. Parse our API routes' JSON error shape ({ error, code? }) out of it;
+// `code === "plan_limit"` marks a PitsyBasic allowance hit (upgrade prompt).
+export function parseApiError(err: Error): { message: string; code?: string } {
+  try {
+    const parsed = JSON.parse(err.message) as { error?: string; code?: string }
+    if (parsed.error) return { message: parsed.error, code: parsed.code }
+  } catch {
+    // not JSON — fall through to the generic message
+  }
+  return { message: "Something went wrong. Please try again." }
+}

@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarClock,
   CircleHelp,
+  CreditCard,
   History,
   Home,
   LayoutDashboard,
@@ -30,6 +31,7 @@ const NAV = [
     icon: CalendarClock,
   },
   { href: "/dashboard/history", label: "History", icon: History },
+  { href: "/dashboard/billing", label: "Plan", icon: CreditCard },
 ];
 
 // Full-height dashboard sidebar (the dashboard has no top navbar): logo, main

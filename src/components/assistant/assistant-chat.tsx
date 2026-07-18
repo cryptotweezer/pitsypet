@@ -8,7 +8,7 @@ import { Check, X, Sparkles, ArrowRight, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn, cleanAiText } from "@/lib/utils";
+import { cn, cleanAiText, parseApiError } from "@/lib/utils";
 import type { ProposedAction } from "@/lib/ai/assistant";
 
 type ActionStatus = "pending" | "working" | "done" | "cancelled" | "error";
@@ -67,7 +67,21 @@ export function AssistantChat({
     initialMessages: greeting
       ? [{ id: "greeting", role: "assistant", content: greeting }]
       : undefined,
-    onError: () => toast.error("The assistant hit a snag. Please try again."),
+    onError: (err) => {
+      const { message, code } = parseApiError(err);
+      if (code === "plan_limit") {
+        // Daily allowance reached — offer the upgrade path right in the toast.
+        toast.error(message, {
+          duration: 8000,
+          action: {
+            label: "Go Premium",
+            onClick: () => router.push("/dashboard/billing"),
+          },
+        });
+      } else {
+        toast.error(message);
+      }
+    },
   });
 
   // Per-device conversation memory: persist messages to localStorage so the
