@@ -36,11 +36,19 @@ type BillingUpdate = {
 
 function updateFromSubscription(sub: Stripe.Subscription): BillingUpdate {
   const plan = planFromStatus(sub.status);
+  // Older API versions flag a scheduled cancellation with cancel_at_period_end;
+  // newer ones (2025+/"dahlia") instead set `cancel_at` to the end timestamp
+  // and leave the boolean false. Honour both, and when cancel_at is set it IS
+  // the service-end date the user should see.
+  const cancelScheduled = sub.cancel_at_period_end || sub.cancel_at != null;
+  const endsAt = sub.cancel_at
+    ? new Date(sub.cancel_at * 1000).toISOString()
+    : subscriptionPeriodEnd(sub);
   return {
     plan,
     stripe_subscription_id: plan === "premium" ? sub.id : null,
-    plan_renews_at: plan === "premium" ? subscriptionPeriodEnd(sub) : null,
-    plan_cancel_at_period_end: plan === "premium" && sub.cancel_at_period_end,
+    plan_renews_at: plan === "premium" ? endsAt : null,
+    plan_cancel_at_period_end: plan === "premium" && cancelScheduled,
   };
 }
 

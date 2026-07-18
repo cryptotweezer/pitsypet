@@ -232,6 +232,29 @@ describe("POST /api/billing/webhook", () => {
     });
   });
 
+  it("modern-API cancellation (cancel_at set, boolean false) marks the plan as cancelling", async () => {
+    mockConstructEvent.mockReturnValue({
+      type: "customer.subscription.updated",
+      data: {
+        object: {
+          id: "sub_1",
+          customer: "cus_1",
+          status: "active",
+          cancel_at_period_end: false,
+          cancel_at: 1_790_000_000,
+          items: { data: [{ current_period_end: 1_789_000_000 }] },
+        },
+      },
+    });
+    const res = await webhookPOST(signedRequest({}));
+    expect(res.status).toBe(200);
+    expect(adminUpdates[0]!.values).toMatchObject({
+      plan: "premium",
+      plan_cancel_at_period_end: true,
+      plan_renews_at: new Date(1_790_000_000 * 1000).toISOString(),
+    });
+  });
+
   it("500 when a subscription event references an unknown customer (Stripe will retry)", async () => {
     adminUpdateRows = [];
     mockConstructEvent.mockReturnValue({
