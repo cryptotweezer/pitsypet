@@ -51,6 +51,8 @@ export async function updateSession(request: NextRequest) {
   // by its own signature check, not a session).
   const isPublic =
     path === "/" ||
+    path === "/privacy" ||
+    path === "/terms" ||
     path.startsWith("/auth") ||
     path === "/api/health" ||
     path === "/api/contact" ||

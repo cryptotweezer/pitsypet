@@ -15,6 +15,7 @@ import {
   Menu,
   PawPrint,
   Stethoscope,
+  UserRound,
   X,
 } from "lucide-react";
 
@@ -32,6 +33,7 @@ const NAV = [
   },
   { href: "/dashboard/history", label: "History", icon: History },
   { href: "/dashboard/billing", label: "Plan", icon: CreditCard },
+  { href: "/dashboard/account", label: "Account", icon: UserRound },
 ];
 
 // Full-height dashboard sidebar (the dashboard has no top navbar): logo, main

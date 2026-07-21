@@ -9,17 +9,15 @@ import { trackRiskLevelShown } from "@/lib/analytics";
 // a Server Component, so this small client island carries the event.
 export function TrackRiskShown({
   risk,
-  assessmentId,
 }: {
   risk: string;
-  assessmentId: string;
 }) {
   const firedRef = useRef(false);
   useEffect(() => {
     if (firedRef.current) return;
     firedRef.current = true;
-    trackRiskLevelShown({ riskLevel: risk, assessmentId });
-  }, [risk, assessmentId]);
+    trackRiskLevelShown();
+  }, [risk]);
 
   return null;
 }

@@ -40,21 +40,37 @@
 
 ## STATUS
 
-**Current phase:** Phase 7.5 — Pet Clinical History Hub. **Part 1 ✅ committed.** **Part 2 — groups A→B→C ✅ committed (`31c463e`); #8–#12 + Group D + chat fixes ✅ (Session 13).** **Session 14 (global vet clinics + tz dates + assessment prompt fixes) ✅. Session 15 (final test-driven fix batch) ✅. Session 16 (Part 3 — vet PDF export + AI summary) ✅. Session 17 (proposal-vs-implemented audit + security pass round 1) ✅.** Phase 7.5 feature work is **COMPLETE** (all parts committed). The standalone manual-test guide (`docs/TESTING_PROTOCOL.md`) was **removed 2026-06-26** — manual feature verification is folded into the Phase 10/12 manual passes. **Remaining: Email/Resend (Group E) + RAG-in-chat** (both deferred), plus the noted **export-summary caching** optimization. See `docs/proposal_vs_implemented.md` for the full proposal coverage map.
+**Current phase:** Phase 8 — UI/UX Polish & Accessibility. The active rapid-edit pass covers the public landing and branded legal/account surfaces; visual verification is explicitly delegated to the user.
+
+**Latest completed (Sessions 40–41):** final landing footer attribution/disclaimer; public `/privacy` and `/terms` pages using the landing navbar/style; Dashboard > Account permanent deletion; billing-safe `DELETE /api/account`; authenticated `delete_own_account` migration applied and remotely verified on PitsyPet; PostHog/Sentry data minimisation; and a full documentation reconciliation.
+
+**Verification baseline:** 16 Vitest files / **165 tests passed**; `npx tsc --noEmit` clean; `npm run lint` clean. No assistant visual verification was performed, per user request.
+
+**Immediate next:** continue any requested rapid landing/legal-page refinements. Afterwards: formal Phase 8 responsive/WCAG audit; Phase 9 fallback, cross-tenant and cost-guard verification; disposable-user deletion E2E; Phase 10.8 performance + full walkthrough; Phase 11.6 production smoke; Phase 12 UAT + `README.md`; professional legal review before release reliance.
+
+**Blocked/deferred:** Phase 4 vetted veterinary source collection/ingestion and vet-led calibration; RAG in the assistant until the KB exists; Resend custom auth/doctor email until account/domain setup is available.
+
+**Supabase safety invariant:** PitsyPet = project `pitsypet`, ref `xaepzvxrqnqenspnanej`, org `qdendiktmyttgngqljay`, region `ap-southeast-2`. Confirm that ref before every remote write. Never use unrelated `protegiendo_huellas` (`irwdfcacgpznmvjofszq`).
+
+**Active plan:** `dev_plan.md` Phase 8; pending verification also references Phases 9–12.
+
+### Historical milestones
+
+**Phase 7.5 — Pet Clinical History Hub:** feature work is complete. Part 1 and Part 2 groups A–D, Sessions 14–17, and the later deterministic PDF-export correction are closed. Manual feature verification is folded into the Phase 10/12 passes. See `docs/proposal_vs_implemented.md` for the proposal coverage map.
 - **A (bugs):** orphan-assessment fixed (no DB row until COMPLETE — chat route persists only on completion via upsert; page mints a UUID, no pre-insert); chat box fixed-height + scroll, symptom sidebar sticky.
 - **B (pet record):** vet model = **clinic + doctors** (`vet_contacts`→clinic w/ `service_hours` JSONB + `address`; new `vet_doctors`; new `appointments`); meds **editable + labeled** (Dosage/Quantity/Frequency); vet **editable**, structured **opening-hours picker**, clickable **Hours dialog w/ live Open/Closed**, **collapsible doctors**; **Next appointments** section; pet page relaid Vet → Appointments → Medications.
 - **C (assessment context/history):** AI now gets current **meds + last 3 assessments** in extraction + classification (conditions already via formatPet); results page lists **detected symptoms**; history cards show an **abstract** (concern + symptoms + next steps + follow-up count); **follow-ups** = dated sections appended to the same assessment (`follow_ups` JSONB), with a **+ Follow-up** button + timeline on results.
 - **Session 13 (#8–#12 + Group D):** quick fixes #8/#9/#10 done; **active-symptoms reconciliation #11/#12** done (AI carries tracked symptoms into every assessment/follow-up, asks how each changed, and resolves/improves/worsens/adds via shared `reconcileActiveSymptoms` with canonical dedup; new `improving` status; resolved symptoms move to a collapsible "Resolved" section on the pet page); **Group D chats** done (per-pet embedded panel + dashboard floating widget; full per-pet context; confirm-before-write proposal cards → existing REST routes; `start_assessment` button).
 - **Session 14 (this session, committed):** chat-fix batch + structural change — **vet clinics + doctors are now OWNER-level (global)**, managed on the **dashboard**, not per pet. Migration `20260623000000_global_vet_contacts` (applied; required reconciling a migration-history drift — two MCP-applied migrations `20260622104230/113454` were repaired `reverted`, local `20260622000000/000100` marked `applied`). Dropped `pet_id` from `vet_contacts`/`vet_doctors`; new global routes `src/app/api/vet-contacts/**`; deleted old per-pet vet routes; new `VetContactsManager` + `DashboardAppointments` (all pets, pet picker) on the dashboard; pet page keeps its own appointments + meds (clinic dropdown now reads global clinics); `loadUserClinics()` feeds clinics (with hours + doctors) into EVERY assistant chat + the assessment. Other fixes: dose-vs-quantity prompt/tool clarity; clinic+doctors in ONE proposal card; structured `service_hours` via chat; **Clear chat** button; assistant always available + **propose_create_pet** (works with 0 pets); **timezone-aware dates** (browser IANA tz → server `buildDateReference` table; fixes "next Monday"); appointment **closed-clinic confirm-before-booking** (`clinicOpenAt`); doctor lookup from clinic for "prescribed by"; **proposal cards persist across refresh** (localStorage `…:ext`). **Assessment prompt fixes (mid-test):** never invent symptoms from meds/conditions — **ask, then record only if confirmed**; appointments labelled **(upcoming)/(past)** so a future visit isn't treated as already done.
 - **Session 15 (this session, committed):** final fix batch from the user's manual test, then **handed off to the testing pass**. (1) Pet page **past appointments** + **finished medications** are now collapsible sections; ongoing meds get a **"Mark as finished"** button (sets `ended_at=today`). (2) Assessment chat completion reworked: **no auto-redirect** — the AI posts a closing message with a clickable **"View results"** button and the chat **locks** (input + replies gone), so the last AI message is never lost. (3) **Appointment `doctor_name`** field added (migration `20260624000000`): a datalist of the **selected clinic's doctors**, free-text or empty — on BOTH the pet-page and dashboard appointment forms. (4) **Results page emergency-contacts bug fixed**: each block (initial + every follow-up) now renders its OWN risk-appropriate `Recommendations`, so a **High-risk follow-up** shows emergency contacts even when the initial was Low/Medium; emergency contacts are fetched if ANY block is High; Low follow-ups get their own first-aid. (5) Pet-card **risk tag now tracks the LATEST follow-up's** risk, not the initial. (6) Vet clinic/doctor **DELETE changed from soft → hard delete** (no restore UI for this owner-global reference data; clinic delete cascades doctors + nulls appointment links). Testing protocol written to `docs/TESTING_PROTOCOL.md` (renamed from `TESTING_PHASE_7.5.md`).
-- **Session 16 (this session, committed):** **Part 3 — vet-facing PDF export + AI summary.** New `POST /api/assessment/[id]/export` (auth + RLS) assembles the record — patient, **current + past medications with start/end dates**, the initial assessment + **all follow-ups** — and generates a **Sonnet clinical-handover summary** (`src/lib/ai/vet-summary.ts`, with a deterministic fallback). **Triage priority is computed deterministically** from the case's highest stored risk (any High → Urgent, Medium → Soon, else Routine) and the AI never softens it. PDF via **`@react-pdf/renderer`** (`vet-pdf-document.tsx`) downloaded client-side from a dynamically-imported **"Export for vet (PDF)"** button (`export-button.tsx`) so the heavy lib stays out of the page bundle (results page still ~3.9 kB). Shared types in `src/lib/export/types.ts`. Independent of RAG/Resend. Mid-session fix from the user's test: meds dates weren't passed to the AI (said "not recorded") and the PDF only showed active meds → now all meds flow through with dates + a Current/Past split in both the PDF and the AI prompt.
-**Active plan:** `dev_plan.md` (Phase 7.5 section)
-**Security round 2 ✅ (Session 18):** nonce-based CSP (middleware) + static security headers (next.config); all routes forced dynamic for strict-dynamic; **Arcjet** (shield + bot detection, fails-open, DRY_RUN in dev) on the 3 AI routes; RLS/injection re-audit PASS (13/13 RLS, no SERVICE_ROLE in src, 100% body writes zod-validated). **Open decision:** Next 14.2.35 has 14 advisories fixed only in 15.5.16+ (a Next 15 major upgrade) — incl. a moderate CSP-nonce XSS; staying on 14.2.35 with documented residuals for now.
+- **Session 16, final state corrected in Session 33:** vet-facing PDF export assembles the stored patient/medication/assessment/follow-up record and renders it with `@react-pdf/renderer`. The handover summary and triage priority are now **fully deterministic** via `src/lib/export/summary.ts`; there is no per-download AI call and no summary-caching TODO.
+**Historical active plan:** Phase 7.5 is closed; the current plan is Phase 8 as stated above.
+**Security round 2 ✅ (Session 18), framework risk resolved in Session 20:** nonce CSP, static security headers, Arcjet on AI routes, and the RLS/injection audit were completed. The former Next 14 advisory decision is obsolete: the app runs Next 15.5.19 + React 19 and the identified Next advisories were cleared at migration time.
 **Phase 10 started ✅ (Session 19):** Vitest set up; 50 pure-logic tests pass (safety override now a testable pure fn, rule-based fallback thresholds, Zod schemas, model-down triage regression set). `npm test` is the green net for the migration. Remaining Phase-10 work (integration/perf/manual) is post-migration.
 **Next 15 migration ✅ DONE & on main (Session 20, `4adaaba`):** Next 15.5.19 + React 19; async request APIs handled; all 14 Next advisories cleared (4 high → 0 high); build/lint/50-tests/CSP-headers green. **Verify the Vercel prod deploy went through on Next 15.**
 **Session 21 (no-blocker work):** `GET /api/health` (Phase 11.3) live; automated tests 50 → **71** (active-symptoms dedup, RAG ranking, medications, formatters). `npm test` green.
 **Session 22:** History search wired — `GET /api/search` + `/history` page + navbar link, behind `searchRateLimiter` (functional click-test → manual pass).
-**Sessions 23–25:** **Monitoring complete (Phase 11).** Sentry (11.1) + PostHog with 3 named events `assessment_started/completed`, `risk_level_shown` (11.2) + `/api/health` with **UptimeRobot 5-min monitor "Up"** (11.3) + **Supabase Auth URLs set for prod** (11.4, Site URL `https://pitsypet.vercel.app` + redirect allowlist prod/localhost). All env vars in Vercel. Only 11.6 (manual prod smoke) left.
+**Sessions 23–25, updated through Session 40:** monitoring is complete except for Phase 11.6 manual production smoke. Sentry uses `sendDefaultPii:false`; PostHog records only privacy-minimised named events in cookieless mode with no autocapture, session recording, private route identifiers, pet IDs, or risk values. `/api/health` is monitored every five minutes. Production/Auth URLs use `https://pitsypet.andreshenao.com.au` (plus the documented aliases/localhost allowlist).
 **Session 26 (this session):** **Route-handler integration tests (Phase 10.6) ✅ — full CRUD coverage.** Shared mock helper `src/app/api/__tests__/_helpers.ts` (`makeClient` w/ chainable thenable query-builder + `jsonRequest`) drives handlers against `NextRequest`/`NextResponse` in the node env with a mocked cookie-scoped Supabase client. Test files: `pets`, `search`, `medications`, `appointments`, `vet-contacts` (clinic + doctors), `symptoms` (incl. `reconcile`, with `reconcileActiveSymptoms` mocked). Each route covers 401 unauth / 400 bad-JSON / 400 validation / 404 not-found / 2xx success / 409 dup / 500 / 207 partial as applicable. Suite **71 → 136** green; `npx tsc --noEmit` + `next lint` clean. **Also this session:** deleted `docs/TESTING_PROTOCOL.md` (it was a manual-tester guide, not code); scrubbed its references from CLAUDE.md + DEV_LOG STATUS; marked Phase 7.5 feature-complete in the roadmap.
 **Session 27 (this session) — user-test bug-fix batch + vet calibration protocol ✅.** New `docs/vet_protocol.md` (Spanish-language vet calibration interview — Claude tunes the triage AI module by module: classifier rubric, safety override, extraction prompt, fallback, first-aid, emergency contacts, regression set; code stays English). Fixes from the user's testing pass: (1) **active-symptoms duplicates** — `reconcileActiveSymptoms` now matches detected symptoms against ALL tracked rows (incl. resolved), reactivating/keeping the same row instead of inserting a duplicate; the chat route also feeds the AI a "already RESOLVED — don't re-ask" list and carries `improving` forward. (2) **stall emergency fallback false-positive** — `chat-interface.tsx` suppresses the static emergency block while `analyzing`/`finishing` (legit working states) and raises STALL_MS 10s→18s, so it no longer flashes during the slow classify step. (3) **assistant chat looked frozen** — prompt now requires a visible text reply on every turn (never tool-only). (4) **Medications form** — "Prescribed by" is now two independent comboboxes (clinic + doctor, each list-or-free-text), composed to `prescribed_by` as `Doctor — Clinic` on save (split back on edit); **start date required**; finished meds show a "Finished" badge; **mark-finished fix** — `isCurrent` honours the explicit `active=false` flag so a med ended *today* leaves the current list. (5) **Dashboard pet cards** — equal-height flex cards with footer pinned (`mt-auto`), Conditions row always shown ("None recorded" placeholder), and an **Edit** link straight from the card. (6) **Assistant medication/appointment tools** — `propose_add_medication` now takes `prescribed_clinic`+`prescribed_doctor` (was losing the clinic); `propose_add_appointment` now takes `doctorName`→`doctor_name`; prompt field-lists updated. `tsc`/lint clean; **136 tests** green.
 **Session 28 — Landing page (branch `feat/landing-page` — MERGED TO MAIN in Session 29):** built out the public marketing landing (`/`) — floating pill navbar, every section made fullscreen (removed rounded reveals + negative margins), hero/section copy tweaks, cartoon stickers (`cartoon1/2/3/7/8.png`), Features copy rewrite (no colour talk; RAG/utility focus) + unified grey-border/hover, First-aid recolored to brand purple. **Emergency section is now a REAL interactive map** — Leaflet + OpenStreetMap (new dep, landing-only, `ssr:false`) with the 8 real clinics + click-to-call (curated static list; new `src/components/landing/emergency-*.{ts,tsx}`; no CSP change needed). Pricing plan limits updated + **Plan tiers spec recorded in CLAUDE.md (NOT enforced in code yet)**. Footer: Newsletter removed, socials → Instagram/Twitter/Facebook (inline SVGs). `tsc`/lint/build green. Outstanding landing polish: real social URLs, simplify `hero-carousel.tsx` to a plain image, exact clinic coords.
@@ -64,7 +80,7 @@
 **Session 33 — (app) re-skin + UX fixes + deterministic PDF export (COMMITTED + PUSHED `25d6744`):** pet record / assessment / results / pet forms re-skinned to the brand (white rounded-[2rem] cards, display titles, pill buttons); navbar STATIC on (app) pages; assessment chat URL = pet slug (`/assessment/max`, UUID fallback); sidebar aligned with the chat box + tidy rows + current meds + UPCOMING appointments; back-to-record + back-to-dashboard links; overview stat tiles show a per-pet breakdown and pet cards link to the record (assessment link removed). **AI text hygiene:** `cleanAiText()` strips markdown + normalises em dashes on every AI-prose render (chats, results, cards, PDF); all 3 prompts forbid them at source. **Vet PDF export is DETERMINISTIC — no AI call** (`src/lib/export/summary.ts`; `lib/ai/vet-summary.ts` deleted; arcjet/daily-cap dropped, rate limit kept): fixes the prod-only export failure, which had TWO causes: (a) server — the Sonnet call had no `maxDuration` → Vercel timeout (removed with the AI call); (b) client — the strict prod CSP rejected `WebAssembly.instantiate()` from @react-pdf/renderer's yoga-layout → `'wasm-unsafe-eval'` added to prod script-src (`0841364`; WASM-only, does NOT enable JS eval). Caching TODO obsolete.
 **Session 34 — Stripe billing (test mode) — code COMPLETE, awaiting Stripe account keys:** PitsyPremium $9.99/mo AUD subscription via **Stripe Checkout** (hosted) + **Customer Portal** (payment history, invoice PDF downloads, card update, cancel — all Stripe-hosted, zero custom invoice code). Migration `20260718000000_billing_plan` (applied): `profiles` gains `plan` (basic/premium) + `stripe_customer_id` (UNIQUE) + `stripe_subscription_id` + `plan_renews_at` + `plan_cancel_at_period_end`, **plus column-level `REVOKE UPDATE` / `GRANT UPDATE (name, state)`** so an authenticated user CANNOT self-upgrade via PostgREST. Routes: `POST /api/billing/checkout` (creates the Checkout Session; price auto-created by `lookup_key pitsypet_premium_monthly` — no manual Stripe-dashboard product setup, test OR live), `POST /api/billing/portal` (auto-bootstraps a portal configuration on first use), `POST /api/billing/webhook` (public in middleware; auth = Stripe signature; handles checkout.session.completed / customer.subscription.updated / deleted). **`src/lib/supabase/admin.ts` = the documented service-role exception** (imported ONLY by `src/lib/billing/subscription.ts`; writes happen strictly on Stripe-verified evidence). Dev-without-CLI fallback: the success redirect carries `session_id` and `/dashboard/billing` confirms it server-side against Stripe. UI: `/dashboard/billing` page + "Plan" sidebar item + landing "Go Premium" → billing. `billingRateLimiter` 10/min. **151 Vitest** (15 new billing) + tsc + build green. **Plan LIMITS still NOT enforced (deliberate — user decision): Basic users keep full access; enforcement is a future session.** NOT committed yet.
 **Session 35 — Stripe LIVE-TESTED (test mode) + fix batch + PLAN LIMITS ENFORCED:** payment flow verified by the user end-to-end (card 4242). Root cause of "paid but still Basic": **`profiles` table was empty** → backfilled + billing writes now UPSERT + `reconcileFromStripe` self-heal on the billing page (also prevents double-charging). Landing "Go Premium" → direct Checkout (`?checkout=1`); billing page = current-plan card on top + other plan below; landing navbar session-aware (email + Dashboard + Log off). **Pricing finalized & ENFORCED:** Basic = 2 triage/month (never cuts an in-flight session; follow-ups free; upgrade screen on the assessment page) · 10 assistant msgs/day (user-tz Redis counter, `/api/assistant`) · 1 pet (POST) · exports unlimited for all. `src/lib/plan-limits.ts` = single source; 403 `code:"plan_limit"`; clients show upgrade UI (assessment chat suppresses the emergency fallback for it). Tests **156**. **User-verified:** payment flow end-to-end AND the assistant 10-message toast on a Basic account. **COMMITTED + PUSHED this session** (Sessions 34–35 in one commit). **BILLING IS FULLY LIVE-VERIFIED IN PROD (test mode) ON THE NEW CUSTOM DOMAIN `pitsypet.andreshenao.com.au`:** all env vars in Vercel (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_APP_URL`→new domain), Stripe webhook endpoint live, Supabase auth URLs + UptimeRobot updated, duplicate subs cleaned by the user (one active sub, DB consistent). Prod test PASSED: pay 4242 → premium → invoice PDF → cancel syncs via webhook (after `b274f1f`: modern Stripe reports portal cancels via `cancel_at`, not `cancel_at_period_end` — honour both). Going live for real = swap `sk_live_` + a live webhook endpoint. See Session 35 entry.
-**Next action (RESUME HERE — next session):** (0) **Stripe setup (user):** create Stripe account → copy `sk_test_` key + run `stripe listen` for `whsec_` → `.env.local` (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`) → test with card 4242 4242 4242 4242; for prod also add both + `SUPABASE_SERVICE_ROLE_KEY` to Vercel and create the dashboard webhook endpoint (`https://pitsypet.vercel.app/api/billing/webhook`, 3 events). (1) confirm the vet-PDF export on prod (deploy `25d6744` was building at close) + user visual pass over the full re-skin; (2) standing queue: buildable **Phase 12.5 README**; manual Phase 9 verification (9.1 fallback/9.4 cross-tenant/9.6 cost-guard — code exists), 10.8 perf, 11.6 prod smoke, auth UAT (Sessions 30–31). Cleanup anytime: `next lint` → ESLint CLI (deprecated in Next 16). Deferred (need accounts/content): RAG (Phase 4), Email/Resend. Very-end: custom domain swap (then update UptimeRobot URL + Supabase Site/redirect URLs). See `docs/proposal_vs_implemented.md` §4/§7.
+**Current queue (authoritative):** user visual pass for `/privacy`, `/terms`, footer, and Dashboard > Account; optional disposable-account deletion test; formal Phase 8 responsive/WCAG work; Phase 9 manual security/fallback checks; Phase 10.8 performance/full walkthrough; Phase 11.6 production smoke; Phase 12 UAT/README; legal review. Stripe test-mode setup, custom-domain swap, and deterministic PDF export are already complete and must not be presented as pending.
 **Deferred (explicit):** **Email/Resend** — user has **no Resend account or domain yet** (gets one at the end). *(The landing "Get in touch" contact form email is separate and DONE in Session 29 via Nodemailer + Gmail SMTP.)* The manual "request appointment → email doctor" button AND the AI-sent appointment email (with last-assessment summary) are deferred to a dedicated step (needs the chat tools + summary). Build email once, reuse for the deferred custom-SMTP auth too. **Also deferred:** wiring RAG into the assistant chat (no KB content yet). *(The old "cache the vet PDF summary" item is OBSOLETE — Session 33 made the export deterministic, no AI call at all.)*
 
 ---
@@ -1332,3 +1348,222 @@ Also: `aria-label` on the step wrapper `<div>` (a no-op for AT on a role-less di
 - Deleting an assessment does NOT refund the monthly session (counts soft-deleted).
 - **Why profiles was empty is unexplained** (trigger exists + enabled; new signups create rows) — the upsert + reconcile paths make billing immune to a recurrence either way.
 - Column-grant reminder stands: new user-editable profile columns must be added to `GRANT UPDATE (name, state, …)`.
+
+---
+## SESSION 36 — 2026-07-21 — Codex / GPT-5 (Landing page spacing audit)
+
+### STARTED WITH
+- Last session left off at: billing complete; landing responsive/WCAG polish remained in the standing queue.
+- Blockers from last session: none relevant to this task.
+- User request: review the landing because some sections felt cramped or too close to the floating navbar, changing spacing only and preserving all visual styles.
+
+### COMPLETED THIS SESSION
+- Audited the landing section structure and existing fullscreen/scroll-snap behaviour from Session 29.
+- Browser-reviewed the landing at 1440×900, 1024×768, and 375×812. The inconsistent section paddings (`py-24`, `pt-24 pb-16`, and custom values) left several anchored headings only about 20–24px below the fixed navbar.
+- Added one shared `.landing-section-pad` spacing utility using viewport-height-aware `clamp()` values, then applied it to Problem, How it works, Features, Why us, Emergency, and Pricing.
+- Preserved the hero layout and Contact/Footer's intentional large overlap spacing; no colours, typography, card styling, content, or component structure changed.
+- Re-verified desktop/tablet/mobile after the change: clearer navbar-to-heading separation, no horizontal overflow at mobile width, meaningful content present, no framework overlay, and no captured console errors.
+
+### VERIFICATION
+- `npx tsc --noEmit` — clean.
+- `npm run lint` — clean, 0 warnings/errors.
+- Browser verification — 1024×768 and 375×812 visual pass; `horizontalOverflow: false`, console errors `[]`, overlay `OK`.
+
+### FILES MODIFIED
+- `src/app/globals.css` — added the shared fluid vertical-spacing utility for landing sections.
+- `src/app/page.tsx` — replaced inconsistent per-section vertical padding with the shared utility.
+- `docs/DEV_LOG.md` — session continuity entry.
+
+### NEXT SESSION MUST START WITH
+1. User visual pass of the landing spacing in their preferred browser/display.
+2. Continue the standing queue: Phase 12.5 README, Phase 9 verification, 10.8 performance, 11.6 production smoke, and the broader responsive/WCAG pass.
+
+### DECISIONS / NOTES
+- Keep Contact/Footer on its purpose-built spacing because the animal illustration and negative footer overlap depend on it.
+- Future landing sections should use `.landing-section-pad` unless they have a deliberate full-bleed/overlap composition like Hero or Contact.
+
+---
+## SESSION 37 — 2026-07-21 — Codex / GPT-5 (Short-laptop Pricing fit)
+
+### STARTED WITH
+- Session 36 unified the landing's section spacing.
+- User reported that the Pricing cards were cut off at the bottom on a laptop-height viewport while appearing correctly on larger screens.
+
+### COMPLETED THIS SESSION
+- Reproduced the clipping at 1366×650: Pricing's plan buttons extended below the viewport.
+- Added a Pricing-only compact spacing mode for desktop/tablet widths (`min-width: 768px`) with short viewport heights (`max-height: 720px`).
+- Tightened only whitespace in that mode: section padding, heading margin, card padding, price margin, feature-list gaps, and CTA padding.
+- Kept the existing mobile and large-desktop layout unchanged.
+- At 1366×600, both cards now finish at `y=594` and are fully visible; the navbar ends at `y=80` and the heading starts at `y=96`.
+
+### VERIFICATION
+- Browser: 1366×600 and 1366×650 cards fully visible; 1440×900 and 375×812 retain their original layout.
+- No horizontal overflow, console errors, or Next.js error overlay.
+- `npx tsc --noEmit` — clean.
+- `npm run lint` — clean, 0 warnings/errors.
+
+### FILES MODIFIED
+- `src/app/globals.css` — added short-viewport Pricing spacing rules.
+- `src/app/page.tsx` — scoped spacing hooks to Pricing elements.
+- `docs/DEV_LOG.md` — restored chronological session order and recorded this follow-up.
+
+### NEXT SESSION MUST START WITH
+1. User visual pass of Pricing on the affected laptop.
+2. Continue the remaining responsive/WCAG audit and standing project queue.
+
+### DECISIONS / NOTES
+- Pricing may compact only whitespace below 720px viewport height; visual styling and content remain invariant.
+
+---
+## SESSION 38 — 2026-07-21 — Codex / GPT-5 (Mobile Our process alignment)
+
+### STARTED WITH
+- Session 37 completed the short-laptop Pricing fit.
+- User reported that the “Our process / Three steps to clarity” heading block was not centred correctly on mobile and requested a mobile-only adjustment.
+
+### COMPLETED THIS SESSION
+- Centred the complete How it works heading group on mobile: eyebrow, title, and supporting paragraph.
+- Preserved the existing layout from the `md` breakpoint upward with `md:items-end` and `md:text-left`.
+- Made no visual checks or server changes at the user's request; the user will verify in their already-running local server.
+
+### VERIFICATION
+- `npx tsc --noEmit` — clean.
+- `npm run lint` — clean, 0 warnings/errors.
+
+### FILES MODIFIED
+- `src/app/page.tsx` — mobile-only centring for the How it works heading block.
+- `docs/DEV_LOG.md` — session continuity entry.
+
+### NEXT SESSION MUST START WITH
+1. Receive the user's visual result from their mobile check.
+2. Continue any remaining landing responsive polish they identify.
+
+### DECISIONS / NOTES
+- Mobile alignment changes at this breakpoint must not alter tablet/desktop composition.
+
+---
+
+## SESSION 39 — 2026-07-21 — Codex / GPT-5 (Global hook failure cleanup)
+
+### STARTED WITH
+- Session 38 completed the mobile How it works alignment.
+- User reported global `Stop hook` / `PostToolUse hook` failures and VS Code opening after Codex activity.
+
+### COMPLETED THIS SESSION
+- Confirmed the behavior was unrelated to PitsyPet source code or project-local configuration.
+- Isolated the failures to the globally enabled `ralph-wiggum` and `security-guidance` Claude Code plugins imported into Codex.
+- Disabled both plugins in the user-level Codex and Claude configurations; all other plugins remain unchanged.
+- Validated the Codex TOML and Claude JSON after the change and confirmed both plugin flags resolve to `false`.
+
+### VERIFICATION
+- Parsed `C:\Users\crypt\.codex\config.toml` successfully with Python `tomllib`; both affected plugins report `False`.
+- Parsed `C:\Users\crypt\.claude\settings.json` successfully with PowerShell `ConvertFrom-Json`; both affected plugins report `False`.
+- Confirmed PitsyPet has no local hook or plugin override for either plugin.
+
+### FILES MODIFIED
+- `C:\Users\crypt\.codex\config.toml` — disabled the two failing global plugins.
+- `C:\Users\crypt\.claude\settings.json` — disabled the same plugins for Claude sessions.
+- `docs/DEV_LOG.md` — session continuity entry only; no application code changed.
+
+### NEXT SESSION MUST START WITH
+1. Restart the active Codex/Claude client so its in-memory hook registry reloads the global configuration.
+2. Confirm one normal prompt/tool cycle completes without hook errors or opening VS Code.
+
+### DECISIONS / NOTES
+- Existing hook trust hashes were left intact because they are inert while their plugins are disabled and allow intentional re-enablement later.
+
+---
+
+## SESSION 40 - 2026-07-21 - Codex / GPT-5 (Privacy policy and account deletion)
+
+### STARTED WITH
+- Landing footer copy was being refined in a rapid-edit pass with visual verification delegated to the user.
+- User requested a real PitsyPet Privacy Policy aligned with Australian privacy requirements and GDPR, plus permanent self-service account deletion.
+
+### COMPLETED THIS SESSION
+- Added the public `/privacy` page and linked the landing footer Privacy Policy item to it.
+- Documented the data PitsyPet processes, purposes, service providers, international processing, retention limits, privacy rights, complaints, and account deletion behavior.
+- Added Dashboard > Account with a destructive confirmation dialog that requires typing `DELETE`.
+- Added `DELETE /api/account`; Stripe customer deletion/cancellation occurs before database deletion so an account cannot disappear while billing continues.
+- Added and applied `20260721112129_delete_own_account.sql` to Supabase project `pitsypet` (`xaepzvxrqnqenspnanej`). The RPC derives the caller from `auth.uid()`, denies anonymous execution, and cascades deletion through user-owned application tables.
+- Regenerated `src/types/database.ts` from the linked PitsyPet schema.
+- Reduced analytics data collection: PostHog is cookieless, anonymous, without autocapture/session recording/private route identifiers; Sentry default PII sending is explicitly disabled.
+- Created an isolated local CLI profile bridge for the PitsyPet Supabase credential after confirming the unrelated `protegiendo_huellas` account must never be used for this repository.
+
+### VERIFICATION
+- Supabase `db push --dry-run` showed only `20260721112129_delete_own_account.sql`; the migration was then applied and appears in local/remote migration history.
+- Database metadata confirms `security_definer=true`, `search_path=""`, `authenticated_can_execute=true`, and `anon_can_execute=false` for `delete_own_account`.
+- Remote foreign-key inspection confirms `ON DELETE CASCADE` for profiles, pets, assessments, active symptoms, medications, appointments, vet contacts, and vet doctors tied to the user.
+- Supabase security advisors were reviewed; the warning for authenticated execution of `delete_own_account` is intentional. Existing unrelated advisor warnings remain unchanged.
+- `npm test` - 16 files and 165 tests passed.
+- `npx tsc --noEmit` - clean.
+- `npm run lint` - clean, 0 warnings/errors.
+- No visual verification was performed, per user request.
+
+### FILES MODIFIED
+- `src/app/privacy/page.tsx` - public branded Privacy Policy page.
+- `src/app/page.tsx` - working Privacy Policy footer link and updated footer copy/layout.
+- `src/app/(dashboard)/dashboard/account/page.tsx` - Account settings page.
+- `src/components/dashboard/delete-account-card.tsx` - account deletion confirmation UI.
+- `src/components/dashboard/sidebar.tsx` - Account navigation item.
+- `src/app/api/account/route.ts` - billing-safe authenticated deletion endpoint.
+- `src/app/api/__tests__/account-route.test.ts` - focused route coverage.
+- `supabase/migrations/20260721112129_delete_own_account.sql` - self-deletion RPC.
+- `src/types/database.ts` - regenerated schema types.
+- `src/lib/supabase/middleware.ts` - public Privacy Policy route.
+- Analytics and Sentry configuration files - privacy-minimizing event and PII settings.
+- `docs/DEV_LOG.md` - session continuity entry.
+
+### NEXT SESSION MUST START WITH
+1. User visual pass of `/privacy`, Dashboard > Account, and the landing footer.
+2. If desired, perform account deletion once with a dedicated disposable test user; never use a real account for this verification.
+3. Continue the rapid landing-page changes requested by the user.
+
+### DECISIONS / NOTES
+- Every remote Supabase command for this repository must resolve to project ref `xaepzvxrqnqenspnanej` before any write.
+- Do not use the `protegiendo-huellas` credential or project for PitsyPet.
+- Account deletion removes live application data immediately; the Privacy Policy accurately preserves limited exceptions for provider records, backups, fraud/security, and legal obligations.
+
+---
+
+## SESSION 41 - 2026-07-21 - Codex / GPT-5 (Terms of Service and roadmap reconciliation)
+
+### STARTED WITH
+- Session 40 had delivered the Privacy Policy, account deletion, analytics minimisation, and the verified PitsyPet Supabase migration.
+- The user visually reviewed `/privacy`, requested the landing navbar without the added purple band, then requested a project-specific Terms of Service page.
+- The user asked to bring `DEV_LOG.md` and the roadmap in `CLAUDE.md` fully up to date after the rapid-edit pass.
+
+### COMPLETED THIS SESSION
+- Corrected `/privacy` to share the landing navbar and light page background without the unintended purple band.
+- Added public `/terms`, linked it from the landing footer, and allow-listed it in the Supabase middleware.
+- Wrote PitsyPet-specific terms covering service scope, educational triage and emergency limitations, eligibility/account duties, AI limitations, PitsyBasic/PitsyPremium and Stripe billing, automatic renewal/cancellation, account deletion, refunds and Australian Consumer Law, acceptable use, privacy, IP, third-party availability, liability, termination, NSW law, and contact details.
+- Finalised the footer hierarchy: “Developed by Andres Henao” followed by the smaller educational-triage disclaimer, with working Privacy Policy and Terms of Service links.
+- Reconciled the roadmap and continuity docs: Phase 8 is now active; Phase 4 is correctly blocked/deferred; test count is 165; Stripe/plan limits and deterministic PDF export are no longer described as pending; legal/account-deletion work and the Supabase project-identity guard are recorded.
+- Consolidated the real outstanding queue across Phases 8–12, RAG/vet calibration, Resend, legal review, disposable-user deletion verification, and existing Supabase advisor findings.
+
+### VERIFICATION
+- Code-state verification after the legal/account changes: `npm test` passed 16 files / 165 tests; `npx tsc --noEmit` clean; `npm run lint` clean with 0 warnings/errors.
+- Documentation was checked for stale `85`/`136` test counts, obsolete Stripe-stub/export-cap language, the old Phase 4 “CURRENT” label, and the old Next 14 decision.
+- No assistant visual verification was performed, per user request; the user confirmed the corrected `/privacy` navbar/background during the pass.
+
+### FILES MODIFIED
+- `src/app/terms/page.tsx` - branded public Terms of Service page.
+- `src/app/privacy/page.tsx` - landing-aligned navbar/background correction.
+- `src/app/page.tsx` - footer attribution, disclaimer, and legal links.
+- `src/lib/supabase/middleware.ts` - public `/privacy` and `/terms` routes.
+- `CLAUDE.md` - current roadmap, billing/privacy/Supabase invariants, and authoritative pending queue.
+- `docs/DEV_LOG.md` - current status and this session record.
+
+### NEXT SESSION MUST START WITH
+1. Continue any rapid landing or legal-page refinements requested by the user; the user performs visual verification.
+2. Before release, obtain professional review of the Privacy Policy and Terms of Service for Australian law/GDPR applicability.
+3. When leaving the rapid UI pass, work the authoritative queue: formal Phase 8 responsive/WCAG audit; Phase 9 fallback/cross-tenant/cost-guard checks plus disposable deletion E2E; Phase 10.8 performance/full walkthrough; Phase 11.6 production smoke; Phase 12 UAT/README.
+4. Keep Phase 4/RAG + veterinarian calibration and Resend email flows deferred until their source material/accounts are available.
+
+### DECISIONS / NOTES
+- `/privacy` and `/terms` are public, share `LandingHeader`, and use the light landing visual language.
+- The legal copy must not promise impossible zero-retention guarantees: live application data is deleted, while narrowly disclosed provider backups, transaction/security records, and legal obligations may persist.
+- Every remote Supabase write must first confirm PitsyPet project ref `xaepzvxrqnqenspnanej`; never use `protegiendo_huellas` (`irwdfcacgpznmvjofszq`).
+- No code, database, deployment, or external-system changes were made during the documentation-reconciliation portion of this session.
+
+---

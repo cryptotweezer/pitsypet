@@ -637,6 +637,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_own_account: {
+        Args: { confirmation_text: string }
+        Returns: undefined
+      }
       search_assessments: {
         Args: { match_count?: number; query_text: string }
         Returns: {

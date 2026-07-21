@@ -92,7 +92,7 @@ export default async function Home() {
           id="problem"
           className="relative z-10 snap-start bg-gradient-to-r from-brand via-brand-container to-[#c3a3e8]"
         >
-          <div className="flex min-h-dvh items-center overflow-hidden bg-gradient-to-br from-white via-[#f6ecfb] to-[#e6c5fe] py-24 text-on-surface">
+          <div className="landing-section-pad flex min-h-dvh items-center overflow-hidden bg-gradient-to-br from-white via-[#f6ecfb] to-[#e6c5fe] text-on-surface">
           <div className="relative z-10 mx-auto my-auto flex max-w-5xl flex-col items-center gap-12 px-4 lg:flex-row lg:gap-16">
             {/* Text — right */}
             <div className="reveal order-2 space-y-5 text-center lg:w-1/2 lg:text-left">
@@ -133,21 +133,21 @@ export default async function Home() {
           id="how-it-works"
           className="relative z-10 flex min-h-dvh snap-start items-center bg-surface-container-low"
         >
-          <div className="mx-auto my-auto w-full max-w-5xl px-4 py-24">
-          <div className="reveal mb-10 flex flex-col items-end justify-between gap-6 md:flex-row">
-            <div className="max-w-xl">
-              <span className="mb-2 block text-sm font-bold tracking-widest text-brand uppercase">
-                Our process
-              </span>
-              <h2 className="font-display text-4xl leading-none tracking-tight text-brand md:text-5xl">
-                Three steps to clarity
-              </h2>
+          <div className="landing-section-pad mx-auto my-auto w-full max-w-5xl px-4">
+            <div className="reveal mb-10 flex flex-col items-center justify-between gap-6 text-center md:flex-row md:items-end md:text-left">
+              <div className="max-w-xl">
+                <span className="mb-2 block text-sm font-bold tracking-widest text-brand uppercase">
+                  Our process
+                </span>
+                <h2 className="font-display text-4xl leading-none tracking-tight text-brand md:text-5xl">
+                  Three steps to clarity
+                </h2>
+              </div>
+              <p className="max-w-xs font-light text-on-surface-variant">
+                From worry to professional guidance in under three minutes.
+              </p>
             </div>
-            <p className="max-w-xs font-light text-on-surface-variant">
-              From worry to professional guidance in under three minutes.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-12">
+            <div className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-12">
             <div className="reveal group flex flex-col justify-between rounded-[3rem] border border-outline-variant/20 bg-surface-container-low p-10 transition-all hover:scale-105 hover:border-brand/20 md:col-span-4">
               <div className="mb-8 flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-sm transition-transform group-hover:scale-110">
                 <PencilLine className="h-8 w-8 text-brand" />
@@ -204,8 +204,8 @@ export default async function Home() {
         </section>
 
         {/* Features / available services */}
-        <section className="relative z-10 flex min-h-dvh snap-start items-center bg-white pt-24 pb-16">
-          <div className="mx-auto my-auto w-full max-w-5xl px-4">
+        <section className="relative z-10 flex min-h-dvh snap-start items-center bg-white">
+          <div className="landing-section-pad mx-auto my-auto w-full max-w-5xl px-4">
             <div className="reveal mb-8 text-center">
               <h2 className="mb-4 font-display text-4xl tracking-tight text-brand md:text-5xl">
                 Everything your pet&apos;s health needs
@@ -283,9 +283,9 @@ export default async function Home() {
         </section>
 
         {/* Why us */}
-        <section id="why-us" className="relative z-10 flex min-h-dvh snap-start items-center overflow-hidden bg-surface-container-low pt-24 pb-16">
+        <section id="why-us" className="relative z-10 flex min-h-dvh snap-start items-center overflow-hidden bg-surface-container-low">
           <div className="organic-blob right-[-10%] bottom-[-10%] h-[500px] w-[500px] rounded-full bg-brand-container/20" />
-          <div className="mx-auto my-auto w-full max-w-5xl px-4">
+          <div className="landing-section-pad mx-auto my-auto w-full max-w-5xl px-4">
             <div className="flex flex-col items-center gap-16 lg:flex-row">
               <div className="reveal order-2 flex justify-center lg:order-1 lg:w-1/2">
                 <Image
@@ -326,7 +326,7 @@ export default async function Home() {
 
         {/* Emergency locator */}
         <section className="relative z-10 flex min-h-dvh snap-start items-center bg-white">
-          <div className="mx-auto my-auto w-full max-w-5xl px-4 pt-24 pb-16">
+          <div className="landing-section-pad mx-auto my-auto w-full max-w-5xl px-4">
           <div className="reveal mb-8 text-center">
             <span className="mb-2 block text-sm font-bold tracking-widest text-error uppercase">
               Emergency support
@@ -377,9 +377,9 @@ export default async function Home() {
         </section>
 
         {/* Pricing */}
-        <section id="pricing" className="relative z-10 flex min-h-dvh snap-start items-center bg-surface-container-low pt-24 pb-16">
-          <div className="mx-auto my-auto w-full max-w-5xl px-4">
-            <div className="reveal mb-8 text-center">
+        <section id="pricing" className="relative z-10 flex min-h-dvh snap-start items-center bg-surface-container-low">
+          <div className="landing-section-pad landing-pricing-pad mx-auto my-auto w-full max-w-5xl px-4">
+            <div className="reveal landing-pricing-heading mb-8 text-center">
               <h2 className="font-display text-4xl tracking-tight text-brand md:text-5xl">
                 Simple, transparent plans
               </h2>
@@ -387,19 +387,19 @@ export default async function Home() {
                 Free to start. Upgrade only if you want more.
               </p>
             </div>
-            <div className="mx-auto grid max-w-4xl grid-cols-1 items-stretch gap-8 md:grid-cols-2">
+            <div className="mx-auto grid max-w-4xl grid-cols-1 items-stretch gap-16 md:grid-cols-2 md:gap-8">
               {/* Free */}
-              <div className="reveal glass-card flex flex-col rounded-[2.5rem] border border-outline-variant/30 p-8 transition-all hover:scale-105 hover:border-brand/20 hover:shadow-xl">
+              <div className="reveal landing-pricing-card glass-card flex flex-col rounded-[2.5rem] border border-outline-variant/30 p-8 transition-all hover:scale-105 hover:border-brand/20 hover:shadow-xl">
                 <h3 className="font-display text-2xl text-brand opacity-60">
                   PitsyBasic
                 </h3>
-                <div className="my-6">
+                <div className="landing-pricing-price my-6">
                   <span className="text-5xl font-black text-brand">$0</span>
                   <span className="ml-2 font-light text-on-surface-variant">
                     /forever
                   </span>
                 </div>
-                <ul className="mb-8 flex-grow space-y-4">
+                <ul className="landing-pricing-features mb-8 flex-grow">
                   {[
                     "2 AI triage sessions / month",
                     "10 AI assistant messages / day",
@@ -419,14 +419,14 @@ export default async function Home() {
                 </ul>
                 <Link
                   href="/register"
-                  className="w-full rounded-2xl border border-brand/20 py-4 text-center font-bold text-brand transition-all hover:bg-white"
+                  className="landing-pricing-cta w-full rounded-2xl border border-brand/20 py-4 text-center font-bold text-brand transition-all hover:bg-white"
                 >
                   Start free
                 </Link>
               </div>
 
               {/* Premium */}
-              <div className="reveal-fade pricing-glow relative flex flex-col rounded-[2.5rem] bg-brand p-8 transition-all hover:scale-105" data-reveal-delay="120">
+              <div className="reveal-fade landing-pricing-card pricing-glow relative flex flex-col rounded-[2.5rem] bg-brand p-8 transition-all hover:scale-105" data-reveal-delay="120">
                 <Image
                   src="/cartoon7.png"
                   alt=""
@@ -441,11 +441,11 @@ export default async function Home() {
                 <h3 className="font-display text-2xl text-white">
                   PitsyPremium
                 </h3>
-                <div className="my-6">
+                <div className="landing-pricing-price my-6">
                   <span className="text-5xl font-black text-white">$9.99</span>
                   <span className="ml-2 font-light text-white/60">/month</span>
                 </div>
-                <ul className="mb-8 flex-grow space-y-4">
+                <ul className="landing-pricing-features mb-8 flex-grow">
                   {[
                     "Everything in PitsyBasic",
                     "Unlimited AI triage sessions",
@@ -467,7 +467,7 @@ export default async function Home() {
                     the auth guard routes logged-out visitors through /login. */}
                 <Link
                   href="/dashboard/billing?checkout=1"
-                  className="w-full rounded-2xl bg-white py-4 text-center text-lg font-bold text-brand shadow-xl shadow-black/20 transition-all hover:scale-[1.02] active:scale-95"
+                  className="landing-pricing-cta w-full rounded-2xl bg-white py-4 text-center text-lg font-bold text-brand shadow-xl shadow-black/20 transition-all hover:scale-[1.02] active:scale-95"
                 >
                   Go Premium
                 </Link>
@@ -597,14 +597,14 @@ export default async function Home() {
               </h4>
               <ul className="space-y-4 text-sm font-medium text-on-surface-variant">
                 <li>
-                  <a href="#" className="transition-colors hover:text-brand">
+                  <Link href="/privacy" className="transition-colors hover:text-brand">
                     Privacy Policy
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#" className="transition-colors hover:text-brand">
+                  <Link href="/terms" className="transition-colors hover:text-brand">
                     Terms of Service
-                  </a>
+                  </Link>
                 </li>
                 <li>
                   <a href="#contact" className="transition-colors hover:text-brand">
@@ -640,21 +640,27 @@ export default async function Home() {
             </div>
           </div>
           <div className="flex flex-col items-center justify-between gap-6 border-t border-outline-variant/10 pt-8 md:flex-row">
-            <p className="text-[10px] font-bold tracking-[0.3em] text-on-surface-variant uppercase">
-              ABN 00 000 000 000 (pending registration) · Sydney, Australia
-            </p>
-            <div className="max-w-xl space-y-2 text-center text-[10px] font-light text-on-surface-variant/70 md:text-right">
-              <p>
+            <div className="max-w-xl space-y-2 text-center md:text-left">
+              <p className="text-sm leading-relaxed font-light text-on-surface-variant">
+                Developed by{" "}
+                <a
+                  href="https://cv.andreshenao.com.au/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="transition-colors hover:text-brand hover:underline"
+                >
+                  Andres Henao
+                </a>
+              </p>
+              <p className="text-[8px] leading-relaxed font-light text-on-surface-variant/70">
                 <strong>Disclaimer:</strong> PitsyPet is an educational triage
                 tool only and does not replace professional veterinary diagnosis,
                 advice, or treatment.
               </p>
-              <p>
-                This website/app is for a class assignment and not for commercial
-                purposes.
-              </p>
-              <p>© 2026 PitsyPet.</p>
             </div>
+            <p className="text-[10px] font-light text-on-surface-variant/70">
+              © 2026 PitsyPet.
+            </p>
           </div>
         </div>
       </footer>

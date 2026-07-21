@@ -187,7 +187,6 @@ export function ChatInterface({
     if (!done || completedRef.current) return;
     completedRef.current = true;
     trackAssessmentCompleted({
-      riskLevel: classification!.riskLevel,
       isFollowUp,
     });
   }, [done, classification, isFollowUp]);

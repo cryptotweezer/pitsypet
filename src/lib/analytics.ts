@@ -10,15 +10,11 @@ export function trackAssessmentStarted(props: { isFollowUp: boolean }) {
 }
 
 export function trackAssessmentCompleted(props: {
-  riskLevel: string;
   isFollowUp: boolean;
 }) {
   posthog.capture("assessment_completed", props);
 }
 
-export function trackRiskLevelShown(props: {
-  riskLevel: string;
-  assessmentId: string;
-}) {
-  posthog.capture("risk_level_shown", props);
+export function trackRiskLevelShown() {
+  posthog.capture("risk_level_shown");
 }

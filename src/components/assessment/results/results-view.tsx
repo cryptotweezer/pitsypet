@@ -215,7 +215,7 @@ export async function ResultsView({
 
   return (
     <section className="mx-auto grid max-w-2xl gap-5">
-      <TrackRiskShown risk={risk} assessmentId={assessment.assessment_id} />
+      <TrackRiskShown risk={risk} />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="grid gap-1">
           <span className="block text-label-caps font-bold text-brand opacity-70">

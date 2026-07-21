@@ -239,6 +239,51 @@
   box-shadow: 0 0 40px -10px rgba(97, 24, 155, 0.3);
 }
 
+/* Shared vertical rhythm for landing sections below the hero. The fluid values
+   preserve a comfortable gap below the floating navbar without wasting space
+   on shorter laptop screens. Contact keeps its larger, footer-aware spacing. */
+.landing-section-pad {
+  padding-top: clamp(7rem, 14vh, 9rem);
+  padding-bottom: clamp(5rem, 10vh, 7rem);
+}
+
+.landing-pricing-features {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Short desktop/laptop viewports need the complete plans visible at once.
+   These overrides only tighten whitespace; the cards' visual treatment and
+   the mobile/large-screen layouts remain unchanged. */
+@media (min-width: 48rem) and (max-height: 45rem) {
+  .landing-pricing-pad {
+    padding-top: 6rem;
+    padding-bottom: 2.5rem;
+  }
+
+  .landing-pricing-heading {
+    margin-bottom: 1rem;
+  }
+
+  .landing-pricing-card {
+    padding: 1.5rem;
+  }
+
+  .landing-pricing-price {
+    margin-block: 0.875rem;
+  }
+
+  .landing-pricing-features {
+    gap: 0.625rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .landing-pricing-cta {
+    padding-block: 0.75rem;
+  }
+}
+
 /* Leaflet emergency map: strip the default white box/border behind our custom
    brand-purple SVG pin so only the teardrop shows. */
 .leaflet-div-icon.emergency-pin {
