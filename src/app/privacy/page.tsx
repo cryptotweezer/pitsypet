@@ -42,7 +42,7 @@ function PolicySection({
   return (
     <section
       id={id}
-      className="scroll-mt-28 rounded-[2rem] border border-outline-variant/20 bg-white p-6 shadow-sm shadow-brand/5 sm:p-8"
+      className="min-w-0 scroll-mt-28 rounded-[2rem] border border-outline-variant/20 bg-white p-6 shadow-sm shadow-brand/5 sm:p-8"
     >
       <h2 className="font-display text-2xl tracking-tight text-brand sm:text-3xl">
         {title}
@@ -137,7 +137,7 @@ export default async function PrivacyPage() {
               </nav>
             </aside>
 
-            <article className="grid gap-6">
+            <article className="grid min-w-0 gap-6">
               <PolicySection
                 id="overview"
                 title="1. Who we are and when this policy applies"
@@ -271,8 +271,8 @@ export default async function PrivacyPage() {
                   advertising or research. We use the following providers only as
                   needed to operate PitsyPet:
                 </p>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[620px] border-separate border-spacing-0 text-left text-sm">
+                <div className="w-full max-w-full min-w-0 overflow-x-auto">
+                  <table className="w-full min-w-[560px] border-separate border-spacing-0 text-left text-sm">
                     <thead>
                       <tr className="text-brand">
                         <th className="border-b border-outline-variant/20 px-3 py-3 font-bold">Provider</th>
