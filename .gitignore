@@ -36,6 +36,11 @@ dev-server*.log
 # RAG sources
 scripts/sources/
 
+# Academic / business-report working documents (kept local, not part of the product)
+capstone_2/
+docs/it_bus/
+public/VU_logo.png
+
 # Python (if any leftover)
 *.py[cod]
 __pycache__/
