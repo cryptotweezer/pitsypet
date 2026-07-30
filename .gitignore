@@ -41,6 +41,10 @@ capstone_2/
 docs/it_bus/
 public/VU_logo.png
 
+# Local-only agent tooling config (CLAUDE.md stays the committed source of truth)
+AGENTS.md
+.codex/
+
 # Python (if any leftover)
 *.py[cod]
 __pycache__/
