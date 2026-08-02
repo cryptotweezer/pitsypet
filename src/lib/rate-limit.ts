@@ -17,9 +17,10 @@ export const searchRateLimiter = new Ratelimit({
   prefix: "pitsypet:search",
 });
 
-// The vet PDF export calls Claude to write the summary, so it must be bounded
-// like the other AI routes. Tighter window than chat — exports are deliberate,
-// occasional actions, not a back-and-forth.
+// The vet PDF export is deterministic (no AI call, see src/lib/export/summary.ts),
+// so this bounds request volume rather than spend: the route still reads the
+// assessment + medications and renders a document. Tighter window than chat —
+// exports are deliberate, occasional actions, not a back-and-forth.
 export const exportRateLimiter = new Ratelimit({
   redis,
   limiter: Ratelimit.slidingWindow(10, "1 m"),

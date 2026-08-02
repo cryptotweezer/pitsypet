@@ -8,9 +8,10 @@
  * *response* CSP header. `'strict-dynamic'` then lets those trusted scripts load
  * their dependencies while still blocking attacker-injected <script>s.
  *
- * The only browser-facing third party right now is Supabase (auth REST + realtime
- * websocket). Sentry/PostHog are server/Phase-11 and intentionally NOT whitelisted
- * here yet — add their ingest origins to `connect-src` when they are wired up.
+ * Browser-facing third parties: Supabase (auth REST + realtime websocket) is always
+ * allowed; Sentry and PostHog ingest origins are appended to `connect-src` ONLY when
+ * their keys are configured (see below), so a deployment without them whitelists
+ * nothing it never contacts.
  *
  * `style-src` keeps `'unsafe-inline'`: Base UI (shadcn base-nova) writes inline
  * `style` attributes for floating-element positioning (popovers, dialogs, tooltips),

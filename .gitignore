@@ -44,6 +44,8 @@ public/VU_logo.png
 # Local-only agent tooling config (CLAUDE.md stays the committed source of truth)
 AGENTS.md
 .codex/
+directory.md
+test.md
 
 # Python (if any leftover)
 *.py[cod]
