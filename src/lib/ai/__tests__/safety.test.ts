@@ -33,6 +33,15 @@ describe("hasCriticalSymptom — critical rubric forces recognition", () => {
     "got into the grapes",
     "hit by a car",
     "possible heatstroke, panting heavily",
+    // Coverage that must survive the substring fix below.
+    "he ate something in the park",
+    "swallowed a sock",
+    "blocked bladder",
+    "he ate a grape",
+    // GDV phrased noun-first, which the original pattern missed entirely.
+    "his belly is swollen and hard",
+    "her tummy feels hard",
+    "the stomach looks bloated",
   ];
 
   it.each(critical)("flags %j as critical", (text) => {
@@ -44,12 +53,26 @@ describe("hasCriticalSymptom — critical rubric forces recognition", () => {
     "slightly itchy ear",
     "ate his dinner normally",
   ];
-  // "ate his dinner" intentionally NOT critical even though it contains "ate":
-  it("does NOT flag mild, non-emergency phrasing", () => {
-    // "ate" alone is in the toxin pattern, so confirm a clearly mild case:
-    expect(hasCriticalSymptom("a little sneezing")).toBe(false);
-    expect(hasCriticalSymptom("slightly itchy ear")).toBe(false);
-    void benign;
+
+  it.each(benign)("does NOT flag %j", (text) => {
+    expect(hasCriticalSymptom(text)).toBe(false);
+  });
+
+  // Regression: the patterns run over the FORMATTED symptom text, which carries
+  // machine-written fields like "severity: moderate". Unanchored alternatives
+  // matched inside unrelated words ("moder-ate", "w-ate-r", a blocked nose),
+  // silently forcing High on ordinary mild cases. These must never be critical.
+  const substringTraps = [
+    "- vomiting, onset: this morning, severity: moderate",
+    "- itching, severity: moderate",
+    "- lethargy, severity: moderate, status: improving",
+    "- increased water intake, severity: mild",
+    "- drinking a lot of water",
+    "- his nose is blocked",
+  ];
+
+  it.each(substringTraps)("does NOT flag %j (substring trap)", (text) => {
+    expect(hasCriticalSymptom(text)).toBe(false);
   });
 });
 

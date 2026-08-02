@@ -42,17 +42,93 @@
 
 **Current phase:** Phase 8 — UI/UX Polish & Accessibility. The active rapid-edit pass covers the public landing and branded legal/account surfaces; visual verification is explicitly delegated to the user.
 
-**Latest completed (Sessions 40–41):** final landing footer attribution/disclaimer; public `/privacy` and `/terms` pages using the landing navbar/style; Dashboard > Account permanent deletion; billing-safe `DELETE /api/account`; authenticated `delete_own_account` migration applied and remotely verified on PitsyPet; PostHog/Sentry data minimisation; and a full documentation reconciliation.
+**Latest completed (Session 42):** the veterinary calibration interview was RUN and is fully documented in `docs/vet_calibration_notes.md` (30 questions plus governing closing corrections, from a one-hour single-use session with a veterinarian who is deliberately kept anonymous in this public repository). Task 0 of the resulting plan is done: the `safety.ts` substring bug that forced High on any `severity: moderate` symptom or any mention of water is fixed and covered by regression tests. **No calibration content has been written into the prompts, rubric, tables or tests yet.**
 
-**Verification baseline:** 16 Vitest files / **165 tests passed**; `npx tsc --noEmit` clean; `npm run lint` clean. No assistant visual verification was performed, per user request.
+**Previously (Sessions 40–41):** final landing footer attribution/disclaimer; public `/privacy` and `/terms` pages using the landing navbar/style; Dashboard > Account permanent deletion; billing-safe `DELETE /api/account`; authenticated `delete_own_account` migration applied and remotely verified on PitsyPet; PostHog/Sentry data minimisation; and a full documentation reconciliation.
 
-**Immediate next:** continue any requested rapid landing/legal-page refinements. Afterwards: formal Phase 8 responsive/WCAG audit; Phase 9 fallback, cross-tenant and cost-guard verification; disposable-user deletion E2E; Phase 10.8 performance + full walkthrough; Phase 11.6 production smoke; Phase 12 UAT + `README.md`; professional legal review before release reliance.
+**Verification baseline:** 16 Vitest files / **177 tests passed**; `npx tsc --noEmit` clean; `npx next lint` clean. No assistant visual verification was performed, per user request.
 
-**Blocked/deferred:** Phase 4 vetted veterinary source collection/ingestion and vet-led calibration; RAG in the assistant until the KB exists; Resend custom auth/doctor email until account/domain setup is available.
+**Immediate next:** **the calibration implementation is POSTPONED by the user and must not be started without their explicit go-ahead.** The full step-by-step spec is in the "PENDING IMPLEMENTATION PLAN" section immediately below this block; read it when the user signals. Until then, the triage code is unchanged apart from the Session 42 bug fix. Other outstanding work: formal Phase 8 responsive/WCAG audit; Phase 9 fallback, cross-tenant and cost-guard verification; disposable-user deletion E2E; Phase 10.8 performance + full walkthrough; Phase 11.6 production smoke; Phase 12 UAT + `README.md`; professional legal review before release reliance.
+
+**Blocked/deferred:** Phase 4 vetted veterinary source collection/ingestion (the vet did NOT supply source documents; that module was deliberately skipped); RAG in the assistant until the KB exists; real emergency contacts still unverified; Resend custom auth/doctor email until account/domain setup is available. Australia-specific exposures were not validated by the Colombian veterinarian, and `safety.ts` still lacks paralysis tick and snake bite.
 
 **Supabase safety invariant:** PitsyPet = project `pitsypet`, ref `xaepzvxrqnqenspnanej`, org `qdendiktmyttgngqljay`, region `ap-southeast-2`. Confirm that ref before every remote write. Never use unrelated `protegiendo_huellas` (`irwdfcacgpznmvjofszq`).
 
 **Active plan:** `dev_plan.md` Phase 8; pending verification also references Phases 9–12.
+
+---
+
+## PENDING IMPLEMENTATION PLAN — Veterinary triage calibration (tasks 1 to 8)
+
+**Status: APPROVED BUT NOT STARTED. Do not begin without the user's explicit go-ahead.** The user reviewed the expected escalation impact (Session 42) and chose to postpone implementation. Task 0 (the `safety.ts` substring bug) is the only part already done and shipped.
+
+**Source of truth for every clinical value below:** `docs/vet_calibration_notes.md`. Its **"CORRECCIONES FINALES DE LA VETERINARIA"** section governs wherever it contradicts an earlier answer in the same file. Do not re-derive thresholds from memory or from this summary; open that file.
+
+**Expected effect, already discussed and accepted by the user:** Medium becomes the default landing zone for almost any unresolved real symptom; High becomes more frequent for the specific presentations the vet named but less frequent overall, because the accidental escalation from the regex bug is gone; Low becomes rare and always carries a non-urgent appointment recommendation. The Medium *action text* becomes less alarming than today's, not more.
+
+**Cross-cutting rules for all tasks:** the safety invariants stay (override only escalates, confidence is logged only, urgency is a re-rank signal only, uncertainty rounds UP). Clinical criteria go into the classifier rubric as **rules** (windows, thresholds, conditions, combinations), never as hardcoded symptom lists; hard lists belong only in `safety.ts` and `fallback.ts`. All code, prompts and copy stay in **English**; the vet's notes are Spanish and must be translated. No em dash character anywhere.
+
+### Task 1 — Classifier rubric (`src/lib/ai/classifier.ts`)
+The highest-impact change. The `system` string today is four generic lines; replace it with the vet's rubric.
+- Level definitions with actions and windows: **Low** = observe 24 to 48 hours while alert and behaving normally, breathing well, normal functions, no pain, **and always book a non-urgent appointment**; **Medium** = check hourly, go immediately if it worsens, otherwise keep watching across 6 to 12 hours and decide then (an observation window, NOT a mandatory appointment); **High** = go now.
+- The general-state gate as the master rule: eating, drinking, alert, normal functions, no pain, breathing well.
+- Not-eating thresholds: over 12 hours for puppies, small dogs and comorbid patients; over 24 hours for healthy dogs; 12 to 24 hours for cats.
+- Episode rule: 1 vomiting or diarrhoea episode is Medium, 2 or more is High.
+- Escalating combinations: more episodes, lethargy, anorexia, blood, vomiting and diarrhoea together.
+- Patient modifiers (paediatric, senior, brachycephalic, deep-chested, diabetic/cardiac/renal, pregnant) **shorten the observation window and never raise the level**.
+- Resolved vs ongoing: an isolated episode that has resolved with the animal well is Low; the same symptom ongoing is Medium.
+- Prohibitions: never diagnose, never give doses or recommend medication (allopathic or natural), never say "it is nothing", never suggest waiting when uncertain.
+- Tone: contained, clear, no technical terms.
+- Keep the existing asymmetry statement, the prompt-injection guard, and the plain-text/no-markdown/no-em-dash instruction.
+- `recommendedAction` must carry the new windows, since it is rendered verbatim on the results page.
+
+### Task 2 — Safety override additions (`src/lib/ai/safety.ts`)
+Add only; never remove an escalation. English patterns covering clinical term, plain owner phrasing and Australian vernacular.
+- From the vet: open-mouth breathing or panting in cats; pale, white or blue gums (already present, verify coverage); sudden inability to move the hind legs; tremors; repeated litter tray visits in cats; blood in urine; red eye; yellow or green nasal discharge; fall from a height in cats even if apparently fine; labour lasting more than 2 hours; neonates that stop nursing or cry persistently; garlic and raisins added to the toxin list.
+- **Gotcha:** do NOT use a bare `shaking` for tremors. Head shaking is the vet's Medium ear presentation, so use `tremor|trembling|shivering|twitching` and leave bare "shaking" to the model.
+- **Gotcha:** the 2-or-more-episode rule is a COUNT, which regex handles badly. Counts belong in the Task 1 rubric. Only add unambiguous phrasings here (for example "vomited three times", "keeps vomiting", "vomiting repeatedly").
+- **Australia gap, NOT vet-validated:** `safety.ts` still has no paralysis tick and no snake bite, both top-tier emergencies for the target audience. Add from standard Australian sources and mark them in a comment as not validated by the calibration session.
+- Every addition needs a test in `safety.test.ts`, plus a substring-trap check so no new pattern repeats the Session 42 bug.
+
+### Task 3 — Extraction prompt (`EXTRACTION_SYSTEM_PROMPT` in `src/app/api/assessment/chat/route.ts`)
+- Encode the vet's minimum interrogation, in her order: how many times, how long ago, what it looks like, is it eating, does it have diarrhoea, is it drinking, is it lethargic, what food does it eat, could it have eaten something unusual.
+- Encode the stop-and-refer rule: more than one vomit within a couple of hours plus lethargy means stop asking and refer immediately.
+- Map her severity grading onto the schema enum `mild/moderate/severe`.
+- Sync the prompt's emergency-override list with the Task 2 additions so the chat and the classifier agree.
+- **Preserve the existing non-negotiables:** a visible text reply on every turn (never tool-only), confirm before setting `isComplete`, never invent symptoms from medications or conditions (ask, record only if the owner confirms), respect the (upcoming)/(past) appointment labels, plain text with no markdown and no em dash.
+
+### Task 4 — Rule-based fallback and user-facing copy
+- `src/lib/ai/fallback.ts`: re-weight so a single vomiting or diarrhoea episode lands in the Medium band and repeated episodes land in High; raise the weight of general-state terms (lethargy, not eating) since they are the vet's master gate; update the three `recommendedAction` strings to the new windows.
+- `src/components/assessment/results/recommendations.tsx`: the Medium block currently says "Schedule a vet appointment within 24 hours", which now contradicts the vet. Replace with the hourly-check plus 6-to-12-hour decision wording. The Low block must add the non-urgent appointment recommendation.
+- Grep the whole app for other places that state a window ("24 hours", "24-48") and bring them into line.
+
+### Task 5 — First-aid content and the lookup bug (migration + `results-view.tsx`)
+- **Blocking defect to fix first:** first-aid rows are matched by exact `symptom_name` against the AI's free-text symptom names (`.in("symptom_name", names)` in `results-view.tsx`). Advice written for "vomiting" never renders when the AI extracts "throwing up". Add a normalisation or alias layer before adding content, otherwise the new rows are invisible.
+- New migration with English rows for the vet's home-care guidance: watch that symptoms do not increase or worsen, that the animal eats and drinks normally, and its mood.
+- Explicit "do not" content: no human medications, nothing applied to skin or wounds, no home or natural remedies without evidence, do not induce vomiting.
+- New content for High risk, which has no equivalent today: while travelling to the vet, no food or water, transport safely and keep the animal warm, avoid adverse environmental conditions, control bleeding with gauze or a clean cloth, keep the animal calm.
+- Keep the educational tone and never state doses.
+
+### Task 6 — Tests (`src/lib/ai/__tests__/`)
+- Rewrite `triage-regression.test.ts` against the vet's criteria. Several current expectations legitimately change, for example "vomited once and seems lethargic" moves from Medium to High, and "just a bit of sneezing" moves from Low to Medium.
+- Adjust `fallback.test.ts` to the new weights.
+- Keep the "can only escalate" and substring-trap suites intact; they are the safety net.
+
+### Task 7 — Pet record fields (separate and larger)
+The vet's handover summary (P27) requires data the app does not store: **sex, vaccinations, diet, recent changes** (owner phone and address are also on her list, decide separately whether to collect them). Touches a migration, `src/types/database.ts` regeneration, the pet create/edit forms, the pet record page, `formatPet` and the prompts that consume it, and `src/lib/export/summary.ts` plus the PDF document.
+
+### Task 8 — Documentation
+Update `docs/DEV_LOG.md` and the `CLAUDE.md` roadmap, and tick the coverage checklist at the end of `docs/vet_protocol.md`.
+
+### Verification gate for the whole calibration
+`npx vitest run`, `npx tsc --noEmit` and `npx next lint` must all be green. Current baseline is 16 files / 177 tests.
+
+### Open decisions to raise with the user before starting
+1. Whether to add the Australian exposures (paralysis tick, snake bite) now, given they are not vet-validated.
+2. Whether Task 7 is in scope for the same pass or deferred again.
+3. Whether to run a measurement pass over existing stored assessments afterwards to see the real distribution across levels, and whether a short second session with the veterinarian is worth booking if Medium turns out to be overloaded.
+
+---
 
 ### Historical milestones
 
@@ -1565,5 +1641,64 @@ Also: `aria-label` on the step wrapper `<div>` (a no-op for AT on a role-less di
 - The legal copy must not promise impossible zero-retention guarantees: live application data is deleted, while narrowly disclosed provider backups, transaction/security records, and legal obligations may persist.
 - Every remote Supabase write must first confirm PitsyPet project ref `xaepzvxrqnqenspnanej`; never use `protegiendo_huellas` (`irwdfcacgpznmvjofszq`).
 - No code, database, deployment, or external-system changes were made during the documentation-reconciliation portion of this session.
+
+---
+
+## SESSION 42 - 2026-08-02 - Claude / Opus 5 (Veterinary calibration interview + safety override bug fix)
+
+### STARTED WITH
+- Phase 8 rapid-edit pass, with vet-led triage calibration listed as blocked/deferred.
+- The user secured a one-hour, one-time session with a veterinarian and asked to run `docs/vet_protocol.md`.
+- Agreed format before starting: interview only, one question at a time, no code during the interview; all implementation afterwards.
+
+### COMPLETED THIS SESSION
+
+**1. Veterinary calibration interview (protocol `docs/vet_protocol.md`, run live).**
+- Veterinarian: kept anonymous in this public repository, by the user's instruction. Profile: 3 years, dogs and cats, general practice, emergency and surgery, practising in Colombia.
+- 30 questions answered plus a set of closing corrections. Full verbatim record written to the new `docs/vet_calibration_notes.md`.
+- Modules covered: M0 (levels), M1 (absolute emergencies incl. cat-specific), M3 (grey zone, thresholds, follow-up), M4 (patient modifiers), M5 (history taking), M6 (common presentations), M7 (ingestions), M8 (home care and first aid), M10 (tone, limits, handover summary).
+- Modules deliberately NOT run, by the user's decision: RAG source documents, real emergency contacts, live-model accuracy scripts.
+
+**2. Key clinical criteria captured (the corrections at the end of the interview govern):**
+- Low: observe over 24 to 48 hours while the animal stays alert and behaving normally, breathes well, performs normal functions and shows no pain. Low ALWAYS also recommends booking a non-urgent vet appointment.
+- Medium: check hourly; if it worsens go to the vet immediately without waiting; if stable or improving, keep watching across the next 6 to 12 hours and decide then. Medium is an active observation window, not a mandatory appointment at 6 to 12 hours.
+- High: go now.
+- Vomiting/diarrhoea: 1 episode is Medium, 2 or more is High (this supersedes the earlier answer that allowed 2 episodes at Medium when the general state was good).
+- General state is the master gate (eating, drinking, alert, normal functions, no pain, breathing well).
+- Not eating: over 12 hours for puppies, small dogs and comorbid patients; over 24 hours for healthy dogs; 12 to 24 hours for cats.
+- Patient modifiers (paediatric, senior, brachycephalic, deep-chested, diabetic/cardiac/renal, pregnant) SHORTEN the observation window and do NOT raise the risk level.
+- Stop-and-refer rule: more than one vomit within a couple of hours plus lethargy means stop asking questions and refer immediately.
+
+**3. Task 0 of the implementation plan: safety override false-positive bug FIXED (`src/lib/ai/safety.ts`).**
+- `CRITICAL_PATTERNS` ran unanchored alternatives against the FORMATTED symptom text, which contains machine-written fields such as `severity: moderate`. The toxin pattern's bare `ate` matched inside `moder-ate` and `w-ate-r`, so ANY moderate-severity symptom and ANY mention of water forced a High classification. A bare `blocked` matched a blocked nose or ear and forced the urinary-obstruction escalation.
+- Fixes: word boundaries on the ingestion verbs; the toxin substance list split from the ingestion verbs; ingestion verbs now require an unknown or foreign object, so `ate his dinner normally` is no longer critical while `ate something in the park` still is; `blocked` only counts alongside an explicitly urinary term; `grapes?` now also matches the singular.
+- No emergency was removed and no escalation was weakened: this only stops matches on unrelated words. The vet's ADDITIONS to the emergency list are task 2, not this task.
+- Also removed the em dash from the override's `recommendedAction` copy.
+
+### VERIFICATION
+- `npx vitest run`: 16 files, **177 tests passed** (was 165; +12 covering the substring traps and the preserved ingestion coverage).
+- `npx tsc --noEmit` clean. `npx next lint` clean.
+- The bug was reproduced before the fix by running the original regex against real formatted symptom strings: `- vomiting, severity: moderate`, `- itching, severity: moderate` and `- water intake slightly increased` all matched as critical.
+
+### IN PROGRESS (not finished)
+- Tasks 1 to 8 of the calibration implementation plan (see NEXT SESSION MUST START WITH). No calibration content has been written into any prompt, rubric, table or test yet.
+
+### FILES MODIFIED
+- `docs/vet_calibration_notes.md` - NEW. Verbatim record of the interview in Spanish, plus a governing "final corrections" section and the derived calibration notes.
+- `src/lib/ai/safety.ts` - anchored the critical patterns, split toxins from ingestion verbs, scoped `blocked` to urinary context, removed the em dash from the override copy.
+- `src/lib/ai/__tests__/safety.test.ts` - asserted the previously dodged `ate his dinner normally` case, added a substring-trap regression block, added coverage cases for the narrowed ingestion and urinary patterns.
+- `docs/DEV_LOG.md` - this entry and the STATUS block.
+
+### NEXT SESSION MUST START WITH
+1. **Nothing on the calibration until the user says so.** After reviewing the expected escalation impact, the user postponed implementation and will signal when to start.
+2. When they do: follow the **"PENDING IMPLEMENTATION PLAN"** section near the top of this file (tasks 1 to 8, with the gotchas and the open decisions to raise first). Do not work from memory; open `docs/vet_calibration_notes.md` for every clinical value.
+3. In the meantime, the outstanding non-calibration queue in the STATUS block stands: Phase 8 responsive/WCAG audit, Phase 9 verification, Phase 10.8, Phase 11.6 and Phase 12.
+
+### DECISIONS / NOTES
+- **The calibration makes the system MORE conservative, not less.** The over-escalation recorded in `CLAUDE.md` was not the rubric; it was the substring bug fixed in this session. The vet's thresholds escalate further than the current ones, and the user approved encoding them as given.
+- The interview was documented before any code was written, deliberately: the veterinarian is a single-use resource and her criteria had to be captured verbatim first.
+- The veterinarian practises in Colombia, so the clinical triage criteria transfer, but Australia-specific exposures were NOT validated by this session. Related gap found in the code: `safety.ts` still has no paralysis tick and no snake bite, both top-tier emergencies for an Australian audience. Add them from standard sources, flagged as not vet-validated.
+- The veterinarian's three product requirements are non-negotiable and now recorded: the tool must not replace veterinary consultation (hence Low always books an appointment), it must support veterinarians rather than compete with them, and it must not create legal exposure through owner misinterpretation.
+- Open clinical questions: none. The last pending item (whether Low keeps the appointment recommendation after the window changed) was explicitly confirmed by the veterinarian before the session closed.
 
 ---
