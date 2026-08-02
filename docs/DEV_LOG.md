@@ -42,13 +42,15 @@
 
 **Current phase:** Phase 8 — UI/UX Polish & Accessibility. The active rapid-edit pass covers the public landing and branded legal/account surfaces; visual verification is explicitly delegated to the user.
 
-**Latest completed (Session 42):** the veterinary calibration interview was RUN and is fully documented in `docs/vet_calibration_notes.md` (30 questions plus governing closing corrections, from a one-hour single-use session with a veterinarian who is deliberately kept anonymous in this public repository). Task 0 of the resulting plan is done: the `safety.ts` substring bug that forced High on any `severity: moderate` symptom or any mention of water is fixed and covered by regression tests. **No calibration content has been written into the prompts, rubric, tables or tests yet.**
+**Latest completed (Session 43):** the RAG knowledge base has its **first content**, a deliberately TEMPORARY three-document testing corpus (121 chunks: BSAVA UK triage tool plus CVJ "Basic triage in dogs and cats" Parts I and II). `scripts/ingest.ts` was broken (v1 pdf-parse import against the installed v2) and is fixed, so Phase 4 can actually run now. A guardrail was added to the classifier prompt because the ingested literature is clinician-facing and retrieval demonstrably returns drug doses. New read-only `scripts/rag-smoke.ts` verifies retrieval end to end. **None of these sources is licensed for production; the corpus is meant to be wiped.** See the KNOWN ISSUES section below for the standing defect list.
+
+**Session 42:** the veterinary calibration interview was RUN and is fully documented in `docs/vet_calibration_notes.md` (30 questions plus governing closing corrections, from a one-hour single-use session with a veterinarian who is deliberately kept anonymous in this public repository). Task 0 of the resulting plan is done: the `safety.ts` substring bug that forced High on any `severity: moderate` symptom or any mention of water is fixed and covered by regression tests. **No calibration content has been written into the prompts, rubric, tables or tests yet.**
 
 **Previously (Sessions 40–41):** final landing footer attribution/disclaimer; public `/privacy` and `/terms` pages using the landing navbar/style; Dashboard > Account permanent deletion; billing-safe `DELETE /api/account`; authenticated `delete_own_account` migration applied and remotely verified on PitsyPet; PostHog/Sentry data minimisation; and a full documentation reconciliation.
 
 **Verification baseline:** 16 Vitest files / **177 tests passed**; `npx tsc --noEmit` clean; `npx next lint` clean. No assistant visual verification was performed, per user request.
 
-**Immediate next:** **the calibration implementation is POSTPONED by the user and must not be started without their explicit go-ahead.** The full step-by-step spec is in the "PENDING IMPLEMENTATION PLAN" section immediately below this block; read it when the user signals. Until then, the triage code is unchanged apart from the Session 42 bug fix. Other outstanding work: formal Phase 8 responsive/WCAG audit; Phase 9 fallback, cross-tenant and cost-guard verification; disposable-user deletion E2E; Phase 10.8 performance + full walkthrough; Phase 11.6 production smoke; Phase 12 UAT + `README.md`; professional legal review before release reliance.
+**Immediate next:** the user is testing the app with the knowledge base loaded. **The calibration implementation is POSTPONED and must not be started without their explicit go-ahead**; the full step-by-step spec is in the "PENDING IMPLEMENTATION PLAN" section below, and the standing defect list is in "KNOWN ISSUES" after it. Apart from the Session 42 bug fix and the Session 43 guardrail, the triage logic is unchanged. Other outstanding work: formal Phase 8 responsive/WCAG audit; Phase 9 fallback, cross-tenant and cost-guard verification; disposable-user deletion E2E; Phase 10.8 performance + full walkthrough; Phase 11.6 production smoke; Phase 12 UAT + `README.md`; professional legal review before release reliance.
 
 **Blocked/deferred:** Phase 4 vetted veterinary source collection/ingestion (the vet did NOT supply source documents; that module was deliberately skipped); RAG in the assistant until the KB exists; real emergency contacts still unverified; Resend custom auth/doctor email until account/domain setup is available. Australia-specific exposures were not validated by the Colombian veterinarian, and `safety.ts` still lacks paralysis tick and snake bite.
 
@@ -127,6 +129,34 @@ Update `docs/DEV_LOG.md` and the `CLAUDE.md` roadmap, and tick the coverage chec
 1. Whether to add the Australian exposures (paralysis tick, snake bite) now, given they are not vet-validated.
 2. Whether Task 7 is in scope for the same pass or deferred again.
 3. Whether to run a measurement pass over existing stored assessments afterwards to see the real distribution across levels, and whether a short second session with the veterinarian is worth booking if Medium turns out to be overloaded.
+
+---
+
+---
+
+## KNOWN ISSUES / OPEN DEFECTS (as of Session 43)
+
+Standing list of what is currently wrong. Fixed items are removed from this list, not struck through. Ordered by user impact.
+
+### Functional, user-visible
+
+1. **The vet's calibration is not implemented.** The app still runs the pre-calibration rubric: Medium tells the owner "within 24 hours" when the veterinarian said 6 to 12 with hourly checks, Low never recommends booking an appointment, and the 1-versus-2-episode vomiting/diarrhoea threshold does not exist. Deliberately postponed by the user. Spec: the PENDING IMPLEMENTATION PLAN above.
+2. **First-aid advice almost never renders.** `results-view.tsx` matches `first_aid_recommendations.symptom_name` exactly against the AI's free-text symptom names, so advice written for "vomiting" is invisible when the model extracts "throwing up". Needs a normalisation or alias layer. Blocks task 5 of the calibration plan.
+3. **`safety.ts` has no paralysis tick and no snake bite**, both top-tier emergencies for the Australian target audience. Not validated by the Colombian veterinarian, so add from standard Australian sources with a comment saying so.
+
+### RAG knowledge base (from the Session 43 test ingestion)
+
+4. **Clinical dose leakage is mitigated, not solved.** The ingested literature is written for veterinarians and retrieval genuinely returns chunks such as "Give mannitol (0.5 to 1 g/kg IV", "give at least 1 dose of epinephrine" and "Bathe in salt water if appropriate and apply calamine lotion". Only a classifier prompt instruction currently prevents these reaching the owner, and the calamine line directly contradicts the veterinarian's rule against applying anything to skin or wounds. Watch this during testing; consider filtering dose-bearing chunks at ingest time.
+5. **`urgency_level` is 9 on nearly every chunk**, including mild itching, because `CRITICAL_RE` matches anywhere in a 400-token window. The re-rank nudge (`0.05 * urgency/10`) is therefore uniform and does nothing.
+6. **`body_system` is frequently wrong**: seizure content tagged `cardiovascular`, bleeding and itching tagged `urinary`, feline urinary obstruction tagged `gastrointestinal`. `bodySystemFor` returns the first regex that matches anywhere in the chunk. Metadata only, so retrieval is unaffected, but the data is misleading.
+7. **PDF furniture pollutes chunks** (page numbers, running heads such as `-- 7 of 11 -- CVJ / VOL 65 / MARCH 2024 R E V I E W A R T I C LE`). `cleanText` does not strip it, so it consumes embedding and prompt tokens.
+8. **`scripts/ingest.ts` has no deduplication.** Re-running it over the same folder inserts a second full copy of every chunk. Delete by `source` before re-ingesting.
+
+### Risk and compliance
+
+9. **The veterinarian's name remains in the git history** (4 earlier commits) and in the XMP metadata of 16 PNGs under `public/`, which are served publicly. The user reviewed both and chose to leave them. Removing the history occurrences would require a rewrite and a force push.
+10. **`emergency_contacts` rows are unverified.** The eight seeded Australian entries have never been checked and at least one looks doubtful ("Veterinary Emergency Group Melbourne" is a US chain). A wrong emergency phone number is a real safety harm. Verify before release.
+11. **No ingested source is licensed for commercial use.** The current corpus is a temporary testing set: CVJ and BSAVA articles carry publisher copyright with no open licence visible, and `CPR_dogs_cats.pdf` (deliberately NOT ingested) is CC BY-NC-ND, which conflicts with the paid tiers. Production needs sources with commercial permission.
 
 ---
 
@@ -1700,5 +1730,58 @@ Also: `aria-label` on the step wrapper `<div>` (a no-op for AT on a role-less di
 - The veterinarian practises in Colombia, so the clinical triage criteria transfer, but Australia-specific exposures were NOT validated by this session. Related gap found in the code: `safety.ts` still has no paralysis tick and no snake bite, both top-tier emergencies for an Australian audience. Add them from standard sources, flagged as not vet-validated.
 - The veterinarian's three product requirements are non-negotiable and now recorded: the tool must not replace veterinary consultation (hence Low always books an appointment), it must support veterinarians rather than compete with them, and it must not create legal exposure through owner misinterpretation.
 - Open clinical questions: none. The last pending item (whether Low keeps the appointment recommendation after the window changed) was explicitly confirmed by the veterinarian before the session closed.
+
+---
+
+## SESSION 43 - 2026-08-02 - Claude / Opus 5 (RAG test corpus: ingest fix + first knowledge base load)
+
+### STARTED WITH
+- Session 42 pushed. Calibration implementation postponed by the user.
+- The user had six candidate veterinary PDFs in Downloads and asked which were worth ingesting, for a TEMPORARY testing corpus to be wiped later. Explicitly not for production.
+
+### COMPLETED THIS SESSION
+
+**1. Source review (six PDFs, judged with the pipeline's own extractor).**
+- All six are text-extractable; none is a scan.
+- **Ingested (3):** `Dog_and_cat_triage.pdf` (BSAVA UK triage tool, the closest match to this product: presentation-by-presentation prioritisation with explicit owner-advice branches), `Basic_triage_dogs_cats_Part_1.pdf` (CVJ 2024: respiratory distress and seizures) and `Part_2.pdf` (collapse and bleeding). Three sources, not two, so that the `MAX_PER_SOURCE = 2` cap and `TOP_K = 5` selection are both genuinely exercised.
+- **Rejected:** `CPR_dogs_cats.pdf` (near-zero triage value, and explicitly CC BY-NC-ND, which conflicts with the paid tiers); `treatment_pain.pdf` (78 pages, would have been 57% of the corpus, and two thirds is drug protocol; its pain-recognition sections may be worth revisiting later since "no pain" is one of the veterinarian's four Low-risk gates); `Part_3.pdf` (the arrhythmia/ECG half has no owner-triage value).
+- **Caveat recorded:** the BSAVA document is COVID-era guidance whose explicit purpose was to REDUCE in-person visits, so its thresholds are biased toward home care and pull against the veterinarian's more escalatory criteria.
+
+**2. `scripts/ingest.ts` was broken and is fixed.** It imported `pdf-parse/lib/pdf-parse.js`, the v1 entry point. The installed version is 2.4.5, which declares an `exports` map with no such subpath, so the import threw `ERR_PACKAGE_PATH_NOT_EXPORTED` before reading a single page. Migrated to the v2 class API (`new PDFParse({ data }).getText()`, with `destroy()` in a `finally` because it holds a worker). Phase 4 could not have run at all before this.
+
+**3. Ingest now skips the sources folder's own `README.md`**, which had been embedded as a retrievable knowledge chunk. The stray row was deleted from the database.
+
+**4. Classifier guardrail added (`src/lib/ai/classifier.ts`).** The retrieved guidance is written for veterinarians, so the system prompt now states it may contain drug names, dosages and in-clinic procedures, that it is to be used ONLY to judge severity, and that the model must never repeat a dose, name a medication as treatment, give procedural instructions, or state a definitive diagnosis. This is a prerequisite for ingesting clinical literature, not calibration.
+
+**5. First knowledge base load.** 121 chunks across the three sources (37 + 42 + 42). Project identity confirmed as `xaepzvxrqnqenspnanej` and the table confirmed empty before writing.
+
+**6. New `scripts/rag-smoke.ts`.** Read-only retrieval smoke test that runs the exact runtime path (`buildRagQuery` to `embedText` to `search_veterinary_knowledge` to `rankChunks`) over six realistic owner presentations and prints what the classifier would be grounded on.
+
+### VERIFICATION
+- Retrieval works end to end: similarities 0.45 to 0.67, the per-source cap holds, the species filter works, and the BSAVA document dominates relevance as predicted.
+- `npx tsc --noEmit`, `npx next lint` and `npx vitest run` (180 tests) all clean.
+- Cost check for the user: embeddings are billed by OpenAI, not Supabase. The three documents were roughly 42,000 tokens, under one tenth of a US cent. Storage is about 6 KB of vector per row, so 121 rows is well under 1 MB against the 500 MB free-tier limit.
+
+### FINDINGS (all recorded in KNOWN ISSUES above)
+- **Dose leakage is real, not theoretical.** Retrieval genuinely returned "Give mannitol (0.5 to 1 g/kg IV", "give at least 1 dose of epinephrine" and "Bathe in salt water if appropriate and apply calamine lotion". The guardrail was necessary and is not by itself a guarantee.
+- `urgency_level` is 9 on nearly every chunk, making the re-rank nudge a no-op.
+- `body_system` is frequently mis-tagged (first-match-wins over a 400-token window).
+- PDF running heads and page numbers survive `cleanText` and sit inside chunks.
+- The ingest has no deduplication.
+
+### FILES MODIFIED
+- `scripts/ingest.ts` - pdf-parse v2 migration, README exclusion.
+- `scripts/rag-smoke.ts` - NEW, read-only retrieval smoke test.
+- `src/lib/ai/classifier.ts` - clinical-source guardrail in the system prompt.
+- `docs/DEV_LOG.md`, `CLAUDE.md` - this entry, the KNOWN ISSUES list, and status.
+- Not committed (gitignored by design): `scripts/sources/*.pdf`, the three-document testing corpus.
+
+### NEXT SESSION MUST START WITH
+1. Nothing new until the user has tested the app with the knowledge base loaded.
+2. Then either the calibration plan (tasks 1 to 8, on the user's signal) or the KNOWN ISSUES list, whichever the user picks.
+
+### DECISIONS / NOTES
+- The corpus is explicitly TEMPORARY and for testing. To wipe it: delete from `veterinary_knowledge` and `knowledge_processing_audit` by `source`, then re-ingest. Do not re-run the ingest over the same folder without deleting first.
+- Ingesting clinician-facing literature into an owner-facing product is a standing tension. The guardrail reduces it; source selection is the real control.
 
 ---

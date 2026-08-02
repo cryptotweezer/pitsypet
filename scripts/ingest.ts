@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { createClient } from "@supabase/supabase-js";
-import pdfParse from "pdf-parse/lib/pdf-parse.js";
+import { PDFParse } from "pdf-parse";
 
 import type { Database } from "../src/types/database";
 import { cleanText, chunkText } from "./chunk";
@@ -96,10 +96,19 @@ function toVector(embedding: number[]): string {
   return `[${embedding.join(",")}]`;
 }
 
+// pdf-parse v2 exposes a class, not the v1 default export. The old import path
+// ("pdf-parse/lib/pdf-parse.js") no longer resolves at all: v2 declares an
+// "exports" map with no such subpath, so it threw ERR_PACKAGE_PATH_NOT_EXPORTED
+// before a single page was read. Always destroy the parser: it holds a worker.
 async function extractText(filePath: string): Promise<string> {
   if (/\.pdf$/i.test(filePath)) {
-    const { text } = await pdfParse(fs.readFileSync(filePath));
-    return text;
+    const parser = new PDFParse({ data: new Uint8Array(fs.readFileSync(filePath)) });
+    try {
+      const { text } = await parser.getText();
+      return text ?? "";
+    } finally {
+      await parser.destroy();
+    }
   }
   return fs.readFileSync(filePath, "utf8");
 }
@@ -166,6 +175,9 @@ async function main(): Promise<void> {
   const files = fs
     .readdirSync(SOURCES_DIR)
     .filter((f) => /\.(pdf|txt|md)$/i.test(f))
+    // The folder's own README is scaffolding, not veterinary knowledge. Without
+    // this it gets embedded and sits in the KB as a retrievable chunk.
+    .filter((f) => !/^readme\./i.test(f))
     .sort();
 
   if (files.length === 0) {
