@@ -1,338 +1,340 @@
-# vet_calibration_notes.md — Calibración clínica con veterinaria (sesión en vivo)
+# vet_calibration_notes.md: clinical calibration with a veterinarian (live session)
 
-**Qué es este archivo:** el registro crudo de la entrevista de calibración del protocolo
-`docs/vet_protocol.md`. Guarda las respuestas de la veterinaria **en español y tal como las dio**,
-antes de traducirlas a criterios de código. Es material irrepetible: primero se documenta acá,
-después el desarrollador lo convierte en reglas (en inglés) sobre `classifier.ts`, `safety.ts`,
-`fallback.ts`, el prompt de extracción y las tablas de recomendaciones.
-
----
-
-## Datos de la sesión
-
-- **Fecha:** 2026-08-02
-- **Veterinaria:** anonimizada a propósito. Perfil profesional: 3 años de experiencia, perros y
-  gatos, consulta general, urgencias y cirugía. La identidad no se registra en el repositorio
-  (que es público) para no exponer datos personales de una profesional que colaboró de forma
-  privada. Si en algún momento autoriza ser acreditada, se agrega aquí.
-- **Ejerce en:** Colombia (con experiencia clínica; actualmente sin ejercicio activo)
-- **Duración disponible:** 1 hora
-- **Formato:** preguntas y respuestas una a la vez, por chat. Sin cambios de código durante la
-  entrevista: primero se recopila todo, después el desarrollador aplica los ajustes.
-- **Alcance excluido en esta sesión (se trabaja después con el desarrollador):** fuentes
-  documentales para el RAG, contactos de emergencia reales, scripts de evaluación.
-
-**Nota de contexto clínico:** la veterinaria ejerce en Colombia, así que los criterios de triage
-(fisiología, umbrales, banderas rojas) son aplicables, pero la epidemiología específica de
-Australia (garrapata paralizante, 1080, cebo de caracoles, sapo de caña, serpientes locales) y los
-recursos de urgencia australianos **no** se validan con esta sesión y quedan pendientes.
+**What this file is:** the raw record of the calibration interview run from the protocol in
+`docs/vet_protocol.md`. It holds the veterinarian's answers exactly as she gave them, before they
+are turned into code criteria. The interview was conducted in Spanish and the answers are recorded
+here in English translation, kept as literal as possible: nothing is summarised, softened or
+reordered, and every threshold, time window and clinical term is carried across unchanged. This is
+irreplaceable material. It is documented here first, and only then does the developer convert it
+into rules over `classifier.ts`, `safety.ts`, `fallback.ts`, the extraction prompt and the
+recommendation tables.
 
 ---
 
-## Registro de la entrevista
+## Session details
 
-### M0 — Perfil profesional
+- **Date:** 2026-08-02
+- **Veterinarian:** anonymised on purpose. Professional profile: 3 years of experience, dogs and
+  cats, general practice, emergency and surgery. Her identity is not recorded in this repository
+  (which is public) so as not to expose the personal data of a professional who collaborated
+  privately. If she ever authorises being credited, it will be added here.
+- **Practises in:** Colombia (with clinical experience; not currently in active practice)
+- **Time available:** 1 hour
+- **Format:** questions and answers one at a time, over chat. No code changes during the interview:
+  everything is collected first, and the developer applies the adjustments afterwards.
+- **Out of scope for this session (worked on later with the developer):** source documents for the
+  RAG corpus, real emergency contacts, evaluation scripts.
 
-**P1. Especies, años y ámbito.**
-> Perros y gatos, 3 años, consulta general, urgencias y cirugía.
-
----
-
-### M0 / M2 — Los tres niveles: definiciones, ventanas y ejemplos
-
-**P2. ¿Qué define riesgo BAJO y cuánto margen de observación se da?**
-> Riesgo bajo es que los síntomas sean muy leves y que igual esté comiendo, no deprimido ni
-> letárgico, tomando agua, no vomitando ni diarrea, no sangrando, no accidentado; que en general
-> el dueño lo vea bien, solo con algo de síntomas leves.
-> Si la consulta es de noche: observar en la noche y, si sigue mal en la mañana, llevarlo al
-> veterinario. Si es de día: ir observando **cada 2 horas** cómo se comporta y, si algo cambia
-> drásticamente, llevarlo al veterinario.
-
-**P3. ¿Qué define riesgo MEDIO y en qué plazo?**
-> Debería llevarlo en las próximas horas, el mismo día o noche, dentro de un plazo de
-> **6 a 12 horas**.
-
-**P4. Ejemplos de riesgo MEDIO (ni casa, ni corra ya).**
-> - Heces blandas, pero sigue animado, comiendo, tomando agua, no vomitando.
-> - El dueño se dio cuenta de que se comió algo (de consumo humano o un objeto pequeño) pero el
->   animal sigue bien: comiendo, tomando agua, heces normales, animado, no vomitando.
-> - El animal está un poco decaído pero come bien y no tiene ningún otro síntoma.
-> - El perro sufrió un pequeño golpe que no afectó ninguna parte vital, no sangra, pero está un
->   poco decaído y de resto come bien y hace todas sus funciones normales.
-
-**P5. ¿Qué define riesgo ALTO?**
-> El animal se accidentó, sangra, está letárgico, decaído, no come, vomita, diarrea líquida de
-> diferentes tipos, se comió algo tóxico, se comió un objeto muy grande, sufrió golpe de calor,
-> sufrió algún episodio de violencia humana o un ataque de otro animal.
-
-**P6. Vómito único, animal por lo demás perfecto.**
-> Medio.
-
-**P7. Ejemplos concretos de riesgo BAJO (observar en casa).**
-> - Se está rascando o lamiendo y no tiene una lesión de piel alarmante: debe revisarlo y tratar
->   de **programar visita al veterinario en los próximos días**.
-> - Tiene una masa en piel que no está inflamada, ni ulcerada, ni duele, se mueve al tacto y no ha
->   crecido en meses: debe **programar un control pronto** para hacer revisar la masa.
-> - Tuvo un episodio de heces blandas un día, no volvió a tener más y está bien: debe
->   **comentarlo en la próxima visita** para ver que todo esté en orden.
-> - Tuvo un pequeño accidente que no afectó partes vitales ni comprometió algún miembro u órgano
->   vital, el dueño lo manejó con limpiezas en casa y el animal se recuperó y se ve bien: debe
->   **programar una cita pronto** y hacerlo revisar por si acaso.
+**Clinical context note:** the veterinarian practises in Colombia, so the triage criteria
+(physiology, thresholds, red flags) are applicable, but the epidemiology specific to Australia
+(paralysis tick, 1080, snail bait, cane toad, local snakes) and Australian emergency resources are
+**not** validated by this session and remain outstanding.
 
 ---
 
-### M1 — Emergencias absolutas y signos sutiles
+## Interview record
 
-**P8. Emergencias propias del gato que la gente no reconoce.**
-> Sí, los gatos que no pueden orinar, sobre todo en machos.
+### M0: professional profile
 
-**P9. Signos sutiles que el dueño minimiza y ya son bandera roja.**
-> El gato entra a la arenera a cada rato y el dueño piensa que no es nada, pero puede ser una
-> obstrucción.
-
-**P10. Checklist de emergencia inmediata (sí / no).**
-> **Sí, emergencia inmediata:** (a) gato respirando con la boca abierta o jadeando, (b) encías
-> pálidas, blancas o azuladas, (c) animal que de un momento a otro no mueve las patas traseras,
-> (e) temblores.
-> **No emergencia inmediata:** (d) se esconde y no quiere que lo toquen.
+**Q1. Species, years and scope of practice.**
+> Dogs and cats, 3 years, general practice, emergency and surgery.
 
 ---
 
-### M7 — Ingestiones y tóxicos
+### M0 / M2: the three levels, definitions, windows and examples
 
-**P11. ¿Cuáles son siempre emergencia inmediata aunque el animal se vea bien?**
-> Todos: (a) chocolate, (b) xilitol, (c) uvas o pasas, (d) cebolla o ajo, (e) medicamentos
-> humanos, (f) veneno para ratas, (g) objeto grande.
-> En Colombia es frecuente: **envenenamientos, objetos grandes y chocolate**.
+**Q2. What defines LOW risk, and how much observation margin is given?**
+> Low risk is that the symptoms are very mild and that the animal is still eating, not depressed
+> or lethargic, drinking water, not vomiting, no diarrhoea, not bleeding, has not had an accident;
+> that overall the owner sees it as well, only with some mild symptoms.
+> If the consultation is at night: observe overnight and, if it is still unwell in the morning,
+> take it to the vet. If it is during the day: keep checking **every 2 hours** how it behaves and,
+> if anything changes drastically, take it to the vet.
 
----
+**Q3. What defines MEDIUM risk, and within what timeframe?**
+> They should take it in over the next few hours, the same day or night, within a window of
+> **6 to 12 hours**.
 
-### M3 / M6 — Umbrales, zona gris y escalado
+**Q4. Examples of MEDIUM risk (neither home care nor go right now).**
+> - Loose stools, but still bright, eating, drinking water, not vomiting.
+> - The owner realised it ate something (human food or a small object) but the animal is still
+>   fine: eating, drinking water, normal stools, bright, not vomiting.
+> - The animal is a little down but eats well and has no other symptom.
+> - The dog took a small knock that did not affect any vital part, is not bleeding, but is a
+>   little down and otherwise eats well and performs all its normal functions.
 
-**P12. Horas sin comer que preocupan.**
-> Cachorros, perros pequeños o perros con alguna condición de salud: más de **12 horas** es
-> preocupante. Perros sanos: más de **24 horas**. Gatos: más de **12 a 24 horas**.
+**Q5. What defines HIGH risk?**
+> The animal has had an accident, is bleeding, is lethargic, down, not eating, vomiting, watery
+> diarrhoea of various kinds, ate something toxic, ate a very large object, suffered heatstroke,
+> suffered an episode of human violence or an attack by another animal.
 
-**P13. Umbral de vómito y diarrea.**
-> Solo 1 vómito se considera "obsérvelo". Más de eso es "llévelo ya".
-> Diarrea igual: un episodio es "obsérvelo", 2 o más es "llévelo ya".
+**Q6. A single vomit, animal otherwise perfect.**
+> Medium.
 
-**P14. Aclaración: perro adulto sano, 2 vómitos en el día, pero come, toma agua y animado.**
-> Entra en las 6 a 12 horas (riesgo medio).
-
-**P15. ¿Qué lo pasa a emergencia de ir ya?**
-> Más episodios de vómito, decaído, anorexia, sangre, diarrea al mismo tiempo.
-
----
-
-### M4 — Modificadores del paciente
-
-**P16. ¿Qué pacientes le bajan el umbral?**
-> **Todos** los propuestos: cachorros y gatitos, mayores de 10 años, razas de cara chata,
-> razas grandes de pecho profundo, diabéticos / cardiacos / renales, hembra preñada o recién
-> parida.
-
-**P17. ¿Cómo cambia la conducta en esos pacientes?**
-> **Se acorta el tiempo de observación** (no sube el nivel de riesgo).
-
----
-
-### M6 — Cuadros frecuentes, nivel por presentación
-
-**P18. Nivel de cada caso (bajo / medio / alto).**
-> - Tos ocasional, por lo demás bien: **bajo** (consultar pronto).
-> - Cojea de una pata pero apoya y come normal: **medio**.
-> - Ojo rojo y lagrimeando, lo abre bien: **alto**.
-> - Sacude la cabeza y se rasca la oreja: **medio**.
-> - Estornudos y moquito, come bien: **alto** (matizado en P19).
-> - Orina con sangre pero sí orina: **alto**.
-
-**P19. Aclaración sobre estornudos con secreción nasal.**
-> Cambia si el moco es **amarillo o verdoso**.
-> (Interpretación: moco transparente con el animal normal no es alto; secreción purulenta sí
-> escala. **Pendiente de confirmar** el nivel exacto del caso con moco transparente.)
+**Q7. Concrete examples of LOW risk (observe at home).**
+> - It is scratching or licking and has no alarming skin lesion: they should check it and try to
+>   **book a vet visit in the next few days**.
+> - It has a skin lump that is not inflamed, not ulcerated, not painful, moves when touched and
+>   has not grown in months: they should **book a check-up soon** to have the lump looked at.
+> - It had one episode of loose stools one day, had no more, and is well: they should
+>   **mention it at the next visit** to make sure everything is in order.
+> - It had a small accident that did not affect vital parts or compromise a limb or vital organ,
+>   the owner managed it with cleaning at home and the animal recovered and looks well: they
+>   should **book an appointment soon** and have it checked just in case.
 
 ---
 
-### M5 — Toma de historia clínica
+### M1: absolute emergencies and subtle signs
 
-**P20. Interrogatorio mínimo ante "mi perro está vomitando", en orden.**
-> 1. ¿Cuántas veces ha vomitado?
-> 2. ¿Hace cuánto?
-> 3. ¿De qué aspecto es el vómito?
-> 4. ¿Está comiendo?
-> 5. ¿Tiene diarrea?
-> 6. ¿Está tomando agua?
-> 7. ¿Está decaído?
-> 8. ¿Qué alimento consume?
-> 9. ¿Se pudo comer algo extraño?
+**Q8. Cat-specific emergencies that people do not recognise.**
+> Yes, cats that cannot urinate, especially males.
 
-**P21. ¿Cuándo deja de preguntar y dice directamente "llévelo ya"?**
-> Si dice que ha vomitado **más de una vez en poco tiempo (un par de horas)** y que **se ve
-> decaído**, no pregunto más: llévelo ya.
+**Q9. Subtle signs that owners play down but are already a red flag.**
+> The cat goes into the litter tray again and again and the owner thinks it is nothing, but it
+> can be an obstruction.
+
+**Q10. Immediate-emergency checklist (yes / no).**
+> **Yes, immediate emergency:** (a) a cat breathing with its mouth open or panting, (b) pale,
+> white or bluish gums, (c) an animal that suddenly cannot move its hind legs, (e) tremors.
+> **Not an immediate emergency:** (d) hiding and not wanting to be touched.
 
 ---
 
-### M3 — Seguimiento a 24 y 48 horas
+### M7: ingestions and toxins
 
-**P22. Qué indica mejoría real y qué indica empeoramiento.**
-> **Mejoró:** síntomas disminuidos o eliminados, come normal, toma agua normal, más animado.
-> **Empeoró:** más síntomas, más frecuencia de los síntomas, decaído, no come, no respira bien,
-> jadea, sangra.
-
----
-
-### M8 — Manejo en casa y primeros auxilios
-
-**P23. Errores comunes del dueño que la app debe desaconsejar explícitamente.**
-> Dar medicamentos humanos; poner cosas en piel o heridas; dar remedios caseros o naturales sin
-> evidencia científica; provocar el vómito en ciertos casos.
-
-**P24. Qué debe vigilar el dueño durante la observación en casa.**
-> Que los síntomas no aumenten ni empeoren, que el animal consuma alimento y agua sin problema,
-> y el estado anímico.
-
-**P25. Qué hacer mientras se llega al veterinario en una emergencia.**
-> No dar comida ni agua; transportarlo en un medio adecuado y abrigarlo; no permitir que se
-> exponga a condiciones medioambientales adversas; contener un sangrado con gasas o paño limpio;
-> mantenerlo lo más tranquilo posible durante el transporte.
+**Q11. Which are always an immediate emergency even if the animal looks well?**
+> All of them: (a) chocolate, (b) xylitol, (c) grapes or raisins, (d) onion or garlic, (e) human
+> medicines, (f) rat poison, (g) a large object.
+> In Colombia the frequent ones are: **poisonings, large objects and chocolate**.
 
 ---
 
-### M10 — Límites y comunicación
+### M3 / M6: thresholds, grey zone and escalation
 
-**P26. Lo que la app NUNCA debe hacer.**
-> Diagnosticar; medicar (alopáticos o naturales); sugerir esperar cuando hay duda; decirle a la
-> gente que "no es nada" cuando sí puede serlo.
+**Q12. Hours without eating that are concerning.**
+> Puppies, small dogs or dogs with a health condition: more than **12 hours** is concerning.
+> Healthy dogs: more than **24 hours**. Cats: more than **12 to 24 hours**.
 
-**P27. Qué quiere ver la veterinaria en el resumen que el dueño le lleva.**
-> 1. **Datos completos del paciente:** nombre, edad, especie, **sexo**, raza, **peso actual**,
->    características especiales, diagnósticos anteriores y actuales, propietario (teléfono,
->    dirección), hora de llegada a urgencias.
-> 2. **Motivo de consulta.**
-> 3. **Historia clínica:** estado, síntomas, **vacunas**, tratamientos previos, comportamiento,
->    **dieta**, **cambios recientes**.
-> 4. Evaluación clínica y exámenes diagnósticos.
-> 5. Diagnóstico final.
-> 6. Tratamientos y recomendaciones en casa.
-> 7. Próximos controles.
+**Q13. Vomiting and diarrhoea threshold.**
+> Just 1 vomit is considered "observe it". More than that is "take it in now".
+> Diarrhoea is the same: one episode is "observe it", 2 or more is "take it in now".
+
+**Q14. Clarification: healthy adult dog, 2 vomits in the day, but eating, drinking and bright.**
+> That falls in the 6 to 12 hours (medium risk).
+
+**Q15. What moves it to a go-now emergency?**
+> More vomiting episodes, being down, anorexia, blood, diarrhoea at the same time.
+
+---
+
+### M4: patient modifiers
+
+**Q16. Which patients lower your threshold?**
+> **All** of the ones proposed: puppies and kittens, over 10 years old, flat-faced breeds,
+> large deep-chested breeds, diabetic / cardiac / renal patients, a pregnant or recently
+> whelped female.
+
+**Q17. How does your approach change in those patients?**
+> **The observation window is shortened** (the risk level does not go up).
+
+---
+
+### M6: common presentations, level by presentation
+
+**Q18. Level for each case (low / medium / high).**
+> - Occasional cough, otherwise well: **low** (consult soon).
+> - Limping on one leg but weight-bearing and eating normally: **medium**.
+> - Red, watering eye, opens it fully: **high**.
+> - Shaking its head and scratching its ear: **medium**.
+> - Sneezing with a runny nose, eating well: **high** (qualified in Q19).
+> - Bloody urine but is passing urine: **high**.
+
+**Q19. Clarification on sneezing with nasal discharge.**
+> It changes if the discharge is **yellow or greenish**.
+> (Interpretation: clear discharge with a normal animal is not high; purulent discharge does
+> escalate. **Pending confirmation** of the exact level for the clear-discharge case.)
+
+---
+
+### M5: taking the clinical history
+
+**Q20. Minimum questioning for "my dog is vomiting", in order.**
+> 1. How many times has it vomited?
+> 2. How long ago?
+> 3. What does the vomit look like?
+> 4. Is it eating?
+> 5. Does it have diarrhoea?
+> 6. Is it drinking water?
+> 7. Is it down?
+> 8. What food does it eat?
+> 9. Could it have eaten something unusual?
+
+**Q21. When do you stop asking and say straight out "take it in now"?**
+> If they say it has vomited **more than once in a short time (a couple of hours)** and that it
+> **looks down**, I do not ask anything else: take it in now.
+
+---
+
+### M3: follow-up at 24 and 48 hours
+
+**Q22. What indicates real improvement and what indicates worsening.**
+> **Improved:** symptoms reduced or gone, eating normally, drinking normally, brighter.
+> **Worsened:** more symptoms, higher frequency of the symptoms, down, not eating, not breathing
+> well, panting, bleeding.
+
+---
+
+### M8: home management and first aid
+
+**Q23. Common owner mistakes the app must explicitly advise against.**
+> Giving human medicines; putting things on skin or wounds; giving home or natural remedies with
+> no scientific evidence; inducing vomiting in certain cases.
+
+**Q24. What should the owner watch for during observation at home.**
+> That the symptoms do not increase or worsen, that the animal takes food and water without
+> difficulty, and its mood.
+
+**Q25. What to do while getting to the vet in an emergency.**
+> Give no food and no water; transport it in a suitable carrier and keep it warm; do not let it
+> be exposed to adverse environmental conditions; control bleeding with gauze or a clean cloth;
+> keep it as calm as possible during transport.
+
+---
+
+### M10: limits and communication
+
+**Q26. What the app must NEVER do.**
+> Diagnose; medicate (conventional or natural); suggest waiting when there is doubt; tell people
+> "it is nothing" when it may well be something.
+
+**Q27. What the veterinarian wants to see in the summary the owner brings her.**
+> 1. **Complete patient details:** name, age, species, **sex**, breed, **current weight**, special
+>    characteristics, previous and current diagnoses, owner (phone, address), time of arrival at
+>    the emergency clinic.
+> 2. **Reason for consultation.**
+> 3. **Clinical history:** condition, symptoms, **vaccinations**, previous treatments, behaviour,
+>    **diet**, **recent changes**.
+> 4. Clinical assessment and diagnostic tests.
+> 5. Final diagnosis.
+> 6. Treatments and home recommendations.
+> 7. Next check-ups.
 >
-> (Los puntos 4 a 7 los llena el veterinario, no la app. Los puntos 1 a 3 son los que la app
-> debe entregar. **Datos que hoy la app no guarda: sexo, vacunas, dieta, cambios recientes,
-> teléfono y dirección del propietario.**)
+> (Points 4 to 7 are filled in by the veterinarian, not by the app. Points 1 to 3 are the ones the
+> app must deliver. **Data the app does not currently hold: sex, vaccinations, diet, recent
+> changes, owner phone and address.**)
 
-**P28. Tono con un dueño asustado.**
-> Tono contenedor, claro, sin términos técnicos, que pueda entender.
-
----
-
-### M0 / M6 — Confirmaciones de cierre
-
-**P29a. Estornudos con moco transparente, animal totalmente normal.**
-> **Medio.**
-
-**P29b. ¿El riesgo bajo siempre incluye agendar consulta?**
-> "Obsérvelo **y** agende cita con veterinario pronto, porque así no sea una situación de riesgo
-> inmediato ni una emergencia vital, igual el animal está presentando algún síntoma que no es
-> normal tener, así que debe llevarlo para tranquilidad del propietario y del médico que atiende
-> a ese paciente."
-
-**P29c. Diferencias gato vs perro que el sistema debe tener siempre presentes.**
-> **Gatos:** letargia extrema o muy escondidos; se lanzó de cierta altura y aparentemente está
-> bien, pero puede estar mal.
-> **Perros:** dilatación y torsión gástrica.
-> **Ambos:** accidentes o traumatismos; peleas violentas con otros animales; violencia
-> proveniente de humanos; problemas durante el parto y procesos de parto muy largos (**más de 2
-> horas**); gatitos o cachorros recién paridos que dejan de mamar o lloran mucho; intoxicaciones
-> o envenenamientos; diarreas y vómitos; golpe de calor; ingestión de cuerpos extraños;
-> convulsiones; dificultad respiratoria.
+**Q28. Tone with a frightened owner.**
+> A reassuring, clear tone, without technical terms, that they can understand.
 
 ---
 
-### Cierre — advertencias de la veterinaria (requisitos de producto, no negociables)
+### M0 / M6: closing confirmations
 
-**P30. ¿Qué le preocupa de una herramienta así?**
-> - No quiero que la herramienta **reemplace el diagnóstico veterinario** ni que la gente deje de
->   consultar con el veterinario, que es el único que puede diagnosticar y medicar.
-> - No quiero que los veterinarios **se sientan amenazados** por una herramienta como esta, sino
->   que sea de **ayuda en su práctica diaria**.
-> - No quiero **problemas legales** de dueños haciendo malas interpretaciones de lo que les dice
->   la herramienta y que, si al animal le pasa algo, culpen a la herramienta o intenten iniciar
->   procesos legales.
+**Q29a. Sneezing with clear nasal discharge, animal completely normal.**
+> **Medium.**
 
-**Traducción a requisitos del producto:**
-1. Todo resultado debe reforzar que la app **orienta**, no diagnostica, y que el veterinario es
-   el único que diagnostica y medica. Ya existe el disclaimer; debe ser visible en los tres
-   niveles, no solo en el alto.
-2. **Riesgo bajo nunca puede leerse como "no necesita veterinario"** (ver P29b): siempre incluye
-   agendar consulta. Esto es exactamente lo que evita que la herramienta reemplace la consulta.
-3. Posicionamiento pro veterinario: el resumen de derivación (P27) y el historial clínico están
-   diseñados para que el dueño llegue mejor preparado a la consulta, no para evitarla.
-4. Riesgo legal: mantener la asimetría (ante la duda se escala), no prometer resultados, no
-   medicar ni diagnosticar, y conservar el registro de lo que la app dijo en cada caso.
+**Q29b. Does low risk always include booking a consultation?**
+> "Observe it **and** book an appointment with a vet soon, because even if it is not a situation
+> of immediate risk or a life-threatening emergency, the animal is still showing some symptom
+> that is not normal to have, so they should take it in for the peace of mind of the owner and of
+> the clinician who sees that patient."
+
+**Q29c. Cat versus dog differences the system must always keep in mind.**
+> **Cats:** extreme lethargy or hiding away a lot; jumped from a height and apparently is fine,
+> but may not be.
+> **Dogs:** gastric dilatation and volvulus.
+> **Both:** accidents or trauma; violent fights with other animals; violence from humans;
+> problems during birth and very long labour (**more than 2 hours**); newborn kittens or puppies
+> that stop nursing or cry a lot; poisonings or intoxications; diarrhoea and vomiting;
+> heatstroke; foreign body ingestion; seizures; respiratory difficulty.
 
 ---
 
-## CORRECCIONES FINALES DE LA VETERINARIA (mandan sobre todo lo anterior)
+### Closing: the veterinarian's warnings (product requirements, non-negotiable)
 
-> Estas correcciones se hicieron al cierre, después de leer el resumen completo. **Donde
-> contradigan una respuesta anterior, gana esta sección.** El desarrollador debe implementar
-> estos valores, no los de P2, P3 ni P14.
+**Q30. What worries you about a tool like this?**
+> - I do not want the tool to **replace veterinary diagnosis**, or people to stop consulting the
+>   vet, who is the only one who can diagnose and medicate.
+> - I do not want veterinarians to **feel threatened** by a tool like this, but rather for it to
+>   be **a help in their daily practice**.
+> - I do not want **legal problems** from owners misinterpreting what the tool tells them and
+>   then, if something happens to the animal, blaming the tool or trying to start legal
+>   proceedings.
 
-### C1 — Los tres niveles, redefinidos
-
-- **BAJO:** observar en un plazo de **24 a 48 horas**, siempre que el animal:
-  - mantenga una **conducta normal y alerta**,
-  - **respire bien**,
-  - haga sus **funciones normales**,
-  - y **no muestre dolor**.
-  (Aplica tanto de día como de noche.) Si alguna de esas condiciones falla, ya no es bajo.
-- **MEDIO:** **vigilar cada hora**. Si **empeora**, llevarlo al veterinario **ya**, sin esperar
-  las 6 a 12 horas. Si **no empeora o mejora**, seguir vigilando durante las **próximas 6 a 12
-  horas** para decidir.
-  (Es decir: el medio **no** es una cita obligatoria a las 6 a 12 horas, es una ventana de
-  observación activa con punto de decisión al final, o inmediato si empeora.)
-- **ALTO:** ya mismo, no espere.
-
-### C2 — Umbral de vómito y diarrea, redefinido
-
-- **1 vómito** o **1 episodio de diarrea** → **MEDIO**.
-- **Más de eso** (2 o más episodios) → **ALTO**.
-
-> Esto **reemplaza** la respuesta P14 (donde 2 vómitos con buen estado general quedaban en medio).
-> El criterio final de la veterinaria es más escalativo: a partir del segundo episodio, alto.
-
-### C3 — Qué sigue vigente de lo anterior
-
-- La compuerta del **estado general** (come, toma agua, animado, funciones normales, sin dolor,
-  respira bien) sigue siendo el eje de todo.
-- **P29b confirmado explícitamente después de C1** (ya no queda pendiente): en el riesgo bajo
-  **sí se recomienda al propietario agendar cita con el veterinario "para quedar tranquilos"**.
-  La corrección C1 solo cambió la ventana de observación, no eliminó la consulta. Por lo tanto,
-  el texto de riesgo bajo de la app nunca puede leerse como "no necesita veterinario".
-- La regla de corte de P21 (más de un vómito en un par de horas **más** decaído: no preguntar
-  más, llevarlo ya) es coherente con C2 y se mantiene.
-- Los modificadores del paciente (P16, P17) siguen **acortando la ventana de observación**, sin
-  subir el nivel.
+**Translation into product requirements:**
+1. Every result must reinforce that the app **guides**, it does not diagnose, and that the
+   veterinarian is the only one who diagnoses and medicates. The disclaimer already exists; it
+   must be visible at all three levels, not only at high.
+2. **Low risk can never read as "does not need a vet"** (see Q29b): it always includes booking a
+   consultation. This is exactly what stops the tool replacing the consultation.
+3. Pro-veterinarian positioning: the referral summary (Q27) and the clinical history are designed
+   so the owner arrives better prepared for the consultation, not so they avoid it.
+4. Legal risk: keep the asymmetry (when in doubt, escalate), promise no outcomes, do not medicate
+   or diagnose, and retain the record of what the app said in each case.
 
 ---
 
-### Notas de calibración derivadas (interpretación del desarrollador, a validar)
+## FINAL CORRECTIONS FROM THE VETERINARIAN (these govern over everything above)
 
-- **El estado general es la compuerta principal, no el síntoma suelto.** Come, toma agua, animado,
-  funciones normales: eso es lo que baja el nivel. El mismo síntoma con el animal decaído o sin
-  comer sube de nivel.
-- **Riesgo bajo NO significa "no necesita veterinario".** En los cuatro ejemplos de P7 la
-  veterinaria siempre agrega una consulta no urgente ("en los próximos días", "pronto", "en la
-  próxima visita"). El texto actual de riesgo bajo de la app no dice esto y hay que ajustarlo.
-- **Síntoma resuelto vs síntoma en curso.** Un episodio aislado que ya pasó y el animal está bien
-  es bajo; el mismo síntoma en curso es medio. La duración y la resolución mueven el nivel.
-- **La ventana de riesgo medio es de 6 a 12 horas, no de 24.** Los textos actuales de la app
-  ("within 24 hours") contradicen el criterio de la veterinaria.
-- **Ventana de observación de riesgo bajo:** revisar cada 2 horas de día; de noche, observar y
-  reevaluar en la mañana.
-- **Ingesta presenciada de algo NO tóxico, con animal asintomático, es medio, no alto.** Hoy el
-  sistema fuerza alto ante cualquier mención de haber comido algo. Pendiente de precisar en el
-  bloque de tóxicos.
-- **Golpe pequeño sin compromiso vital ni sangrado es medio.** Hoy el sistema fuerza alto ante
-  cualquier mención de golpe o caída.
+> These corrections were made at the close of the session, after she read the full summary.
+> **Wherever they contradict an earlier answer, this section wins.** The developer must implement
+> these values, not those in Q2, Q3 or Q14.
+
+### C1: the three levels, redefined
+
+- **LOW:** observe over a window of **24 to 48 hours**, provided the animal:
+  - keeps a **normal, alert demeanour**,
+  - **breathes well**,
+  - performs its **normal functions**,
+  - and **shows no pain**.
+  (This applies both by day and at night.) If any of those conditions fails, it is no longer low.
+- **MEDIUM:** **check every hour**. If it **worsens**, take it to the vet **now**, without waiting
+  out the 6 to 12 hours. If it **does not worsen or improves**, keep checking through the
+  **next 6 to 12 hours** to decide.
+  (That is: medium is **not** a mandatory appointment at 6 to 12 hours, it is an active
+  observation window with a decision point at the end, or immediately if it worsens.)
+- **HIGH:** right now, do not wait.
+
+### C2: vomiting and diarrhoea threshold, redefined
+
+- **1 vomit** or **1 episode of diarrhoea** → **MEDIUM**.
+- **More than that** (2 or more episodes) → **HIGH**.
+
+> This **replaces** answer Q14 (where 2 vomits with a good general state stayed at medium). The
+> veterinarian's final criterion is more escalating: from the second episode onward, high.
+
+### C3: what still stands from the earlier answers
+
+- The **general state** gate (eating, drinking, bright, normal functions, no pain, breathing well)
+  remains the axis of everything.
+- **Q29b explicitly confirmed after C1** (it is no longer pending): at low risk the owner
+  **is** advised to book an appointment with the vet "for peace of mind". Correction C1 only
+  changed the observation window, it did not remove the consultation. Therefore the app's low-risk
+  text can never read as "does not need a vet".
+- The cut-off rule from Q21 (more than one vomit within a couple of hours **plus** being down: do
+  not ask anything else, take it in now) is consistent with C2 and stands.
+- The patient modifiers (Q16, Q17) still **shorten the observation window**, without raising the
+  level.
+
+---
+
+### Derived calibration notes (developer interpretation, to be validated)
+
+- **General state is the main gate, not the isolated symptom.** Eating, drinking, bright, normal
+  functions: that is what lowers the level. The same symptom in an animal that is down or not
+  eating raises the level.
+- **Low risk does NOT mean "does not need a vet".** In all four examples in Q7 the veterinarian
+  always adds a non-urgent consultation ("in the next few days", "soon", "at the next visit"). The
+  app's current low-risk text does not say this and has to be adjusted.
+- **Resolved symptom versus ongoing symptom.** An isolated episode that has already passed with
+  the animal well is low; the same symptom still ongoing is medium. Duration and resolution move
+  the level.
+- **The medium-risk window is 6 to 12 hours, not 24.** The app's current text ("within 24 hours")
+  contradicts the veterinarian's criterion.
+- **Low-risk observation window:** check every 2 hours during the day; at night, observe and
+  reassess in the morning.
+- **Witnessed ingestion of something NOT toxic, with an asymptomatic animal, is medium, not high.**
+  The system currently forces high on any mention of having eaten something. Still to be pinned
+  down in the toxins block.
+- **A small knock with no vital compromise and no bleeding is medium.** The system currently
+  forces high on any mention of a knock or a fall.
