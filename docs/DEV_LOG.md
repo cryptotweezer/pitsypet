@@ -42,15 +42,17 @@
 
 **Current phase:** Phase 8 — UI/UX Polish & Accessibility. The active rapid-edit pass covers the public landing and branded legal/account surfaces; visual verification is explicitly delegated to the user.
 
-**Latest completed (Session 43):** the RAG knowledge base has its **first content**, a deliberately TEMPORARY three-document testing corpus (121 chunks: BSAVA UK triage tool plus CVJ "Basic triage in dogs and cats" Parts I and II). `scripts/ingest.ts` was broken (v1 pdf-parse import against the installed v2) and is fixed, so Phase 4 can actually run now. A guardrail was added to the classifier prompt because the ingested literature is clinician-facing and retrieval demonstrably returns drug doses. New read-only `scripts/rag-smoke.ts` verifies retrieval end to end. **None of these sources is licensed for production; the corpus is meant to be wiped.** See the KNOWN ISSUES section below for the standing defect list.
+**Latest completed (Session 44):** **pet profile photos**. Owners can upload, replace or remove a pet picture from the create/edit form; it renders as a circular avatar on the pet card, the pet record header and the dashboard list, and the species icon remains the fallback. Images live in the PRIVATE `pet-photos` Storage bucket under `<user_id>/...` with owner-scoped policies; `pets.photo_path` holds only the key and pages sign short-lived URLs server side. The client centre-crops to a square and downscales to 512px before upload. Migration `20260804000000_pet_photos.sql` is applied to PitsyPet and `src/types/database.ts` is regenerated. No plan gate: photos are available on Basic and Premium.
+
+**Session 43:** the RAG knowledge base has its **first content**, a deliberately TEMPORARY three-document testing corpus (121 chunks: BSAVA UK triage tool plus CVJ "Basic triage in dogs and cats" Parts I and II). `scripts/ingest.ts` was broken (v1 pdf-parse import against the installed v2) and is fixed, so Phase 4 can actually run now. A guardrail was added to the classifier prompt because the ingested literature is clinician-facing and retrieval demonstrably returns drug doses. New read-only `scripts/rag-smoke.ts` verifies retrieval end to end. **None of these sources is licensed for production; the corpus is meant to be wiped.** See the KNOWN ISSUES section below for the standing defect list.
 
 **Session 42:** the veterinary calibration interview was RUN and is fully documented in `docs/vet_calibration_notes.md` (30 questions plus governing closing corrections, from a one-hour single-use session with a veterinarian who is deliberately kept anonymous in this public repository). Task 0 of the resulting plan is done: the `safety.ts` substring bug that forced High on any `severity: moderate` symptom or any mention of water is fixed and covered by regression tests. **No calibration content has been written into the prompts, rubric, tables or tests yet.**
 
 **Previously (Sessions 40–41):** final landing footer attribution/disclaimer; public `/privacy` and `/terms` pages using the landing navbar/style; Dashboard > Account permanent deletion; billing-safe `DELETE /api/account`; authenticated `delete_own_account` migration applied and remotely verified on PitsyPet; PostHog/Sentry data minimisation; and a full documentation reconciliation.
 
-**Verification baseline:** 16 Vitest files / **177 tests passed**; `npx tsc --noEmit` clean; `npx next lint` clean. No assistant visual verification was performed, per user request.
+**Verification baseline:** 16 Vitest files / **180 tests passed**; `npm run build` clean; `npx tsc --noEmit` clean; `npx next lint` clean. No assistant visual verification was performed, per user request.
 
-**Immediate next:** the user is testing the app with the knowledge base loaded. **The calibration implementation is POSTPONED and must not be started without their explicit go-ahead**; the full step-by-step spec is in the "PENDING IMPLEMENTATION PLAN" section below, and the standing defect list is in "KNOWN ISSUES" after it. Apart from the Session 42 bug fix and the Session 43 guardrail, the triage logic is unchanged. Other outstanding work: formal Phase 8 responsive/WCAG audit; Phase 9 fallback, cross-tenant and cost-guard verification; disposable-user deletion E2E; Phase 10.8 performance + full walkthrough; Phase 11.6 production smoke; Phase 12 UAT + `README.md`; professional legal review before release reliance.
+**Immediate next:** the user visually checks the pet photo flow on the deployed site, and continues testing the app with the knowledge base loaded. **The calibration implementation is POSTPONED and must not be started without their explicit go-ahead**; the full step-by-step spec is in the "PENDING IMPLEMENTATION PLAN" section below, and the standing defect list is in "KNOWN ISSUES" after it. Apart from the Session 42 bug fix and the Session 43 guardrail, the triage logic is unchanged. Other outstanding work: formal Phase 8 responsive/WCAG audit; Phase 9 fallback, cross-tenant and cost-guard verification; disposable-user deletion E2E; Phase 10.8 performance + full walkthrough; Phase 11.6 production smoke; Phase 12 UAT + `README.md`; professional legal review before release reliance.
 
 **Blocked/deferred:** Phase 4 vetted veterinary source collection/ingestion (the vet did NOT supply source documents; that module was deliberately skipped); RAG in the assistant until the KB exists; real emergency contacts still unverified; Resend custom auth/doctor email until account/domain setup is available. Australia-specific exposures were not validated by the Colombian veterinarian, and `safety.ts` still lacks paralysis tick and snake bite.
 
@@ -64,7 +66,7 @@
 
 **Status: APPROVED BUT NOT STARTED. Do not begin without the user's explicit go-ahead.** The user reviewed the expected escalation impact (Session 42) and chose to postpone implementation. Task 0 (the `safety.ts` substring bug) is the only part already done and shipped.
 
-**Source of truth for every clinical value below:** `docs/vet_calibration_notes.md`. Its **"CORRECCIONES FINALES DE LA VETERINARIA"** section governs wherever it contradicts an earlier answer in the same file. Do not re-derive thresholds from memory or from this summary; open that file.
+**Source of truth for every clinical value below:** `docs/vet_calibration_notes.md`. Its **"FINAL CORRECTIONS FROM THE VETERINARIAN"** section governs wherever it contradicts an earlier answer in the same file. Do not re-derive thresholds from memory or from this summary; open that file.
 
 **Expected effect, already discussed and accepted by the user:** Medium becomes the default landing zone for almost any unresolved real symptom; High becomes more frequent for the specific presentations the vet named but less frequent overall, because the accidental escalation from the regex bug is gone; Low becomes rare and always carries a non-urgent appointment recommendation. The Medium *action text* becomes less alarming than today's, not more.
 
@@ -117,7 +119,7 @@ Add only; never remove an escalation. English patterns covering clinical term, p
 - Keep the "can only escalate" and substring-trap suites intact; they are the safety net.
 
 ### Task 7 — Pet record fields (separate and larger)
-The vet's handover summary (P27) requires data the app does not store: **sex, vaccinations, diet, recent changes** (owner phone and address are also on her list, decide separately whether to collect them). Touches a migration, `src/types/database.ts` regeneration, the pet create/edit forms, the pet record page, `formatPet` and the prompts that consume it, and `src/lib/export/summary.ts` plus the PDF document.
+The vet's handover summary (Q27) requires data the app does not store: **sex, vaccinations, diet, recent changes** (owner phone and address are also on her list, decide separately whether to collect them). Touches a migration, `src/types/database.ts` regeneration, the pet create/edit forms, the pet record page, `formatPet` and the prompts that consume it, and `src/lib/export/summary.ts` plus the PDF document.
 
 ### Task 8 — Documentation
 Update `docs/DEV_LOG.md` and the `CLAUDE.md` roadmap, and tick the coverage checklist at the end of `docs/vet_protocol.md`.
@@ -1714,7 +1716,7 @@ Also: `aria-label` on the step wrapper `<div>` (a no-op for AT on a role-less di
 - Tasks 1 to 8 of the calibration implementation plan (see NEXT SESSION MUST START WITH). No calibration content has been written into any prompt, rubric, table or test yet.
 
 ### FILES MODIFIED
-- `docs/vet_calibration_notes.md` - NEW. Verbatim record of the interview in Spanish, plus a governing "final corrections" section and the derived calibration notes.
+- `docs/vet_calibration_notes.md` - NEW. Verbatim record of the interview, translated from Spanish to English, plus a governing "final corrections" section and the derived calibration notes.
 - `src/lib/ai/safety.ts` - anchored the critical patterns, split toxins from ingestion verbs, scoped `blocked` to urinary context, removed the em dash from the override copy.
 - `src/lib/ai/__tests__/safety.test.ts` - asserted the previously dodged `ate his dinner normally` case, added a substring-trap regression block, added coverage cases for the narrowed ingestion and urinary patterns.
 - `docs/DEV_LOG.md` - this entry and the STATUS block.
@@ -1783,5 +1785,43 @@ Also: `aria-label` on the step wrapper `<div>` (a no-op for AT on a role-less di
 ### DECISIONS / NOTES
 - The corpus is explicitly TEMPORARY and for testing. To wipe it: delete from `veterinary_knowledge` and `knowledge_processing_audit` by `source`, then re-ingest. Do not re-run the ingest over the same folder without deleting first.
 - Ingesting clinician-facing literature into an owner-facing product is a standing tension. The guardrail reduces it; source selection is the real control.
+
+---
+
+## SESSION 44 - 2026-08-04 - Claude / Opus 5 (Pet profile photos)
+
+### STARTED WITH
+- Last session left off at: Phase 8 UI polish, with the user testing the app against the temporary RAG corpus.
+- Blockers from last session: none. Calibration still postponed by the user.
+
+### COMPLETED THIS SESSION
+- **Pet profile photos, end to end (user-requested feature, not from the plan).** The owner can upload an image when creating or editing a pet, replace it, or remove it. It renders as a circular avatar wherever the species icon used to be; with no photo the Dog/Cat icon stays exactly as before.
+- Storage decisions confirmed with the user before building: **private bucket** (not public), photo shown on **all** pet surfaces, **automatic** centre-crop (no interactive cropper), available to **both plans** (Basic and Premium).
+
+### FILES MODIFIED
+- `supabase/migrations/20260804000000_pet_photos.sql` - NEW. Adds `pets.photo_path`, creates the private `pet-photos` bucket (2 MB cap, jpeg/png/webp only) and four owner-scoped `storage.objects` policies keyed on `(storage.foldername(name))[1] = auth.uid()::text`. **Applied to `pitsypet` (ref `xaepzvxrqnqenspnanej`) this session.**
+- `src/types/database.ts` - regenerated after the migration.
+- `src/lib/pet-photo.ts` - NEW. Bucket name, size/MIME limits, `signPetPhotos` (batched, 1 hour TTL) / `signPetPhoto`, and the `<user_id>/<pet_id>-<timestamp>.<ext>` path builder.
+- `src/lib/image/square-crop.ts` - NEW, client only. Centre-crops to a square and re-encodes at 512px, WebP with a JPEG fallback; rejects originals over 15 MB before touching a canvas.
+- `src/app/api/pets/[id]/photo/route.ts` - NEW. `POST` uploads/replaces (validates ownership, size and MIME, writes a fresh object key, updates the row, then deletes the old object; rolls the upload back if the row write fails). `DELETE` clears the column and removes the object.
+- `src/app/api/pets/[id]/purge/route.ts` - permanent pet delete now also removes the Storage object (no FK cascade reaches Storage).
+- `src/components/pets/pet-avatar.tsx` - NEW. Single decision point for "photo or species icon"; circular when there is a photo, existing squircle icon tile when there is not.
+- `src/components/pets/pet-photo-field.tsx` - NEW. Presentational picker: circular preview, Upload / Change / Remove, inline errors.
+- `src/components/pets/pet-form.tsx` - stages the photo change locally and applies it AFTER the pet row is saved (on create the pet id only exists once the insert returns). A photo failure toasts but never fails the save.
+- `src/components/pets/pet-card.tsx`, `src/app/(app)/pets/[slug]/page.tsx`, `src/app/(dashboard)/dashboard/page.tsx`, `src/app/(dashboard)/dashboard/pets/page.tsx`, `src/app/(app)/pets/[slug]/edit/page.tsx` - select `photo_path`, sign URLs server side (batched per page), render `PetAvatar`.
+
+### VERIFICATION
+- `npm run build` clean, `npx tsc --noEmit` clean, `npx next lint` clean, 16 Vitest files / 180 tests pass.
+- No assistant visual verification, per the standing rule that the user owns visual checks.
+
+### NEXT SESSION MUST START WITH
+1. The user's visual check of the photo flow (create, edit, replace, remove) on the deployed site.
+2. Then whatever the user picks next: the calibration plan (tasks 1 to 8, only on their explicit go-ahead), the KNOWN ISSUES list, or the outstanding Phase 8 to 12 verification passes.
+
+### DECISIONS / NOTES
+- **Private bucket, signed URLs, no `next/image`.** Signed URLs are per-request and short-lived, so image optimisation would only cache a URL that expires; the avatar uses a plain `<img>` with a scoped eslint disable. The CSP already allows `https:` and `blob:` under `img-src`, so nothing there changed.
+- **Never overwrite an object in place.** Each upload writes a new timestamped key and the old object is deleted afterwards, so a stale signed URL or CDN cache can never serve the previous picture under the same key.
+- **Storage is outside the account-deletion cascade.** `delete_own_account` and the pets FK cascades do not touch Storage. Pet purge is now handled; a full account deletion still leaves the user's photo objects behind. Worth closing in the Phase 9 pass.
+- No plan-tier gate: a profile photo costs no AI spend, so `plan-limits.ts` was deliberately left untouched.
 
 ---

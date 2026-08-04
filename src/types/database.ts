@@ -424,6 +424,7 @@ export type Database = {
           medical_conditions: Json
           pet_id: string
           pet_name: string
+          photo_path: string | null
           slug: string
           species: string
           updated_at: string
@@ -439,6 +440,7 @@ export type Database = {
           medical_conditions?: Json
           pet_id?: string
           pet_name: string
+          photo_path?: string | null
           slug: string
           species: string
           updated_at?: string
@@ -454,6 +456,7 @@ export type Database = {
           medical_conditions?: Json
           pet_id?: string
           pet_name?: string
+          photo_path?: string | null
           slug?: string
           species?: string
           updated_at?: string

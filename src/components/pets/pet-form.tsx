@@ -20,6 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { BreedAutocomplete } from "@/components/pets/breed-autocomplete";
+import { PetPhotoField } from "@/components/pets/pet-photo-field";
 import {
   petFormSchema,
   formValuesToApiInput,
@@ -38,6 +39,8 @@ type PetInitial = {
   age_months: number | null;
   weight_kg: number;
   medical_conditions: unknown;
+  /** Short-lived signed URL for the stored photo, if any. */
+  photo_url?: string | null;
 };
 
 interface PetFormProps {
@@ -58,6 +61,11 @@ export function PetForm({ mode, pet, onDone, onCancel }: PetFormProps) {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
   const [conditionInput, setConditionInput] = useState("");
+  // Photo edits are staged locally and applied AFTER the pet row is saved — on
+  // create the pet id only exists once the insert returns.
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoRemoved, setPhotoRemoved] = useState(false);
 
   const form = useForm<PetFormValues>({
     resolver: zodResolver(petFormSchema),
@@ -101,6 +109,25 @@ export function PetForm({ mode, pet, onDone, onCancel }: PetFormProps) {
     );
   }
 
+  /** Apply the staged photo change. Failures are surfaced as a toast but never
+   *  fail the save — the pet itself is already stored. */
+  async function savePhoto(petId: string) {
+    if (photoFile) {
+      const body = new FormData();
+      body.append("file", photoFile);
+      const res = await fetch(`/api/pets/${petId}/photo`, { method: "POST", body });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error(data.error ?? "Could not upload the photo.");
+      }
+      return;
+    }
+    if (photoRemoved && pet?.photo_url) {
+      const res = await fetch(`/api/pets/${petId}/photo`, { method: "DELETE" });
+      if (!res.ok) toast.error("Could not remove the photo.");
+    }
+  }
+
   async function onSubmit(values: PetFormValues) {
     setServerError(null);
     const payload = formValuesToApiInput(values);
@@ -120,6 +147,12 @@ export function PetForm({ mode, pet, onDone, onCancel }: PetFormProps) {
       );
       return;
     }
+
+    const saved = (await res.json().catch(() => ({}))) as {
+      pet?: { pet_id?: string };
+    };
+    const petId = saved.pet?.pet_id ?? pet?.pet_id;
+    if (petId) await savePhoto(petId);
 
     // TODO(Phase 5): on create, if this is the user's first pet, redirect to
     // /assessment/[newPetId] instead of the dashboard (route doesn't exist yet).
@@ -185,6 +218,23 @@ export function PetForm({ mode, pet, onDone, onCancel }: PetFormProps) {
               <FormMessage />
             </FormItem>
           )}
+        />
+
+        <PetPhotoField
+          species={species}
+          name={form.watch("pet_name")}
+          previewUrl={photoPreview ?? (photoRemoved ? null : pet?.photo_url ?? null)}
+          onSelect={(file, preview) => {
+            setPhotoFile(file);
+            setPhotoPreview(preview);
+            setPhotoRemoved(false);
+          }}
+          onRemove={() => {
+            setPhotoFile(null);
+            setPhotoPreview(null);
+            setPhotoRemoved(true);
+          }}
+          disabled={form.formState.isSubmitting}
         />
 
         <FormField

@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Dog, Cat } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PetAvatar } from "@/components/pets/pet-avatar";
 import { cn, petHref } from "@/lib/utils";
 
 export type PetCardData = {
@@ -37,6 +37,8 @@ export type PetCardData = {
   age_months: number | null;
   weight_kg: number;
   medical_conditions: unknown;
+  /** Short-lived signed URL for the profile photo; null → species icon. */
+  photo_url?: string | null;
 };
 
 function ageLabel(years: number, months: number | null): string {
@@ -50,7 +52,6 @@ export function PetCard({ pet }: { pet: PetCardData }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const Icon = pet.species === "Cat" ? Cat : Dog;
   const conditions = Array.isArray(pet.medical_conditions)
     ? pet.medical_conditions.filter((c): c is string => typeof c === "string")
     : [];
@@ -75,9 +76,13 @@ export function PetCard({ pet }: { pet: PetCardData }) {
     <Card className="flex h-full flex-col rounded-[2rem] border border-outline-variant/20 bg-white ring-0 transition-all hover:scale-[1.02] hover:border-brand/20 hover:shadow-lg">
       <CardHeader>
         <div className="flex items-center gap-3">
-          <span className="flex size-10 items-center justify-center rounded-2xl bg-brand/10 text-brand">
-            <Icon className="size-5" />
-          </span>
+          <PetAvatar
+            species={pet.species}
+            name={pet.pet_name}
+            photoUrl={pet.photo_url}
+            className="size-12"
+            iconClassName="size-6"
+          />
           <div className="grid">
             <CardTitle className="font-display text-lg text-brand">
               <Link

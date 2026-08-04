@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { signPetPhotos } from "@/lib/pet-photo";
 import { PetsSection } from "@/components/pets/pets-grid";
 import { DeletedPetCard } from "@/components/pets/deleted-pet-card";
 
@@ -10,10 +11,20 @@ export default async function DashboardPetsPage() {
   const { data: pets } = await supabase
     .from("pets")
     .select(
-      "pet_id, pet_name, slug, species, breed, age_years, age_months, weight_kg, medical_conditions",
+      "pet_id, pet_name, slug, species, breed, age_years, age_months, weight_kg, medical_conditions, photo_path",
     )
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
+
+  // Photos live in a private bucket — sign them all in one round trip.
+  const photoUrls = await signPetPhotos(
+    supabase,
+    (pets ?? []).map((p) => p.photo_path),
+  );
+  const petCards = (pets ?? []).map((p) => ({
+    ...p,
+    photo_url: p.photo_path ? (photoUrls.get(p.photo_path) ?? null) : null,
+  }));
 
   // Soft-deleted pets — restorable, with their assessment history intact.
   const { data: deletedPets } = await supabase
@@ -38,7 +49,7 @@ export default async function DashboardPetsPage() {
         </p>
       </div>
 
-      <PetsSection pets={pets ?? []} />
+      <PetsSection pets={petCards} />
 
       {hasDeletedPets && (
         <div className="grid gap-3">

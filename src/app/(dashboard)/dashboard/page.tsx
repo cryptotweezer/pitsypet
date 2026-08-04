@@ -1,14 +1,9 @@
 import Link from "next/link";
-import {
-  Activity,
-  CalendarClock,
-  Cat,
-  Dog,
-  PawPrint,
-  Pill,
-} from "lucide-react";
+import { Activity, CalendarClock, PawPrint, Pill } from "lucide-react";
 
+import { PetAvatar } from "@/components/pets/pet-avatar";
 import { createClient } from "@/lib/supabase/server";
+import { signPetPhotos } from "@/lib/pet-photo";
 import { cn, petHref, cleanAiText } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard · PitsyPet" };
@@ -62,7 +57,7 @@ export default async function DashboardOverviewPage() {
     supabase.from("profiles").select("name").eq("id", user!.id).maybeSingle(),
     supabase
       .from("pets")
-      .select("pet_id, pet_name, slug, species")
+      .select("pet_id, pet_name, slug, species, photo_path")
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
     supabase
@@ -97,6 +92,11 @@ export default async function DashboardOverviewPage() {
 
   const displayName = profile?.name ?? user?.email ?? "there";
   const activePets = pets ?? [];
+  // Private bucket → one batched signing call for every pet photo on the page.
+  const petPhotoUrls = await signPetPhotos(
+    supabase,
+    activePets.map((p) => p.photo_path),
+  );
   const clinicName = new Map(
     (clinicRows ?? []).map((c) => [c.vet_contact_id, c.clinic_name]),
   );
@@ -259,7 +259,6 @@ export default async function DashboardOverviewPage() {
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
           {sortedPets.map((pet) => {
-            const Icon = pet.species === "Cat" ? Cat : Dog;
             const symptoms = symptomsByPet.get(pet.pet_id) ?? [];
             const latest = latestByPet.get(pet.pet_id);
             const nextAppt = nextApptByPet.get(pet.pet_id);
@@ -278,9 +277,15 @@ export default async function DashboardOverviewPage() {
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <span className="flex size-10 items-center justify-center rounded-2xl bg-brand/10 text-brand">
-                      <Icon className="size-5" aria-hidden />
-                    </span>
+                    <PetAvatar
+                      species={pet.species}
+                      name={pet.pet_name}
+                      photoUrl={
+                        pet.photo_path
+                          ? (petPhotoUrls.get(pet.photo_path) ?? null)
+                          : null
+                      }
+                    />
                     <Link
                       href={petHref(pet.slug)}
                       className="font-display text-lg text-brand hover:underline"

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Dog, Cat, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
+import { signPetPhoto } from "@/lib/pet-photo";
+import { PetAvatar } from "@/components/pets/pet-avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   AssessmentCard,
@@ -42,7 +44,7 @@ export default async function PetPage(
   const { data: pet } = await supabase
     .from("pets")
     .select(
-      "pet_id, pet_name, slug, species, breed, age_years, age_months, weight_kg, medical_conditions",
+      "pet_id, pet_name, slug, species, breed, age_years, age_months, weight_kg, medical_conditions, photo_path",
     )
     .eq("slug", params.slug)
     .is("deleted_at", null)
@@ -176,7 +178,7 @@ export default async function PetPage(
   const conditions = Array.isArray(pet.medical_conditions)
     ? pet.medical_conditions.filter((c): c is string => typeof c === "string")
     : [];
-  const Icon = pet.species === "Cat" ? Cat : Dog;
+  const photoUrl = await signPetPhoto(supabase, pet.photo_path);
 
   return (
     <section className="grid gap-6">
@@ -186,9 +188,13 @@ export default async function PetPage(
             PET RECORD
           </span>
           <div className="flex items-center gap-3">
-            <span className="flex size-11 items-center justify-center rounded-2xl bg-brand/10 text-brand">
-              <Icon className="size-6" aria-hidden />
-            </span>
+            <PetAvatar
+              species={pet.species}
+              name={pet.pet_name}
+              photoUrl={photoUrl}
+              className="size-14"
+              iconClassName="size-7"
+            />
             <h1 className="font-display text-3xl tracking-tight text-brand md:text-4xl">
               {pet.pet_name}
             </h1>

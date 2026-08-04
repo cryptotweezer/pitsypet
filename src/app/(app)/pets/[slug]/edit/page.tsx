@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { PetForm } from "@/components/pets/pet-form";
+import { signPetPhoto } from "@/lib/pet-photo";
 
 export const metadata = { title: "Edit pet · PitsyPet" };
 
@@ -17,7 +18,7 @@ export default async function EditPetPage(
   const { data: pet } = await supabase
     .from("pets")
     .select(
-      "pet_id, pet_name, species, breed, age_years, age_months, weight_kg, medical_conditions",
+      "pet_id, pet_name, species, breed, age_years, age_months, weight_kg, medical_conditions, photo_path",
     )
     .eq("slug", params.slug)
     .is("deleted_at", null)
@@ -26,6 +27,8 @@ export default async function EditPetPage(
   if (!pet) {
     notFound();
   }
+
+  const photoUrl = await signPetPhoto(supabase, pet.photo_path);
 
   return (
     <section className="mx-auto grid max-w-lg gap-6">
@@ -41,7 +44,7 @@ export default async function EditPetPage(
         </p>
       </div>
       <div className="rounded-[2rem] border border-outline-variant/20 bg-white p-6">
-        <PetForm mode="edit" pet={pet} />
+        <PetForm mode="edit" pet={{ ...pet, photo_url: photoUrl }} />
       </div>
     </section>
   );
