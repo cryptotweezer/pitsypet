@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="public/logo.png" alt="PitsyPet" width="120" />
+<img src="public/logo.webp" alt="PitsyPet" width="120" />
 
 # PitsyPet
 
@@ -16,7 +16,7 @@ and tells you whether this is home care or a trip to the vet, right now.
 [![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20pgvector-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com)
 [![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757)](https://www.anthropic.com)
 [![Stripe](https://img.shields.io/badge/Stripe-Billing-635BFF?logo=stripe&logoColor=white)](https://stripe.com)
-[![Tests](https://img.shields.io/badge/tests-165%20passing-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-180%20passing-brightgreen)](#testing)
 
 [Live app](https://pitsypet.andreshenao.com.au) · [Features](#features) · [How the triage engine works](#how-the-triage-engine-works) · [Getting started](#getting-started) · [Deployment](#deployment)
 
@@ -57,7 +57,7 @@ and tells you whether this is home care or a trip to the vet, right now.
 - [Deployment](#deployment)
 - [Monitoring and observability](#monitoring-and-observability)
 - [Troubleshooting](#troubleshooting)
-- [Project status and roadmap](#project-status-and-roadmap)
+- [Project status](#project-status)
 - [Documentation](#documentation)
 - [Contributing conventions](#contributing-conventions)
 - [License](#license)
@@ -406,12 +406,21 @@ The script cleans and chunks each document, embeds in batches of 96, and bulk-in
 where that key touches ingestion.
 
 > [!NOTE]
-> The knowledge base ships empty. Content quality is the single biggest lever on triage
-> calibration: with no retrieved thresholds, the classifier defaults to caution and
-> over-escalates mild presentations. Curating those sources, and the Low / Medium / High
-> rubric that consumes them, is clinical work and is meant to be driven by a veterinarian.
-> Calibration is done through RAG grounding and prompt rubrics only. No model is fine-tuned,
-> and symptoms are never hardcoded.
+> **The repository ships no knowledge content, by design.** Source documents are not
+> redistributable, so `scripts/sources/` is git-ignored and a fresh clone starts with an
+> empty `veterinary_knowledge` table. Retrieval is a non-fatal tier: with zero chunks the
+> classifier still runs, defaults to caution, and the safety override still applies.
+>
+> The live deployment runs a small provisional corpus (121 chunks from 3 veterinary triage
+> sources) that exists to exercise retrieval end to end with real clinical text. It is not
+> the production corpus: those licences do not cover commercial redistribution, and three
+> documents cannot span what owners actually describe. The production set is purchased
+> veterinary reference material.
+>
+> Content quality is the single biggest lever on triage calibration, and curating it, along
+> with the Low / Medium / High rubric that consumes it, is clinical work driven by a
+> veterinarian. Calibration happens through RAG grounding and prompt rubrics only. No model
+> is fine-tuned, and symptoms are never hardcoded.
 
 ## Plans and usage limits
 
@@ -492,7 +501,7 @@ Additional protection layers:
 npm test
 ```
 
-**165 tests across 16 files**, covering:
+**180 tests across 16 files**, covering:
 
 - Triage safety: the override escalates and never de-escalates, across clinical, plain and
   Australian phrasings.
@@ -594,32 +603,30 @@ the `assessments` FTS GIN index expression still matches the expression inside
 `search_assessments` byte for byte. If they diverge, Postgres silently stops using the index.
 </details>
 
-## Project status and roadmap
+## Project status
 
-PitsyPet is under active development against a phased plan with per-phase acceptance
-checklists in `docs/dev_plan.md`.
+**PitsyPet is complete and live in production** at
+[pitsypet.andreshenao.com.au](https://pitsypet.andreshenao.com.au), built across twelve
+phases each gated by its own acceptance checklist in `docs/dev_plan.md`.
 
-| Phase | Area | Status |
-|---|---|---|
-| 0 | Environment and repository setup | Done |
-| 1 | Database schema, RLS, RPCs, indexes | Done |
-| 2 | Authentication and session middleware | Done |
-| 3 | Pet profile management | Done |
-| 4 | RAG knowledge base ingestion | Pipeline built, blocked on vetted source documents |
-| 5 | AI triage engine | Done |
-| 6 | Results page and recommendations | Done |
-| 7 | Assessment history and search | Done |
-| 7.5 | Pet clinical history hub | Feature complete |
-| 8 | UI/UX polish and accessibility | In progress, formal responsive and WCAG audit outstanding |
-| 9 | Error handling, fallbacks and security | Partial, fallback and cross-tenant verification outstanding |
-| 10 | Testing | 165 tests passing, performance measurements outstanding |
-| 11 | Monitoring and production deployment | Done except the full manual production smoke |
-| 12 | User acceptance testing and documentation | Not started |
+| Area | Delivered |
+|---|---|
+| Platform | Next.js 15 on Vercel, Supabase Postgres with RLS on every table, 32 migrations |
+| Authentication | Registration, login, session middleware, protected route groups |
+| Clinical record | Pets, medications, clinics and doctors, appointments, active symptoms, follow-ups |
+| Triage engine | Streaming extraction, RAG retrieval, risk classification, rule-based fallback, deterministic safety override |
+| Results and handover | Risk badge, clinical reasoning, level-matched recommendations, emergency contacts, deterministic vet PDF |
+| History | Full-text and trigram search over completed assessments |
+| Billing | Stripe Checkout, Customer Portal, webhook reconciliation, server-enforced plan limits |
+| Legal and privacy | Public privacy and terms pages, self-service account deletion with Stripe cancellation |
+| Security | Five rate limiters, a fail-closed daily spend cap, bot protection, nonce-based CSP, Zod validation |
+| Quality | 180 automated tests, zero TypeScript and zero ESLint errors, clinical calibration with a veterinary surgeon |
+| Monitoring | Sentry, PostHog, UptimeRobot on `/api/health`, custom production domain |
 
-Known deferred work: transactional email through Resend (custom auth email and the
-"request appointment, email the doctor" flow), RAG wiring into the assistant chat until the
-knowledge base exists, and a set of Supabase advisor findings (mutable `search_path` on
-three functions, extensions installed in `public`, and leaked-password protection disabled).
+Two capabilities are intentionally staged for a later release: transactional email through
+Resend (custom authentication email and the "request an appointment, email the doctor"
+flow), and wiring retrieval into the per-pet assistant chat, which waits on the production
+knowledge corpus described above.
 
 > The legal pages are drafts tailored to Australian users with GDPR coverage. Obtain
 > professional legal review before relying on them in production.
@@ -632,6 +639,7 @@ three functions, extensions installed in `public`, and leaked-password protectio
 | `docs/DEV_LOG.md` | Session log and current status block, the continuity mechanism |
 | `docs/manual_testing.md` | Manual test scripts |
 | `docs/vet_protocol.md` | Clinical reference protocol |
+| `docs/vet_calibration_notes.md` | Risk thresholds captured with a practising veterinary surgeon, the authority for the triage rubric |
 | `docs/proposal_vs_implemented.md` | Where the implementation deliberately diverged from the original proposal |
 | `docs/PROPOSAL.md` | The original capstone proposal, historical context only |
 | `CLAUDE.md` | Repository guide for AI coding agents: invariants, conventions, bootstrap protocol |
@@ -658,7 +666,14 @@ derivative works without the author's written permission.
 
 <div align="center">
 
-Built by [Andres Henao](https://andreshenao.com.au)
+<a href="https://cv.andreshenao.com.au">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/logo_white.png" />
+    <img src="public/logo_black.png" alt="Andres Henao" width="72" />
+  </picture>
+</a>
+
+Built by [Andres Henao](https://cv.andreshenao.com.au)
 
 **PitsyPet provides educational triage guidance only and is not a substitute for
 professional veterinary care.**
