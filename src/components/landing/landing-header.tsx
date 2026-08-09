@@ -54,7 +54,7 @@ export function LandingHeader({ email }: { email?: string | null }) {
           className="flex items-center gap-2"
         >
           <Image
-            src="/logo.png"
+            src="/logo.webp"
             alt="PitsyPet"
             width={40}
             height={40}

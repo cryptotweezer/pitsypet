@@ -73,7 +73,7 @@ export function DashboardSidebar({ email }: { email: string }) {
         onClick={() => setOpen(false)}
       >
         <Image
-          src="/logo.png"
+          src="/logo.webp"
           alt="PitsyPet"
           width={40}
           height={40}
@@ -135,7 +135,7 @@ export function DashboardSidebar({ email }: { email: string }) {
       <header className="fixed inset-x-0 top-0 z-40 flex items-center justify-between border-b border-outline-variant/20 bg-white px-4 py-3 lg:hidden">
         <Link href="/dashboard" className="flex items-center gap-2">
           <Image
-            src="/logo.png"
+            src="/logo.webp"
             alt="PitsyPet"
             width={32}
             height={32}

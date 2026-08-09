@@ -46,7 +46,7 @@ export default async function LoginPage(
           </CardContent>
         </Card>
         <Image
-          src="/cartoon13.png"
+          src="/cartoon13.webp"
           alt=""
           aria-hidden="true"
           width={500}

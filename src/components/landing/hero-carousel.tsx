@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 // in /public with these names and they appear automatically; until then each
 // <img> hides itself on error so the hero just shows the coloured background.
 const SLIDES: { src: string; label: string }[] = [
-  { src: "/dog1.png", label: "dog" },
+  { src: "/dog1.webp", label: "dog" },
 ];
 
 export function HeroCarousel() {

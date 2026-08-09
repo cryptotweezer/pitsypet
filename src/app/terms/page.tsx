@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import {
   BrainCircuit,
@@ -9,6 +10,7 @@ import {
   UserRound,
 } from "lucide-react";
 
+import { LandingFooter } from "@/components/landing/landing-footer";
 import { LandingHeader } from "@/components/landing/landing-header";
 import { createClient } from "@/lib/supabase/server";
 
@@ -90,6 +92,14 @@ export default async function TermsPage() {
                 Effective 21 July 2026 · Last updated 21 July 2026
               </p>
             </div>
+            <Image
+              src="/cartoon9.webp"
+              alt=""
+              aria-hidden
+              width={320}
+              height={320}
+              className="pointer-events-none absolute right-2 bottom-0 hidden h-auto w-40 select-none sm:block lg:w-52"
+            />
           </div>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -498,25 +508,7 @@ export default async function TermsPage() {
         </div>
       </main>
 
-      <footer className="border-t border-outline-variant/20 bg-white px-4 py-8">
-        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
-          <Link
-            href="/"
-            className="font-display text-xl font-black tracking-tighter text-brand"
-          >
-            PitsyPet
-          </Link>
-          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm font-light text-on-surface-variant sm:justify-end">
-            <Link href="/privacy" className="transition-colors hover:text-brand">
-              Privacy Policy
-            </Link>
-            <Link href="/#contact" className="transition-colors hover:text-brand">
-              Contact
-            </Link>
-            <span>© 2026 PitsyPet</span>
-          </div>
-        </div>
-      </footer>
+      <LandingFooter anchorPrefix="/" />
     </div>
   );
 }

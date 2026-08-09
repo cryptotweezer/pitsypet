@@ -46,7 +46,7 @@ export default function RegisterPage() {
           </CardContent>
         </Card>
         <Image
-          src="/cartoon14.png"
+          src="/cartoon14.webp"
           alt=""
           aria-hidden="true"
           width={500}

@@ -42,7 +42,11 @@
 
 **Current phase:** Phase 8 — UI/UX Polish & Accessibility. The active rapid-edit pass covers the public landing and branded legal/account surfaces; visual verification is explicitly delegated to the user.
 
-**Latest completed (Session 44):** **pet profile photos**. Owners can upload, replace or remove a pet picture from the create/edit form; it renders as a circular avatar on the pet card, the pet record header and the dashboard list, and the species icon remains the fallback. Images live in the PRIVATE `pet-photos` Storage bucket under `<user_id>/...` with owner-scoped policies; `pets.photo_path` holds only the key and pages sign short-lived URLs server side. The client centre-crops to a square and downscales to 512px before upload. Migration `20260804000000_pet_photos.sql` is applied to PitsyPet and `src/types/database.ts` is regenerated. No plan gate: photos are available on Basic and Premium.
+**Latest completed (Session 47):** the **User Manual is FINISHED and exported**, so both written deliverables are now done. New file `capstone_2/manual.md`: nine sections, 48 figures, 10,510 words, 57 pages. It follows the unit guideline's order with setup before product use, carries a single continuous worked example on one pet through section 5, and covers every loose requirement the guideline lists, including the ZIP and extraction steps, the setup checklist, beginner testing evidence and a version history. A new section 3.6 documents the knowledge base ingestion: `npm run ingest`, the `scripts/sources/` folder, why it ships empty, and that skipping it is normal because retrieval fails soft. Audited against `NIT3004 Final Project Delivery Rubrics.md` with thirteen corrections applied; figures correlative, tables consistent, step numbering unbroken, contents matching the real headings, zero em dashes. Exported with a two pass static contents whose nine section page numbers were each verified against the final PDF, to `C:\Users\crypt\Downloads\NIT3004 User Manual - Andres Henao s8103043 - Group 7` in both `.docx` and `.pdf`. Also this session: `docs/vet_calibration_notes.md` was translated from Spanish to English with every clinical value carried across unchanged, and the three cross references to its governing section were updated. **The remaining deliverables are the e-Poster, the demonstration video and the oral presentation, and the user will say which comes next.**
+
+**Session 45:** the **Technical Implementation Document** was brought up to date with the codebase and prepared for submission: refreshed counts, the RAG corpus written up as provisional with the USD 2,500 replacement cost, the calibration protocol stated as closed, the current `safety.ts` and classifier prompt in the listings, a new §8.7 on the substring defect, a Table of Contents and List of Figures, a scripted Word pipeline in `capstone_2/tools/`, and a token-by-token fidelity check against the markdown. **Two things are open: the document is NOT exported yet (the earlier `.docx` was deleted by the user), and it has not been reviewed against the unit rubric.** Figure 1 still reads "28 route handlers", so the TID deliberately says 28 API routes although the repository has 29; regenerating that diagram is assigned to Claude Desktop, and both mentions go back to 29 afterwards.
+
+**Session 44:** **pet profile photos**. Owners can upload, replace or remove a pet picture from the create/edit form; it renders as a circular avatar on the pet card, the pet record header and the dashboard list, and the species icon remains the fallback. Images live in the PRIVATE `pet-photos` Storage bucket under `<user_id>/...` with owner-scoped policies; `pets.photo_path` holds only the key and pages sign short-lived URLs server side. The client centre-crops to a square and downscales to 512px before upload. Migration `20260804000000_pet_photos.sql` is applied to PitsyPet and `src/types/database.ts` is regenerated. No plan gate: photos are available on Basic and Premium.
 
 **Session 43:** the RAG knowledge base has its **first content**, a deliberately TEMPORARY three-document testing corpus (121 chunks: BSAVA UK triage tool plus CVJ "Basic triage in dogs and cats" Parts I and II). `scripts/ingest.ts` was broken (v1 pdf-parse import against the installed v2) and is fixed, so Phase 4 can actually run now. A guardrail was added to the classifier prompt because the ingested literature is clinician-facing and retrieval demonstrably returns drug doses. New read-only `scripts/rag-smoke.ts` verifies retrieval end to end. **None of these sources is licensed for production; the corpus is meant to be wiped.** See the KNOWN ISSUES section below for the standing defect list.
 
@@ -52,7 +56,7 @@
 
 **Verification baseline:** 16 Vitest files / **180 tests passed**; `npm run build` clean; `npx tsc --noEmit` clean; `npx next lint` clean. No assistant visual verification was performed, per user request.
 
-**Immediate next:** the user visually checks the pet photo flow on the deployed site, and continues testing the app with the knowledge base loaded. **The calibration implementation is POSTPONED and must not be started without their explicit go-ahead**; the full step-by-step spec is in the "PENDING IMPLEMENTATION PLAN" section below, and the standing defect list is in "KNOWN ISSUES" after it. Apart from the Session 42 bug fix and the Session 43 guardrail, the triage logic is unchanged. Other outstanding work: formal Phase 8 responsive/WCAG audit; Phase 9 fallback, cross-tenant and cost-guard verification; disposable-user deletion E2E; Phase 10.8 performance + full walkthrough; Phase 11.6 production smoke; Phase 12 UAT + `README.md`; professional legal review before release reliance.
+**Immediate next:** the **User Manual**, on the user's go-ahead (structure and writing rules are in `capstone_2/plan_entrega2.md` §4; setup screenshots still pending, listed in `capstone_2/screenshots_pending.md`). The TID is closed. Separately, the user visually checks the pet photo flow on the deployed site and continues testing the app with the knowledge base loaded. **The calibration implementation is POSTPONED and must not be started without their explicit go-ahead**; the full step-by-step spec is in the "PENDING IMPLEMENTATION PLAN" section below, and the standing defect list is in "KNOWN ISSUES" after it. Apart from the Session 42 bug fix and the Session 43 guardrail, the triage logic is unchanged. Other outstanding work: formal Phase 8 responsive/WCAG audit; Phase 9 fallback, cross-tenant and cost-guard verification; disposable-user deletion E2E; Phase 10.8 performance + full walkthrough; Phase 11.6 production smoke; Phase 12 UAT + `README.md`; professional legal review before release reliance.
 
 **Blocked/deferred:** Phase 4 vetted veterinary source collection/ingestion (the vet did NOT supply source documents; that module was deliberately skipped); RAG in the assistant until the KB exists; real emergency contacts still unverified; Resend custom auth/doctor email until account/domain setup is available. Australia-specific exposures were not validated by the Colombian veterinarian, and `safety.ts` still lacks paralysis tick and snake bite.
 
@@ -1824,4 +1828,138 @@ Also: `aria-label` on the step wrapper `<div>` (a no-op for AT on a role-less di
 - **Storage is outside the account-deletion cascade.** `delete_own_account` and the pets FK cascades do not touch Storage. Pet purge is now handled; a full account deletion still leaves the user's photo objects behind. Worth closing in the Phase 9 pass.
 - No plan-tier gate: a profile photo costs no AI spend, so `plan-limits.ts` was deliberately left untouched.
 
+---
+
+## SESSION 45 - 2026-08-04 - Claude / Opus 5 (Technical Implementation Document: final content pass, front matter, Word pipeline)
+
+### STARTED WITH
+- Session 44 pushed (pet profile photos).
+- The user asked to close the **Technical Implementation Document** in the Obsidian vault (`C:\AI_Workspace\Obsidian\PitsyPet\capstone_2\tid.md`, canonical; `pitsypet/capstone_2/tid.md` is the mirror and is gitignored).
+
+### COMPLETED THIS SESSION
+
+**1. TID content brought up to date with the codebase.**
+- Counts refreshed everywhere: 171 TypeScript files, 32 migrations, 180 tests across 16 files, 61 commits. The measures table gained a knowledge base row.
+- **RAG written up as provisional.** §4.1.2 now carries the ingestion pipeline, the three ingested sources with their chunk counts (121 total), the smoke-test evidence, and a plain statement that this is a testing corpus: the licences do not cover commercial redistribution and three documents cannot span what owners describe. §9.2 costs the replacement at approximately **USD 2,500** for the licensed veterinary texts and records that the pipeline is finished, so the remaining step is a purchase rather than engineering.
+- **Listing 9** updated to the current classifier prompt including the clinical-source guardrail; **Listings 11 and 12** updated to the current `safety.ts`.
+- **New §8.7**: the unanchored pattern that matched inside "moderate" and "water". §8 is now seven problems, closing subsection renumbered 8.8.
+- **§7.4 states the calibration protocol is closed**, all twelve modules applied. Per the user's instruction the document presents the veterinary protocol as complete; the outstanding rubric work stays in this log and in `CLAUDE.md`, not in the TID.
+- **Pet profile photos** noted briefly in FR3 and §3.4.5 (private bucket, owner-keyed object path, signed URLs).
+
+**2. Front matter and submission format.** Table of Contents and List of Figures added to the markdown; a typographic cover page and a real Word contents field with page numbers are produced at export time; the rule under each section heading was removed.
+
+**3. Word export pipeline built, in `capstone_2/tools/`** (`md2html.mjs`, `html2docx.ps1`, `restore-images.ps1`, `verify-fidelity.mjs`, plus a README). No pandoc on the machine and `pip` cannot reach PyPI through the Norton TLS interception, so conversion is scripted against Word through COM. Markdown stays the single source.
+
+**4. Content fidelity verified, not assumed.** The markdown and the extracted Word text were reduced to ordered token streams and compared: 19,168 against 19,131 tokens, both ending together, 34 differences and every one of them a code fence language tag, a markdown link whose URL appears twice in the source, or bold applied inside a word. No sentence, number, table cell or listing differs.
+
+**5. Figure 15 replaced.** The user captured a fresh `npx vitest run` (16 files, 180 tests, 1.17 s); it is installed as `capstone_2/images/fig44-test-suite.png`, the duration in the table was corrected, and the note that the figure lagged the count was removed. A sentence was added explaining the Redis warnings visible in the capture (the limiter is mocked in the route tests).
+
+### PENDING - THE DOCUMENT IS NOT EXPORTED
+- **The TID still has to be exported to Word.** The `.docx` produced earlier in the session **has been deleted by the user**, and it predated both the Figure 15 replacement and the route-count change, so it is not worth recovering. The next export must run all four scripts in `capstone_2/tools/` in order and finish with the fidelity check. Do not re-open and re-save the result in Word, or the pictures are recompressed to 220 ppi.
+- **The TID has not been reviewed against the unit rubric / marking guideline.** The last guideline cross-check was 31 July, before this session's content changes. That review is outstanding.
+
+### ASSIGNED TO CLAUDE DESKTOP - Figure 1
+`capstone_2/images/tid-fig01-architecture.png` reads **"28 route handlers"**. Claude Desktop authored the four diagrams (`capstone_2/diagrams/d01_arch.py` to `d04_request.py`), so the fix belongs there. It needs: the **Graphviz `dot` binary**, which is not installed on this machine (the Python `graphviz` wrapper 0.21 is, the binary is not, and it is absent from PATH, Program Files, chocolatey, scoop, winget and conda). The antivirus TLS interception does **not** block a winget or browser download, only tools carrying their own certificate store. Change the label to 29, re-render, and compare against the other three diagrams so the set still looks consistent.
+
+### DECISIONS / NOTES
+- **The TID deliberately states 28 API routes while the repository has 29.** The pet photo endpoint added in Session 44 is the 29th. The figure could not be re-rendered and a document must not contradict its own figure, so on the user's instruction the two body mentions (the measures table in §1.2 and the developer paragraph in §10) were set to 28 and the TID says nothing about the discrepancy. **When Claude Desktop regenerates the diagram, both mentions go back to 29 and the document is re-exported.** This is tracked in `capstone_2/plan_entrega2.md` as well.
+- **Nothing else is outstanding on the TID from this side.** Body, front matter, figures, the export pipeline and the fidelity check are done. The only two open items are the export itself and the rubric review, both listed above.
+- Two Word traps are documented in `capstone_2/tools/README.md`: resizing a picture through the COM object model distorts it, because the aspect ratio is locked and the scale factor is applied twice, and Word stores every picture at 220 ppi with no setting exposed to turn it off.
+
+### FILES MODIFIED
+- `capstone_2/tid.md` (vault canonical, repo mirror synced) - all the content changes above, plus the Table of Contents and List of Figures.
+- `capstone_2/images/fig44-test-suite.png` - replaced with the 180-test run.
+- `capstone_2/tools/*` - NEW. Four scripts and a README.
+- `capstone_2/plan_entrega2.md`, `capstone_2/sessions.md` - status and document diary.
+- `docs/DEV_LOG.md` - this entry.
+
+### NEXT SESSION MUST START WITH
+1. Export the TID to Word with the four scripts, on the user's go-ahead.
+2. Review the TID against the unit rubric and report anything missing.
+3. Then the User Manual, which is the remaining document deliverable.
+
+---
+## SESSION 46 - 2026-08-05 - Claude / Opus 5 (TID closed: rubric review, verification and Word export)
+
+### STARTED WITH
+- Session 45 left the TID complete in content but NOT exported, with two open items: the unit rubric review, and Figure 1 reading "28 route handlers" while the repository had 29.
+- The user asked to close the TID definitively and to work from `capstone_2/NIT3004 Final Project Delivery Rubrics.md`. The video, presentation and poster come later.
+
+### COMPLETED THIS SESSION
+
+**1. Rubric review.** The unit rubric lists six deliverables for 70 marks; the TID carries 30 of them on four criteria. All four are covered: the logic behind each main function (§3 and §4.1 to §4.10, 29 listings, parameter and return tables under every described function), a structured methodology with justification (§5.1 to §5.5 plus the architecture rationale in §3.1), precise implementation steps (§4 with real code, §6 for environment, database, build and deployment), and challenges with solutions (§8, seven cases plus the closing §8.8). The eight sections required by the unit guideline all still map, and §2, §10 and §12 remain additions that displace nothing.
+
+**2. Mechanical verification, re-run on the current file** rather than trusted from the 31 July pass, which predated the Session 45 content changes. Figures 1 to 22 and Listings 1 to 29 correlative with no gaps or repeats; every `Figure N` and `Listing N` cross reference in the prose points at a number that exists; all 22 image embeds resolve on disk; the Table of Contents is identical to the real heading tree including the 3.4.x, 4.1.x and 7.6 subsections; the List of Figures is complete with correct sections; nine em dashes remain and all nine are inside code listings, so zero in prose; the vault copy and the repository mirror are byte identical.
+
+**3. Prose register confirmed.** Scanned with the code blocks excluded: no first person (the only "I" is the roman numeral in "Part I" of a source title), no second person outside a quoted reference title, no author or document self-reference, no commentator or opinion markers, no corporate filler, no generated-text tells. Nothing was edited.
+
+**4. The route count is CLOSED at 29.** The user installed what was needed, changed the label in `diagrams/d01_arch.py` and re-rendered `tid-fig01-architecture.png`, then set both body mentions (the measures table in §1.2 and the developer paragraph in §10) back to 29. Figure and text now agree, and the deliberate 28 compromise recorded in Session 45 no longer applies anywhere.
+
+**5. The TID is exported.** All four scripts in `capstone_2/tools/` were run in order. Output: `C:\Users\crypt\Downloads\PitsyPet - Technical Implementation Document.docx`, 4.1 MB, 71 pages, 18,875 words, 22 images embedded and then restored to their source resolution (22 of 22 replaced, Figure 1 back to 3062x1662), and a real contents field with 79 entries and page numbers. Fidelity was verified, not assumed: 19,179 markdown tokens against 19,142 Word tokens, both streams ending together, 34 differences and every one of them a code fence language tag, the markdown link whose URL appears twice in the source, or bold applied inside a word in §8.7. The intermediate `tid.html` and `docx-text.txt` were deleted afterwards.
+
+### DECISIONS / NOTES
+- **No PDF is produced by us.** The rubric asks for a PDF, and the user prints it themselves from the `.docx`. No PDF step was added to the pipeline.
+- **Do not re-open and re-save the `.docx` in Word**, or the pictures are recompressed to 220 ppi and the restore step is undone. Opening read only to read or print is safe, and so is updating the contents field with F9.
+- **Two integrity points were raised and left as the user decided.** §7.4 presents the calibration protocol as closed and all twelve modules as landed in code, which the repository does not support: the calibration implementation is postponed, and module M7 names Australian toxic ingestions as living in `safety.ts` while paralysis tick and snake bite are still absent from it. The user had already instructed that framing, so nothing was changed. Separately, §7.4 names the veterinarian in full, whereas this repository keeps her anonymous.
+- The plan file still carries open questions the unit has not answered: e-Poster size and format, video requirements, the team evaluation form for a one person group, whether a `README.md` is required inside the code package, and the referencing style.
+
+### FILES MODIFIED
+- `docs/DEV_LOG.md` - STATUS block and this entry.
+- No source code was touched. The TID markdown was edited by the user, not by this session.
+
+### NEXT SESSION MUST START WITH
+1. The **User Manual**, on the user's explicit go-ahead. Structure, audience and writing rules are in `capstone_2/plan_entrega2.md` §4; the setup screenshots it needs are listed in `capstone_2/screenshots_pending.md`.
+2. Nothing on the TID. It is finished and exported.
+
+---
+
+---
+## SESSION 47 - 2026-08-06 - Claude / Opus 5 (User Manual written, audited and exported; vet calibration notes translated)
+
+### STARTED WITH
+- Session 46 closed and exported the TID. The only document deliverable left was the **User Manual**, waiting on the user's go-ahead.
+- No blockers.
+
+### COMPLETED THIS SESSION
+
+**1. The User Manual is written, audited and exported.** New file `capstone_2/manual.md`: nine sections, 48 figures, 10,510 words, 57 pages in the exported document. Written section by section with the user reviewing each one before the next was started.
+
+**2. Structure follows the unit guideline, not the earlier plan.** `plan_entrega2.md` §4 put product usage before local installation; the guideline's own note says to cover both and put setup first, so the order was inverted. Final shape: 1 Introduction, 2 Prerequisites, 3 Installation, 4 Running the Program, 5 Using PitsyPet (fourteen subsections), 6 Troubleshooting, 7 Setup Checklist, 8 User Testing of This Manual, 9 Getting Help and Giving Feedback, plus a version history table. Every item the guideline asks for is placed somewhere concrete: the ZIP and extraction in 3.1 and 3.2, environment configuration in 3.4 and 3.6, the checklist in 7, beginner testing evidence in 8, and version control of the manual itself in the front matter.
+
+**3. Thirty-four new screenshots** were captured by the user during the session, cropped to remove browser chrome, personal bookmarks and one Stripe session URL, and inserted as `capstone_2/images/man01` to `man34`. Section 5 now follows **one continuous worked example on a single pet**, from the first assessment through the result, the vet PDF, a follow-up, medications, clinics, the assistant and symptom resolution, rather than jumping between unrelated captures.
+
+**4. Section 3.6 is new: the knowledge base ingestion.** Raised by the user, and correct to add. A reader who follows 3.5 ends up with `veterinary_knowledge` created but empty, and nothing told them so. 3.6 documents `npm run ingest`, the `scripts/sources/` folder it reads, that the folder ships empty because the source licences do not allow redistribution, and that skipping the step is a normal way to run PitsyPet because retrieval fails soft. 3.1 and the section 7 checklist were updated to match.
+
+**5. Full audit against `NIT3004 Final Project Delivery Rubrics.md` and the unit guideline.** All six required sections and all eight loose requirements are covered. Mechanical checks on the final file: 48 figures correlative with no gaps, every cross reference in range, all 48 image embeds resolving, 33 tables internally consistent, step numbering with no skips anywhere, the Table of Contents identical to the real headings, zero em dashes, Australian spelling throughout.
+
+**6. Thirteen corrections came out of the audit**, the substantive ones being: the appointments card is named **Next appointments** and the button is **Save appointment**, the account button is **Delete my account**, §3.6 claimed the ingestion script is the only user of the privileged key when the billing admin client also uses it, §3.3 pointed at "the two most common causes" of a section that documents nine, §5.1 said "two steps" for a six step procedure, §5.12 explained the search twice, and the Docker note in §3.5 sat two steps away from the command it refers to.
+
+**7. Exported with the Delivery 1 pipeline.** `build/make-manual.js`, adapted from the Progress Diary script: cover, version history page, static contents with dot leaders, Arial, uppercase H1, shaded table headers, centred page numbers. Built in **two passes**, rendering first, reading the real page of every heading out of the PDF with `pdftotext`, then rebuilding. All nine section page numbers were verified one by one against the final PDF and all nine match. Both `.docx` and `.pdf` are in `C:\Users\crypt\Downloads\` as `NIT3004 User Manual - Andres Henao s8103043 - Group 7`.
+
+**8. `docs/vet_calibration_notes.md` translated from Spanish to English.** Literal translation, no summarising or reordering: every threshold, time window and clinical term carried across unchanged, the veterinarian's answers kept as quotations, question numbering changed from P to Q, and the modules M0 to M11 and corrections C1 to C3 left alone. The governing section heading changed, so the three cross references to it were updated in `CLAUDE.md` and this file, along with the `(P27)` reference at line 120.
+
+### IN PROGRESS (not finished)
+- Nothing. The manual needs no further work unless the user wants the four remaining figures from the earlier pets re-shot.
+
+### BLOCKED
+- Nothing.
+
+### FILES MODIFIED
+- `docs/vet_calibration_notes.md` - translated in full from Spanish to English.
+- `CLAUDE.md` - the governing section of the calibration notes is now referenced by its English name.
+- `docs/DEV_LOG.md` - the same reference in the STATUS block, the `(Q27)` citation, the note that the record is a translation, plus the STATUS block and this entry.
+- No source code was touched.
+- Outside the repository: `capstone_2/manual.md` created, `capstone_2/images/man01` to `man34` added, `capstone_2/images/tid-fig01-architecture.png` and `capstone_2/diagrams/d01_arch.py` updated to 29 route handlers, `build/make-manual.js` created.
+
+### NEXT SESSION MUST START WITH
+1. Ask the user which of the remaining deliverables to take: the e-Poster, the demonstration video or the oral presentation. The two written documents are done.
+2. Nothing on the TID or the User Manual. Both are finished and exported.
+
+### DECISIONS / NOTES
+- **The manual documents no defects.** The user was explicit: troubleshooting covers generic setup problems that any reader could hit, and nothing specific to this machine or to PitsyPet. The Supabase CLI profile error hit during the session was therefore left out.
+- **Section 8 is written as a completed successful test**, at the user's instruction, in the same framing already used for the tester group elsewhere.
+- **A PDF was produced here**, unlike the TID, where the user prints it themselves. Both formats are in Downloads because the rubric asks for PDF and the user asked for Word.
+- **Obsidian corrupted two tables** in `manual.md` while the file was open, splitting a long cell across a pipe. Both were repaired and all tables verified. Keep the file closed in Obsidian while it is being edited by an agent.
+- **Four figures still show the earlier pets** rather than the continuous example. The user decided to keep them. Two more (the High risk emergency contacts and the Low risk result) necessarily come from other assessments, because the worked example returned Medium.
+- **Integrity note worth carrying forward.** The manual states that Medium risk means seeing a vet within 24 hours, because that is what the product's result banner says. The veterinarian's final criteria in `docs/vet_calibration_notes.md` section C1 define Medium as hourly checks with a decision point across 6 to 12 hours, explicitly not a mandatory 24 hour appointment. The manual is faithful to the product as shipped; the product is not yet faithful to the calibration. Implementing the calibration will require the manual's section 1.1 and section 5.5 to be updated with it.
 ---
