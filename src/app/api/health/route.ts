@@ -35,7 +35,8 @@ async function checkRedis(): Promise<string | null> {
 // the rate limiter and cost guard run before each model call). Unauthenticated
 // by design: the RLS policy filters the rows to none for an anonymous caller,
 // but the query still executes, so a successful (even empty) response means the
-// database is reachable. Point UptimeRobot here (every 5 min). No secrets.
+// database is reachable. Point UptimeRobot here (every 12 hours: a shorter
+// interval burns the Hobby plan's Active CPU quota). No secrets.
 export async function GET() {
   const startedAt = Date.now();
   const [dbError, redisError] = await Promise.all([checkDatabase(), checkRedis()]);

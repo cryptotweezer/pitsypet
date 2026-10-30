@@ -46,15 +46,14 @@ export async function updateSession(request: NextRequest) {
   const isAuthRoute =
     path.startsWith("/login") || path.startsWith("/register");
   // Unauthenticated public endpoints — must not redirect to /login:
-  // /api/health is the uptime probe; /api/contact is the public landing form;
-  // /api/billing/webhook is Stripe's server-to-server callback (authenticated
-  // by its own signature check, not a session).
+  // /api/contact is the public landing form; /api/billing/webhook is Stripe's
+  // server-to-server callback (authenticated by its own signature check, not a
+  // session). /api/health never reaches this code: the matcher skips it.
   const isPublic =
     path === "/" ||
     path === "/privacy" ||
     path === "/terms" ||
     path.startsWith("/auth") ||
-    path === "/api/health" ||
     path === "/api/contact" ||
     path === "/api/billing/webhook";
 
