@@ -21,6 +21,7 @@ import {
 import { EMERGENCY_CLINICS } from "@/components/landing/emergency-clinics";
 import { EmergencyMap } from "@/components/landing/emergency-map";
 import { ContactForm } from "@/components/landing/contact-form";
+import { DemoVideo } from "@/components/landing/demo-video";
 import { HeroCarousel } from "@/components/landing/hero-carousel";
 import { LandingFooter } from "@/components/landing/landing-footer";
 import { LandingHeader } from "@/components/landing/landing-header";
@@ -84,6 +85,31 @@ export default async function Home() {
                   Grounded in Australian veterinary guidelines (RSPCA &amp; AVA)
                 </span>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Demo: the real assessment flow, in a browser-style window */}
+        <section
+          id="demo"
+          className="landing-section-pad relative z-10 snap-start bg-gradient-to-b from-[#f6ecfb] to-white"
+        >
+          <div className="mx-auto max-w-5xl px-4">
+            <div className="reveal mx-auto mb-10 max-w-2xl space-y-4 text-center md:mb-12">
+              <span className="block text-label-caps font-bold text-brand opacity-70">
+                SEE IT IN ACTION
+              </span>
+              <h2 className="font-display text-3xl tracking-tighter text-on-surface md:text-4xl">
+                A real assessment, start to finish.
+              </h2>
+              <p className="text-base leading-relaxed font-light text-on-surface-variant md:text-lg">
+                Describe what you&apos;re seeing in your own words. PitsyPet asks
+                the right follow-up questions, then gives you a clear risk level,
+                next steps and emergency contacts.
+              </p>
+            </div>
+            <div className="reveal" data-reveal-delay="120">
+              <DemoVideo />
             </div>
           </div>
         </section>
