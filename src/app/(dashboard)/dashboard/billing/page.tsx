@@ -7,6 +7,7 @@ import {
 } from "@/lib/billing/subscription";
 import { createPremiumCheckoutSession } from "@/lib/billing/checkout";
 import { createClient } from "@/lib/supabase/server";
+import { DemoBillingNote } from "@/components/shared/demo-billing-note";
 import {
   ManageBillingButton,
   UpgradeButton,
@@ -140,6 +141,8 @@ export default async function BillingPage({
           details never touch PitsyPet.
         </p>
       </div>
+
+      <DemoBillingNote className="rounded-[1.5rem] border border-brand/15 bg-secondary/40 px-5 py-3 text-left" />
 
       {params.upgraded && (
         <div className="flex items-center gap-3 rounded-[1.5rem] border border-green-200 bg-green-50 px-5 py-4 text-sm font-semibold text-green-800">

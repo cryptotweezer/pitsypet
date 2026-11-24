@@ -22,6 +22,7 @@ import { EMERGENCY_CLINICS } from "@/components/landing/emergency-clinics";
 import { EmergencyMap } from "@/components/landing/emergency-map";
 import { ContactForm } from "@/components/landing/contact-form";
 import { DemoVideo } from "@/components/landing/demo-video";
+import { DemoBillingNote } from "@/components/shared/demo-billing-note";
 import { HeroCarousel } from "@/components/landing/hero-carousel";
 import { LandingFooter } from "@/components/landing/landing-footer";
 import { LandingHeader } from "@/components/landing/landing-header";
@@ -500,6 +501,7 @@ export default async function Home() {
                 </Link>
               </div>
             </div>
+            <DemoBillingNote className="reveal mx-auto mt-8 max-w-xl" />
           </div>
         </section>
 
