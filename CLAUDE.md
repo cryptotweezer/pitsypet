@@ -1,198 +1,112 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for AI agents working in this repository.
 
 ## What this is
 
-PitsyPet is an AI-powered veterinary symptom-triage web app for Australian dog/cat owners. A user registers, creates pet profiles, then runs a conversational assessment: the AI extracts symptoms from chat, retrieves veterinary knowledge (RAG over pgvector), classifies risk **Low / Medium / High**, and shows clinical reasoning plus risk-appropriate recommendations (first-aid for Low, vet referral + emergency contacts for High). It is an educational triage tool, **not** a diagnosis — a missed emergency is treated as far worse than an unnecessary vet visit, so the whole system is biased to escalate when uncertain.
+PitsyPet is an AI veterinary symptom-triage web app for Australian dog/cat owners. Users register, create pet profiles and run a conversational assessment: the AI extracts symptoms from chat, retrieves veterinary knowledge (RAG over pgvector), classifies risk **Low / Medium / High**, and shows reasoning plus recommendations (first-aid for Low, vet referral and emergency contacts for High). It is an educational triage tool, **not** a diagnosis. A missed emergency is far worse than an unnecessary vet visit, so the system escalates when uncertain.
 
-## Session bootstrap — DO THIS FIRST, EVERY SESSION
+Production: `https://pitsypet.andreshenao.com.au` (Vercel).
 
-**This file (`CLAUDE.md`) loads automatically into every session — you are reading it now. It is your map. Do not read the whole `dev_plan.md` at startup; that costs ~47K tokens and most of it is for phases you are not building this session.** Instead, bootstrap like this:
+## Where things are documented
 
-1. **Read the latest `docs/DEV_LOG.md` entry + the `## STATUS` block at the top.** That tells you what's done, what's deferred, and the exact next action. (You may skip older entries — read only the most recent session, plus STATUS.)
-2. **Find the current phase** in the **Project roadmap** table below (and confirm against the DEV_LOG STATUS line).
-3. **Read ONLY the current phase's section of `docs/dev_plan.md`.** Use Grep to find the `## Phase N` heading line, then Read just that range (typically ~3–5K tokens) — including its **✅ Done When** checklist. Do not read other phases unless a task explicitly depends on them.
-4. The **cross-cutting invariants** (safety, RLS, AI SDK pins, the stack) are already in this file — you do not need the plan for those.
+- `agents_docs/agents_log.md` (local, git-ignored): the session diary. Start here (see the block at the end of this file).
+- `agents_docs/ref/project-detail.md`: long-form phase status, deferred items, feature notes (export, plan tiers, legal/deletion, landing, pet photos), full calibration context, PROPOSAL divergences, data/UI/env detail. Read when a task touches those areas.
+- `docs/dev_plan.md`: the build spec, phases 0 to 12 with **Done When** checklists. Read ONE phase section at a time (grep `## Phase N`), never whole (~47K tokens).
+- `docs/DEV_LOG.md`: committed history of Sessions 1 to 50, the "KNOWN ISSUES / OPEN DEFECTS" list and the calibration "PENDING IMPLEMENTATION PLAN". Grep it, do not read it whole.
+- `docs/vet_calibration_notes.md`: the veterinarian's criteria; its "FINAL CORRECTIONS FROM THE VETERINARIAN" section governs. Read before touching any triage rubric.
+- `docs/PROPOSAL.md`: outdated academic proposal. Historical only; where it conflicts with the plan, the plan wins.
 
-**Then, before doing any work, reply to the user with a 2–3 line bootstrap summary** so they have confidence we're aligned:
-> **Phase N — <name>.** This session: <one line on what we build>. Watch: <one thing to keep in mind / a deferred item / a Done-When gate>.
+## Status
 
-Keep it to a couple of lines — it's a sanity check, not a report. Then proceed (or ask the user for the go-ahead if the next step is ambiguous).
+Phases 0-3, 5-7, 7.5 done. Phase 4 runs on a TEMPORARY, non-licensed 121-chunk test corpus. **Current: Phase 8** (Lighthouse/WCAG pass and loading/error/empty states remain; responsive layout audited in Session 50). Phases 9-11 partial, 12 not started. Detail in `agents_docs/ref/project-detail.md`.
 
-**Closing a session:** append a new `DEV_LOG.md` entry (template at the top of that file) **and** update the **Project roadmap** status below + the `## STATUS` block in DEV_LOG if the current phase changed. Keep these two in sync — they are the entire continuity mechanism.
-
-## Project roadmap — the long arc (so we never drift)
-
-The full build is 12 phases, each gated by its own **✅ Done When** checklist in `dev_plan.md`. The original sequence is still the acceptance framework, but work after Phase 4 was deliberately pulled forward while vetted RAG sources are unavailable. This table is the current at-a-glance map — read the relevant phase section in `dev_plan.md` for the actual tasks.
-
-| Phase | Name | Status |
-|---|---|---|
-| 0 | Environment & Repository Setup | ✅ Done (verified) |
-
-| 1 | Database Schema & Supabase Config (tables, RLS, RPCs, indexes) | ✅ Done (reviewed + hardened) |
-
-| 2 | Authentication (register, login, session middleware, protected routes) | ✅ Done (live-tested in prod) |
-
-| 3 | Pet Profile Management (CRUD pets, breed autocomplete, dashboard) | ✅ Done (live-tested) |
-
-| 4 | **RAG Knowledge Base Ingestion** (TypeScript `scripts/ingest.ts`) | 🟡 **Running with a TEMPORARY testing corpus (Session 43).** The pipeline was broken (v1 `pdf-parse` import against the installed v2) and is fixed; the KB now holds **121 chunks from 3 sources** (BSAVA UK triage tool + CVJ "Basic triage in dogs and cats" Parts I and II) purely so triage can be tested with retrieval live. **None of it is licensed for production and it is meant to be wiped.** Production still needs vetted, commercially reusable sources. RAG in the assistant chat stays pending. **Does not block calibration:** the veterinarian's thresholds were captured directly in Session 42 (`docs/vet_calibration_notes.md`); RAG should reinforce them, never contradict them. |
-
-| 5 | AI Triage Engine — the core (stream extract → RAG → classify → safety override) | ✅ Done (live-tested: GDV emergency → High, persisted) |
-
-| 6 | **Results Page & Recommendations** (risk badge, first-aid, emergency contacts) | ✅ Done (live-tested; auto-save replaced the Save button — see note) |
-
-| 7 | Assessment History & Search (`search_assessments` RPC) | ✅ Done. **Search UI wired in Session 22:** `/history` page + `GET /api/search` (debounced, `searchRateLimiter` 30/min) over the `completed_at`-filtered RPC. |
-
-| 7.5 | **Pet Clinical History Hub** (user-directed expansion: pet page + meds/vet + contextual chat + export) | ✅ **Feature COMPLETE (all parts committed).** Parts 1 + 2 (A–D), global clinics/doctors, appointments/medications, contextual chats, active-symptom reconciliation, follow-ups, and vet PDF export are built. The export's original AI-summary design was replaced in Session 33 by a deterministic stored-record summary, eliminating the caching/timeout issue. **Manual feature walkthrough is folded into the Phase 10/12 passes. Still deferred:** Email/Resend (Group E) + RAG-in-chat. |
-
-| 8 | UI/UX Polish & Accessibility (responsive 320–1920px, WCAG 2.1 AA) | 🟡 **CURRENT / partial:** branded landing, auth, dashboard, pet, assessment and results surfaces are built; Sessions 36–41 added rapid landing spacing/mobile polish, the final footer copy, `/privacy`, `/terms`, and Dashboard > Account. Session 50: 320–1920px responsive layout audit done (3 overflow fixes), new AH logo/favicon, and a Remotion product demo video under the hero (`demo-video.tsx`, source in `C:AI_Workspacepitsypet_video`). **Remaining:** Lighthouse/WCAG pass, and the outstanding loading/error/empty-state checks from Phase 8. Visual verification stays with the user during the rapid-edit pass. |
-
-| 9 | Error Handling, Fallbacks & Security (RLS/injection/cost-guard audit) | 🟡 **Partial (pulled forward):** security rounds 1–2, privacy-minimised analytics, and authenticated account deletion are implemented. The deletion RPC was applied and remotely verified on the PitsyPet project. **Remaining:** explicit 9.1 AI/RAG fallback verification, 9.4 cross-tenant checks, 9.6 cost-guard fail-closed test, disposable-user deletion E2E, and resolution/acceptance of the existing Supabase advisor findings. |
-
-| 10 | Testing (Vitest; triage regression set from 5.14) | 🟡 **Mostly done:** **180 Vitest tests across 16 files** pass, including triage safety/regression logic, CRUD route handlers, billing/limits, and the account-deletion API. TypeScript and ESLint are clean. **Remaining:** 10.8 performance measurements and the full manual walkthrough. |
-
-| 11 | Monitoring & Production Deployment (Sentry, PostHog, UptimeRobot health check) | 🟢 **Done bar manual smoke:** Sentry, privacy-minimised PostHog events, `/api/health` + UptimeRobot, Supabase Auth URLs, Vercel configuration, and the custom production domain `https://pitsypet.andreshenao.com.au` are in place. **Remaining:** 11.6 full production smoke test, including expired-session behavior and the new legal/account flows. |
-
-| 12 | User Acceptance Testing + README | ⬜ **Not started:** privacy/terms/account-deletion foundations now exist, but participant UAT, feedback synthesis, critical-fix pass, and setup `README.md` remain pending. Obtain professional Australian/GDPR legal review before production reliance on the legal drafts. |
-
-**Things to keep in mind across phases (so early work doesn't paint us into a corner):**
-- **Everything funnels into the Phase 5 triage engine.** Pet fields built in Phase 3 (species, breed, age, weight, medical_conditions) are consumed verbatim by `formatPet` and the RAG query in Phase 5 — keep their shape stable.
-- **Phase 4 (RAG ingest) and Phase 3 are independent** and can be done in parallel; Phase 5 needs *both* done.
-- **The safety override, rule-based fallback, and "confidence is logged-only" rules are non-negotiable** and appear as explicit Done-When tests in Phases 5/9/10. Don't soften them.
-- **Schema changes** → always regenerate `src/types/database.ts` (`npx supabase gen types ... --linked`) and commit it.
-- **Deferred items currently outstanding:** **Transactional email via Resend (user has NO Resend account or domain yet — set up at the very end).** *(Separate & already DONE: the landing "Get in touch" contact form email — Session 29, Nodemailer + Gmail SMTP; that path does NOT cover the items below.)* The deferred work covers BOTH the deferred custom-SMTP auth email (Phase 1 task 1.5) AND the new Phase 7.5 "request appointment → email the doctor" feature (manual button + AI-sent email with the last-assessment summary) — do this as one dedicated step AFTER Group D, since the valuable version needs D's chat tools + C's summary. Also still outstanding: expired-token session refresh test (Phase 2, verified at Phase 11); mid-chat reload *recovery* (the orphan *create* path is now fixed in 7.5 Group A — rows exist only after completion); **RAG wiring into the Group D assistant chat (deferred until Phase 4 KB ingestion — no content to retrieve yet).** Don't lose these — all tracked in the DEV_LOG.
-- **Vet PDF export is DETERMINISTIC — no AI call (Session 33; replaces the old "cache the summary" TODO):** `POST /api/assessment/[id]/export` assembles the handover purely from the STORED assessment via `buildVetSummary` (`src/lib/export/summary.ts`) — the triage AI already wrote the clinical prose at completion. Instant, free, immune to Vercel function timeouts (the old per-download Sonnet call had no `maxDuration` and died at the prod default — first half of the "works locally, fails on Vercel" bug; the second half was the **prod CSP blocking the renderer's WASM** — `@react-pdf/renderer`/yoga-layout compiles WebAssembly in the browser, so prod `script-src` carries `'wasm-unsafe-eval'` (WASM-only; does NOT enable JS `eval()`) — dev never hit it because dev CSP has `'unsafe-eval'` for HMR). Route guards = auth + RLS + `exportRateLimiter` (arcjet/daily-cap removed — no AI spend). If richer AI prose is ever wanted, generate it ONCE at assessment completion and store it; never per-download.
-- **Phase 6 design changes vs the plan (user-directed):** assessments **auto-save on completion** — the `user_saved` flag + "Save to History" button + `/api/assessment/[id]/save` were removed. Assessment **delete** (soft) moved to Phase 7 (shown when opening a past assessment, not on the just-completed results view). Pets gained **Restore** + **Delete permanently** (hard, CASCADEs assessments) in a "Recently deleted" dashboard section. The chat route slug is **`/assessment/[id]`** (was `[petId]`) so it can share the path level with `[id]/results` (Next.js requires one slug name per level). Phase 7 history must list **completed** assessments (`completed_at NOT NULL`), not `user_saved`.
-- **Public landing page (`/`) — merged to `main` in Session 29 and refined through Session 41:** the marketing site (`src/app/page.tsx` + `src/components/landing/*`) is separate from the authenticated app. Sections use fullscreen scroll-snap panels, scoped scroll reveal, and a floating pill navbar. The emergency-clinic section is a landing-only Leaflet/OpenStreetMap map backed by curated static clinic data. The public `POST /api/contact` form sends via Nodemailer/Gmail SMTP with Zod validation, a honeypot, and rate limiting. Footer links expose the branded `/privacy` and `/terms` pages. Design remains conversational in small increments; use the roadmap/DEV_LOG current queue rather than the old Session 29 polish list.
-- **Plan tiers — Basic vs Premium (implemented and enforced).** PitsyBasic: **2 new AI triage sessions/month**, **10 assistant messages/day**, **1 pet**, and **unlimited deterministic vet-PDF exports**; follow-ups and in-progress assessments are never cut off. PitsyPremium is **AUD $9.99/month** and removes those usage limits. `src/lib/plan-limits.ts` is the single source of truth; limit failures use `403 { code: "plan_limit" }`. Stripe Checkout, Customer Portal, webhook reconciliation, invoice access, cancellation, and server-only plan writes are built and production-tested in Stripe test mode. Landing upgrade actions enter Checkout; changing the public limits requires updating implementation and landing/billing copy together.
-- **Privacy, legal pages, and deletion (Sessions 40–41):** `/privacy` and `/terms` are public branded pages linked from the landing footer and share `LandingHeader`. They describe an educational triage service—not veterinary diagnosis—and are tailored to Australian users with GDPR coverage; obtain professional legal review before relying on them in production. Dashboard > Account offers permanent self-service deletion. `DELETE /api/account` deletes the Stripe customer first (immediate subscription cancellation), then calls authenticated RPC `delete_own_account`; the RPC derives `auth.uid()`, requires exact confirmation, and cascades the user's live application data. PitsyPet does not sell data or use it for advertising, research, or model training; provider/legal/back-up retention exceptions remain accurately disclosed.
-- **Supabase identity guard:** this repository's only remote project is **`pitsypet`**, ref **`xaepzvxrqnqenspnanej`**, organisation **`qdendiktmyttgngqljay`**, region **`ap-southeast-2`**. Before every remote schema/data write, confirm that ref. Never use the unrelated `protegiendo_huellas` project (`irwdfcacgpznmvjofszq`). The local current-CLI bridge is the ignored, secret-free `supabase/.temp/pitsypet-profile.json`; commands use `--profile supabase/.temp/pitsypet-profile.json` when required by the installed CLI.
-
-### Triage calibration & tuning — the veterinarian's criteria (interview DONE, implementation in progress)
-
-**The calibration interview happened (Session 42, 2026-08-02).** A veterinarian (dogs and cats, general practice plus emergency and surgery, practising in Colombia) was interviewed for one hour using `docs/vet_protocol.md`. Her criteria are recorded verbatim in **`docs/vet_calibration_notes.md`**, whose **"FINAL CORRECTIONS FROM THE VETERINARIAN" section governs** wherever it contradicts an earlier answer in the same file. Read that file before touching any triage rubric.
-
-**Correction to a long-standing assumption in this file:** the over-escalation we kept blaming on the empty RAG was mostly a **bug**, not conservatism. `CRITICAL_PATTERNS` in `safety.ts` ran unanchored alternatives against the *formatted* symptom text (which contains machine-written fields like `severity: moderate`), so `ate` matched inside "moder-**ate**" and "w-**ate**-r": every moderate-severity symptom and every mention of water was force-escalated to High. Fixed in Session 42 with regression tests. Do not re-diagnose this as a rubric problem.
-
-**The vet's criteria escalate MORE than the current code, not less.** Do not treat calibration as "make it less cautious". Headline rules: general state (eating, drinking, alert, normal functions, no pain, breathing well) is the master gate; **Low** = observe 24 to 48 hours **and always book a non-urgent appointment**; **Medium** = check hourly, go immediately if it worsens, otherwise decide across 6 to 12 hours (it is an observation window, **not** a mandatory appointment, and **not** the "within 24 hours" the UI still says); **High** = go now; **1 vomiting or diarrhoea episode = Medium, 2 or more = High**; patient modifiers (paediatric, senior, brachycephalic, deep-chested, diabetic/cardiac/renal, pregnant) **shorten the observation window and never raise the level**.
-
-Three levers, in order of impact:
-1. **The vet's rubric (`src/lib/ai/classifier.ts`) — now the big one**, because we finally have real clinical thresholds. Encode her criteria as rules (windows, thresholds, conditions, combinations), never as hardcoded symptom lists. Hard lists belong only in `safety.ts` (absolute emergencies) and `fallback.ts` (offline mode).
-2. **RAG content (Phase 4).** Still valuable and still blocked: the vet did **not** supply source documents, so the KB remains empty. When it is ingested it must **reinforce** her thresholds, never contradict them.
-3. **NOT fine-tuning.** We do **not** train a custom model. "Tuning" here = rubric/prompt work plus RAG grounding.
-
-The safety invariants stay regardless. **Not validated by this session:** Australia-specific exposures (the vet practises in Colombia), so paralysis tick and snake bite are still missing from `safety.ts` and must be added from standard sources, flagged as not vet-validated. Real emergency contacts are also still unverified.
-
-**Her three product requirements are non-negotiable:** the tool must not replace veterinary consultation (which is exactly why Low always books an appointment), it must help veterinarians rather than compete with them, and it must not create legal exposure through owner misinterpretation.
-
-## The three docs — order of authority
-
-1. **`docs/dev_plan.md`** — the SOURCE OF TRUTH for what we build and how. Phased (0→12), each phase has a "✅ Done When" checklist. Per the bootstrap protocol above, read it **one phase section at a time**, not whole.
-2. **`docs/DEV_LOG.md`** — the continuity mechanism. **Read the latest entry before doing anything**, and **append a new session entry when you finish** (template is at the top of the file). It records what's done, what's deferred, and what the next session must start with.
-3. **`docs/PROPOSAL.md`** — the original academic capstone proposal. **Historical context only — do not read at startup.** It is a starting guide, not the build spec. Where it conflicts with `dev_plan.md`, the plan wins, always. This is *real software development now, not an academic deliverable* — there is no report to hand in.
-
-### PROPOSAL.md is outdated — do NOT implement these parts of it
-
-The plan deliberately diverged from the proposal. If you see these in the proposal, ignore them:
-
-| Proposal (ignore) | Actual decision (build this) |
-|---|---|
-| FastAPI + Python backend on Railway | **Next.js 15 full-stack (TypeScript)**, API routes, Vercel only — no separate backend |
-| `text-embedding-3-large` | **`text-embedding-3-small`** (1536 dims) |
-| IVFFlat vector index (100 lists) | **HNSW** index (`vector_cosine_ops`) |
-| `confidence_score` ≥ 0.75 gate before classifying | **confidence is LOGGED ONLY, never a gate.** Completion is decided by facts gathered (symptom + onset/severity); uncertainty rounds risk **UP**, never down |
-| Filter RAG chunks by `urgency_level ≥ 5` | **No urgency gate.** Urgency is a re-rank nudge only (`+0.05 * urgency/10`); it never hides a chunk |
-| Single Claude Sonnet 4.5 for everything | **Two models:** `claude-haiku-4-5-20251001` (extraction + chat reply) and `claude-sonnet-4-6` (risk classification) |
-| Separate "Conversation Messages" table | Single **`conversation_log` JSONB** column on `assessments`; no messages table |
-| Three blocking AI calls | **One `streamText` call per message** (extract + reply together); RAG + classification run in the same request's `onFinish` |
-| Supabase built-in email | **Resend custom SMTP** (deferred to pre-production; built-in email used for dev) |
-| shadcn/ui on Tailwind v3 / Radix | **Tailwind v4 + shadcn "base-nova" (Base UI)** — see UI section below |
-
-The proposal also has no concept of the **deterministic safety override** or the **rule-based fallback** — both are core to the plan (see AI architecture below).
+- **Triage calibration: APPROVED BUT POSTPONED. Do not start without the user's explicit go-ahead.** Only task 0 (the `safety.ts` substring bug) is implemented.
+- **The vet's criteria escalate MORE than the code, not less.** Never treat calibration as "make it less cautious". Patient modifiers shorten the observation window and never raise the level.
+- The user owns visual checks: do not run visual automation unless asked.
 
 ## Tech stack
 
-Next.js **15** App Router (migrated from 14 in Session 20 — async `cookies()`/`params`/`searchParams`; React 19) · TypeScript · **Vercel AI SDK v4** · Supabase (PostgreSQL + pgvector/HNSW + Auth + RLS) · OpenAI `text-embedding-3-small` · Upstash Redis (rate limit + cost guard) · Tailwind v4 + shadcn base-nova (Base UI) · Sentry · PostHog · Vercel.
+Next.js **15** App Router (React 19, async `cookies()`/`params`/`searchParams`) · TypeScript · **Vercel AI SDK v4** · Supabase (Postgres + pgvector/HNSW + Auth + RLS + Storage) · OpenAI `text-embedding-3-small` · Upstash Redis (rate limit + cost guard) · Tailwind v4 + shadcn base-nova (Base UI) · Stripe · Sentry · PostHog · Vercel.
 
-**Pin discipline:** the Vercel AI SDK is v4 (`ai@^4`, `@ai-sdk/*@^1`). **Never run `npm install ai@latest`** — v5 renames the streaming APIs (`streamText`/`createDataStreamResponse`/`useChat`) the plan depends on.
+**Pin discipline:** AI SDK is v4 (`ai@^4`, `@ai-sdk/*@^1`). **Never `npm install ai@latest`**: v5 renames `streamText`/`createDataStreamResponse`/`useChat`.
+
+Models: `claude-haiku-4-5-20251001` (extraction + chat reply), `claude-sonnet-4-6` (risk classification).
 
 ## Commands
 
 ```bash
-npm run dev          # local dev at http://localhost:3000
-npm run build        # production build — also runs tsc; must be 0 TS / 0 ESLint errors
-npm run lint         # next lint
-npx tsc --noEmit     # type-check only
+npm run dev            # http://localhost:3000
+npm run build          # also runs tsc; must be 0 TS / 0 ESLint errors
+npm run lint
+npx tsc --noEmit
+npx vitest run         # 180 tests / 16 files
 
-# Supabase migrations — files in supabase/migrations/ are the source of truth.
-# NEVER edit schema in the Supabase dashboard SQL editor (creates drift).
-npx supabase migration new <name>                               # create a migration file
-npx supabase db push                                            # apply pending migrations to remote
-npx supabase migration list                                     # verify local == remote
-npx supabase gen types typescript --linked > src/types/database.ts   # regenerate after ANY schema change
+# Migrations: supabase/migrations/ is the source of truth. NEVER edit schema in the dashboard.
+npx supabase migration new <name>
+npx supabase db push
+npx supabase migration list
+npx supabase gen types typescript --linked > src/types/database.ts   # after ANY schema change, commit it
 
-# RAG ingestion (Phase 4) — shares the runtime embedding code in src/lib/ai/embed.ts
-npx tsx scripts/ingest.ts
-
-# Remote schema smoke-check (no secrets printed)
-node scripts/verify-phase1.mjs
+npx tsx scripts/ingest.ts          # RAG ingestion
+node scripts/verify-phase1.mjs     # remote schema smoke-check
 ```
 
-**Environment caveat (TLS):** the dev machine runs **Norton**, whose Web/Mail Shield does HTTPS interception — it re-signs TLS with `Norton Web/Mail Shield Root`, which Node doesn't trust by default (`UNABLE_TO_VERIFY_LEAF_SIGNATURE`). **Fix (secure, already applied):** the user-level env var `NODE_OPTIONS=--use-system-ca` makes Node v22 trust the Windows cert store (where Norton's root already lives) — no verification is disabled. New terminals pick it up automatically; supabase-js scripts and `npm run ingest` then work with no flag. **Do NOT use `NODE_TLS_REJECT_UNAUTHORIZED=0`** (it disables all TLS verification → MITM risk). The Docker/pg-delta catalog warning on `db push` is non-blocking (it only affects the local edge-runtime image, which we don't use).
+## Architecture: the triage engine (the core)
 
-Tests (Vitest) are introduced in Phase 10 — not set up yet.
+One streaming request per user message:
+- **Tier 1:** `streamText` on Haiku with tool `record_symptoms`, `maxSteps: 1`: streams the follow-up question and emits structured symptoms in the same response.
+- When `isComplete: true`, in the same request's **`onFinish`** (runs even if the client disconnects):
+  - **Tier 2 RAG** (`src/lib/ai/rag.ts`): embed, `search_veterinary_knowledge`, drop similarity < 0.3, re-rank `similarity + 0.05*(urgency/10)`, max 2 chunks/source, top 5. Zero chunks or an error = classify without RAG.
+  - **Tier 3 classify** (`src/lib/ai/classifier.ts`): `generateObject` on Sonnet, parse-failure retry, rule-based fallback (`fallback.ts`), then the deterministic safety override (`safety.ts`).
+- Everything persists in one server-side write and is pushed over the data stream. History is a single `conversation_log` JSONB on `assessments`.
 
-## Architecture: the AI triage engine (Phase 5, the core)
+## Non-negotiable invariants
 
-One streaming request per user message, not three blocking calls:
+- **Safety override only escalates.** `hasCriticalSymptom` forces `High`; it never lowers a result.
+- **`confidence_score` is logged only.** It gates nothing. Uncertainty rounds risk UP.
+- **Urgency is a re-rank signal, never a retrieval gate.** `search_veterinary_knowledge` has no urgency `WHERE`.
+- Encode the vet's criteria as rules in `classifier.ts`, never as hardcoded symptom lists. Hard lists belong only in `safety.ts` (absolute emergencies) and `fallback.ts` (offline mode). No fine-tuning.
+- **RLS on every table.** All app data access goes through the cookie-scoped server client (`src/lib/supabase/server.ts`).
+- **Service-role key:** only in `scripts/` and `src/lib/supabase/admin.ts`, imported solely by `src/lib/billing/subscription.ts` (Stripe webhooks). `grep -r SERVICE_ROLE_KEY src/` must match ONLY `admin.ts`.
+- **Never trust client-supplied pet/owner data** in the chat route: re-fetch the pet by id through the cookie-scoped client.
+- **Assessments are immutable snapshots**: chats and follow-ups read and append, never edit. The AI must always be able to read all pet information (conditions, meds, clinics/doctors, appointments, assessments/follow-ups, active symptoms).
+- Pet fields (species, breed, age, weight, medical_conditions) are consumed verbatim by `formatPet` and the RAG query: keep their shape stable.
+- `src/lib/plan-limits.ts` is the single source of truth for Basic/Premium limits (`403 { code: "plan_limit" }`); changing limits means updating landing/billing copy too.
+- The `assessments` FTS GIN index expression is byte-identical to the one in `search_assessments`: change both or neither.
+- Vet PDF export is deterministic (no AI call per download). If AI prose is ever wanted, generate it once at completion and store it.
 
-- **Tier 1 — extract + reply (single pass):** `streamText` on **Haiku** with one tool `record_symptoms` and `maxSteps: 1`. Claude streams the conversational follow-up question to the user *and* emits structured symptoms via the tool in the same response; the tool's `execute` writes symptoms to the data stream so the sidebar updates live.
-- When `isComplete: true`, the rest runs in the same request's **`onFinish`** (fires even if the client disconnects, so results always persist server-side):
-  - **Tier 2 — RAG** (`src/lib/ai/rag.ts`): `buildRagQuery` → `embedText` → `search_veterinary_knowledge` RPC → drop similarity < 0.3 → re-rank `similarity + 0.05*(urgency/10)` → max 2 chunks/source → top 5. If 0 chunks or the call throws, classification proceeds without RAG context.
-  - **Tier 3 — classify** (`src/lib/ai/classifier.ts`): `generateObject` on **Sonnet** → parse-failure retry → rule-based fallback (`fallback.ts`) on repeated failure → then a **deterministic safety override** (`safety.ts`).
-- Everything (assistant message, `conversation_log`, `extracted_symptoms`, full classification) is persisted in one server-side write and pushed to the client over the data stream.
+## Gotchas
 
-**Non-negotiable safety invariants** (the whole point of the product):
-- **Safety override can only escalate.** `hasCriticalSymptom(text)` (regex rubric of emergencies in clinical + plain + Aussie phrasing) forces `High`. It never lowers a result.
-- **`confidence_score` is logged only.** It gates nothing. Uncertainty rounds risk **up**.
-- **Urgency is a re-rank signal, never a retrieval gate.** A chunk is never hidden by its urgency level.
-- These map directly to SQL/TS: `search_veterinary_knowledge` has no urgency `WHERE`, and `classifyRisk` applies the override after the model/fallback.
+- **Supabase identity guard:** the only remote project is `pitsypet`, ref **`xaepzvxrqnqenspnanej`** (org `qdendiktmyttgngqljay`, `ap-southeast-2`). Confirm the ref before every remote write. Never touch `protegiendo_huellas` (`irwdfcacgpznmvjofszq`). CLI bridge: `--profile supabase/.temp/pitsypet-profile.json`.
+- **TLS / Norton:** Norton intercepts HTTPS. The fix is the user env var `NODE_OPTIONS=--use-system-ca` (a fresh terminal picks it up; also needed for Gmail SMTP in `npm run dev`). **Never `NODE_TLS_REJECT_UNAUTHORIZED=0`.** The Docker/pg-delta warning on `db push` is harmless.
+- **Middleware matcher** (`src/middleware.ts`): any new public static file type must be excluded there, or logged-out visitors are redirected to `/login` (happened with the demo `.mp4`).
+- **Prod CSP** needs `'wasm-unsafe-eval'` for the PDF renderer; dev CSP has `'unsafe-eval'`, so CSP bugs show only in prod.
+- **Tailwind v4, CSS-first:** no `tailwind.config.ts`, no `tailwindcss-animate`, no `@import "shadcn/tailwind.css"`. Add components with `npx shadcn@latest add <name>`. A green build does not prove styles render.
+- **No FK cascade reaches Storage:** deleting pets/accounts must remove `pet-photos` objects explicitly.
+- **Demo video** source lives outside the repo (`C:\AI_Workspace\pitsypet_video`); render with `--concurrency=1` (parallel rendering flickers), never `--gl=swangle`.
+- Commit/push only when asked.
 
-## Architecture: data & access control
+## Structure
 
-- **Database (Phase 1 plus later migrations).** Core tables include `profiles`, `pets`, `assessments`, `active_symptoms`, `medications`, `appointments`, `vet_contacts`, `vet_doctors`, `veterinary_knowledge`, lookup/recommendation tables, and `knowledge_processing_audit`. Search RPCs are `search_veterinary_knowledge` (vector search, no urgency gate) and `search_assessments` (full-text + trigram, `SECURITY INVOKER`, parameterized via `plainto_tsquery` → injection-safe). The `assessments` FTS GIN index expression is **byte-identical** to the one inside `search_assessments` — if you change one, change both or the index stops being used.
-- **Storage — `pet-photos` (private).** Pet profile pictures are the only Storage use. Objects are keyed `<user_id>/<pet_id>-<timestamp>.<ext>`; the `storage.objects` policies authorise on that first folder segment (`= auth.uid()::text`), so the bucket needs no service-role access. `pets.photo_path` stores only the key: pages sign short-lived URLs server side via `signPetPhotos` (`src/lib/pet-photo.ts`), and the client centre-crops/downscales to 512px before uploading. **No FK cascade reaches Storage** — pet purge deletes the object explicitly, and account deletion still leaves photo objects behind (open item for Phase 9).
-- **RLS on every table.** Users only touch their own profile and clinical records; lookup tables are read-only to authenticated users; `knowledge_processing_audit` has RLS on with no policy (deny-all via PostgREST, by design).
-- **Account deletion RPC:** `delete_own_account(text)` is `SECURITY DEFINER` with `search_path=""`, derives the user from `auth.uid()`, requires the literal `DELETE`, grants execution only to `authenticated`, and deletes `auth.users`; verified `ON DELETE CASCADE` relationships remove the user's live application records. Keep deletion changes in migrations and re-check grants/cascades remotely after any related schema change.
-- **One Supabase client rule.** All application data access goes through the **cookie-scoped server client** (`src/lib/supabase/server.ts`, anon key + session cookies → RLS enforced). The **service-role key bypasses RLS and is used ONLY in `scripts/` (ingestion) plus ONE documented exception: `src/lib/supabase/admin.ts`**, imported solely by `src/lib/billing/subscription.ts` — Stripe webhooks have no user session and the billing columns are deliberately not writable by `authenticated`, so plan state is written only after Stripe-verified evidence (signature-checked webhook / server-retrieved Checkout session). No other route handler, Server Component, or client code may import it. Phase 9 enforces this: `grep -r SERVICE_ROLE_KEY src/` must match ONLY `src/lib/supabase/admin.ts`.
-- **Never trust client-supplied pet/owner data** in the chat route — re-fetch the pet by id through the cookie-scoped client so RLS verifies ownership.
-- **Triggers:** `handle_new_user` (SECURITY DEFINER, `ON CONFLICT (id) DO NOTHING`) auto-creates a `profiles` row from auth metadata on signup; `set_updated_at` keeps `updated_at` current on `profiles`/`pets`. Verify the signup→profile trigger end-to-end during Phase 2 (it's the one Phase 1 item only provable with a live signup).
+- `src/app/(auth)/*` login/register/callback; `src/app/(dashboard)/dashboard/*` overview/pets/clinics/appointments/history/help/billing/account; `src/app/(app)/*` protected pet/assessment/results pages. Public: `/`, `/privacy`, `/terms`.
+- Pet pages use `pets.slug`; API routes key on UUIDs. Chat route is `/assessment/[id]`.
+- Landing: `src/app/page.tsx` + `src/components/landing/*`. AI: `src/lib/ai/*`. Billing: `src/lib/billing/*`.
 
-## UI: Tailwind v4 + shadcn base-nova (Base UI)
+## Environment variables (`.env.local`, never committed; template `.env.example`)
 
-This project is **CSS-first Tailwind v4**, not v3. The `src/components/ui/*` kit was generated by `shadcn@latest` in the "base-nova" style: it imports `@base-ui/react` (Base UI, not Radix) and uses v4-only class syntax (`gap-(--card-spacing)`, `--spacing(4)`, `ring-3`, `data-open:`, `outline-hidden`, `@container`).
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `NEXT_PUBLIC_APP_URL`, `GMAIL_USER`, `GMAIL_APP_PASSWORD` (+ optional `CONTACT_TO_EMAIL`). Vercel needs all of them for Production AND Preview.
 
-- Tokens live in `src/app/globals.css` via `@theme inline` mapping to oklch CSS variables; there is **no `tailwind.config.ts`** (deleted on purpose) and `components.json` has `tailwind.config: ""`.
-- **Do not** re-introduce a v3 `tailwind.config.ts`, `tailwindcss-animate`, or `@import "shadcn/tailwind.css"`. Animations come from `tw-animate-css`.
-- Add components with `npx shadcn@latest add <name>` (keeps the base-nova/v4 style). Forms use `react-hook-form` + the local `src/components/ui/form.tsx`.
-- Caveat: Tailwind v3 silently ignores unknown utilities, so a green `npm run build` does NOT prove styles render — if you ever downgrade or misconfigure, components will look broken while the build passes.
+<!-- agents_log:start -->
+## Session log (agents_log)
 
-## Status & workflow
-
-- **Current:** Phase 8 — UI/UX Polish & Accessibility (branded landing with demo video, auth, dashboard, legal pages and account deletion are built; responsive layout audited in Session 50; the Lighthouse/WCAG audit remains). The user owns visual checks, so do not run visual automation unless explicitly requested.
-- **Triage calibration: APPROVED BUT POSTPONED. Do not start without the user's explicit go-ahead.** The vet interview is done and recorded in `docs/vet_calibration_notes.md`; only task 0 (the `safety.ts` substring bug) has been implemented. The full step-by-step spec for tasks 1 to 8 lives in the **"PENDING IMPLEMENTATION PLAN"** section near the top of `docs/DEV_LOG.md`. The user reviewed the escalation impact (Medium becomes the default landing zone) and chose to wait.
-- **Pet profile photos (Session 44):** optional per pet, uploaded from the create/edit form, replaceable and removable, shown as a circular avatar on the pet card, the pet record header and the dashboard list, with the species icon as the fallback. Available on both plans (no AI spend, so no `plan-limits.ts` gate). See the Storage bullet under data & access control for how the files are stored and served.
-- **Completed foundations:** Phases 0–3, 5–7 and 7.5 are feature-complete. Stripe billing and Basic/Premium limits are implemented and production-tested in test mode. Phase 10 has **180 passing tests across 16 files**; Phase 11 monitoring/domain work is complete except for the full manual production smoke.
-- **Immediate next:** continue the requested rapid UI/legal-page changes. Then complete the formal Phase 8 responsive/WCAG audit, Phase 9 fallback/cross-tenant/cost-guard verification, Phase 10.8 performance + full walkthrough, Phase 11.6 production smoke, and Phase 12 UAT + `README.md`. Before release, visually verify `/privacy`, `/terms`, footer, and Dashboard > Account; run deletion only with a disposable account; obtain professional legal review.
-- **Known issues:** `docs/DEV_LOG.md` carries a standing **"KNOWN ISSUES / OPEN DEFECTS"** list. Read it before claiming anything is broken or fixed, and remove entries there when you actually fix them. Current headline defects: the calibration is not implemented, first-aid advice almost never renders (exact `symptom_name` match), `safety.ts` lacks paralysis tick and snake bite, and the ingested clinical literature demonstrably returns drug doses that only a prompt instruction keeps from the owner.
-- **Blocked/deferred:** production-grade Phase 4 sources (the current corpus is a temporary, non-commercially-licensed testing set); RAG in the assistant chat; real emergency contacts, still unverified; Australia-specific exposures, not covered by the Colombian vet; Resend custom auth and doctor-email flows until the required account/domain work is available.
-- **Known Supabase follow-up:** existing advisor findings remain for mutable `search_path` on `search_veterinary_knowledge`, `set_updated_at`, and `search_assessments`; `vector`/`pg_trgm` in `public`; broad execution on `handle_new_user()`; and leaked-password protection disabled. The authenticated `delete_own_account` SECURITY DEFINER warning is intentional and its restrictive grants were verified.
-- **Invariant:** assessments are immutable snapshots — chats and follow-ups read them and append; they never edit a prior snapshot. The AI must always be able to read all pet information (conditions, meds, clinics/doctors, appointments/notes, assessments/follow-ups, active symptoms). See the roadmap and DEV_LOG `## STATUS`; keep both current.
-- Routes are grouped: `src/app/(auth)/*` (login/register/callback), `src/app/(dashboard)/dashboard/*` (overview/pets/clinics/appointments/history/help/billing/account), and `src/app/(app)/*` (protected pet/assessment/results pages). Public branded routes include `/`, `/privacy`, and `/terms`. Pet pages use `pets.slug`; API routes still key on UUIDs. `src/middleware.ts` refreshes Supabase sessions and guards non-public routes.
-- After any schema change, regenerate `src/types/database.ts` and keep it committed.
-- Commit/push only when asked. Update `docs/DEV_LOG.md` **and** the roadmap status at the end of each working session.
-
-## Environment variables (`.env.local`, never committed)
-
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (scripts + the billing admin client — **must be set in Vercel** now that the Stripe webhook writes plan state), `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` (billing; `sk_test_` = test mode, swap to `sk_live_` to go live), `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` (embeddings only), `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `NEXT_PUBLIC_APP_URL`, and — for the landing contact form (Gmail SMTP) — `GMAIL_USER` + `GMAIL_APP_PASSWORD` (+ optional `CONTACT_TO_EMAIL`, defaults to `GMAIL_USER`). Template in `.env.example`. Vercel needs all of these set for Production AND Preview, or branch-deploy AI calls 500. **Local-dev SMTP caveat:** Norton MITMs the Gmail TLS, so `npm run dev` must run in a terminal that has the persisted user env var `NODE_OPTIONS=--use-system-ca` (a *fresh* terminal picks it up automatically) — otherwise sends fail with `self-signed certificate in certificate chain`. Do NOT "fix" it by disabling TLS verification. Production (Vercel — no Norton) needs nothing special.
+- At session start: run `node "$HOME/.claude/skills/agents_log/scripts/backup.mjs" sync` (brings the log from the other PC if newer),
+  then read the header of `agents_docs/agents_log.md` down to its `ENTRIES`
+  marker, plus the first entry. Nothing more; grep for older history only when needed.
+- Use that entry's `Files` and `Next` to open the relevant code directly instead of exploring
+  the repo. Always read code before changing it.
+- Keep this file lean (~150 lines): move rarely needed detail to `agents_docs/ref/`.
+- When the user says "logea todo" / "cerremos sesión": follow the protocol in that header.
+- If you are a worker on a delegated task, ignore `agents_docs/`: only the orchestrator logs.
+- `agents_docs/ref/project-detail.md`: detail moved out of this file. Read when a task touches it.
+<!-- agents_log:end -->
