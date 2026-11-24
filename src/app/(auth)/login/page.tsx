@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import {
   Card,
@@ -45,14 +44,6 @@ export default async function LoginPage(
             </p>
           </CardContent>
         </Card>
-        <Image
-          src="/cartoon13.webp"
-          alt=""
-          aria-hidden="true"
-          width={500}
-          height={500}
-          className="pointer-events-none absolute top-1/2 left-full z-10 hidden h-auto w-80 -translate-x-[45%] -translate-y-1/2 object-contain drop-shadow-xl lg:block lg:w-[29rem]"
-        />
       </div>
     </main>
   );

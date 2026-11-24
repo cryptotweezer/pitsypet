@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="public/logo.webp" alt="PitsyPet" width="120" />
+<img src="public/pitsy_logo.webp" alt="PitsyPet" width="120" />
 
 # PitsyPet
 

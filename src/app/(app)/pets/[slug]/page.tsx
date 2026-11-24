@@ -204,7 +204,7 @@ export default async function PetPage(
             · {pet.weight_kg} kg
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link
             href={`/assessment/${pet.slug}`}
             className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-all hover:shadow-lg hover:shadow-brand/20 active:scale-95"

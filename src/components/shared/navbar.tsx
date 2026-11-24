@@ -29,7 +29,7 @@ export function Navbar({ email }: { email: string }) {
       <nav className="mx-auto flex max-w-5xl items-center justify-between rounded-full bg-white px-5 py-2.5 shadow-lg shadow-black/5 sm:px-6">
         <Link href="/dashboard" className="flex items-center gap-2">
           <Image
-            src="/logo.webp"
+            src="/pitsy_logo.webp"
             alt="PitsyPet"
             width={40}
             height={40}

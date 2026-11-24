@@ -236,7 +236,7 @@ export function ActiveSymptomsSection({
       <li
         key={s.symptom_id}
         className={cn(
-          "flex items-start justify-between gap-3 rounded-2xl border border-outline-variant/30 p-3 text-sm",
+          "flex flex-col gap-2 rounded-2xl border border-outline-variant/30 p-3 text-sm sm:flex-row sm:items-start sm:justify-between sm:gap-3",
           s.status === "resolved" && "opacity-60",
         )}
       >
@@ -269,7 +269,7 @@ export function ActiveSymptomsSection({
             <span className="text-xs text-muted-foreground">{s.notes}</span>
           )}
         </div>
-        <div className="flex shrink-0 gap-0.5">
+        <div className="-ml-2 flex shrink-0 gap-0.5 sm:ml-0">
           {s.status !== "resolved" ? (
             <>
               <Button

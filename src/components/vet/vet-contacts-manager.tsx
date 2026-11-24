@@ -538,7 +538,7 @@ export function VetContactsManager({ contacts }: { contacts: VetContact[] }) {
                 className="grid gap-3 rounded-[2rem] border border-outline-variant/20 bg-white p-6 text-sm"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="grid gap-1">
+                  <div className="grid min-w-0 gap-1">
                     <h2 className="mb-1 flex items-center gap-2 font-display text-xl tracking-tight text-brand">
                       <Stethoscope className="size-5" aria-hidden />
                       {c.clinic_name}
@@ -554,9 +554,9 @@ export function VetContactsManager({ contacts }: { contacts: VetContact[] }) {
                     {c.email && (
                       <a
                         href={`mailto:${c.email}`}
-                        className="flex items-center gap-1.5 text-muted-foreground hover:underline"
+                        className="flex items-center gap-1.5 text-muted-foreground [overflow-wrap:anywhere] hover:underline"
                       >
-                        <Mail className="size-3.5" aria-hidden /> {c.email}
+                        <Mail className="size-3.5 shrink-0" aria-hidden /> {c.email}
                       </a>
                     )}
                     {c.address && (

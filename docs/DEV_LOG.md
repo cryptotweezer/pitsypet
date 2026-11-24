@@ -2011,3 +2011,38 @@ Also: `aria-label` on the step wrapper `<div>` (a no-op for AT on a role-less di
 - **A stale `.git/index.lock` from 5 August blocked the first commit** and was removed after confirming it was a zero-byte leftover with no git process running.
 - **A document publication task was started and dropped.** The user asked about copying `capstone_2/tid.md` and `capstone_2/manual.md` into the repository with their images, stripped of the unit header, the student identifiers and the veterinarian's name, then changed direction to the README instead. The audit performed before stopping is worth keeping: the academic references are the header tables at `tid.md:5-13` and `manual.md:5-14` plus the ZIP name `PitsyPet-s8103043.zip` at `manual.md:210`; the veterinarian is named at `tid.md:1552` and `tid.md:1848` (the second also gives her university and city); `images/vu-logo.png` is the university logo and must not be copied; there are no real secrets in either document, the `.env` examples being placeholders; and the 98 screenshots, particularly the infrastructure dashboards, were never inspected for sensitive content.
 ---
+
+---
+## SESSION 49 - 2026-10-30 - Claude Code (Opus 5.5)
+
+### STARTED WITH
+- Last session left off at: product queue unchanged (Phase 8 audit, Phase 9 checks, Phase 10.8, Phase 11.6, Phase 12).
+- Blockers from last session: the Vercel account was at about 4h of the 4h monthly Fluid Active CPU allowance on Hobby, with no plan to upgrade.
+
+### COMPLETED THIS SESSION
+- **Root cause of the pitsypet CPU spend found: UptimeRobot.** Vercel CDN logs showed `HEAD /api/health` every 5m05s with user agent `UptimeRobot/2.0`. Supabase edge logs agreed: 282 requests in 24 h, all the health query, none from a user. Each ping cost one function run and one middleware run, about 90% of the 19K monthly invocations.
+- **Monitor moved to every 12 hours** by the user in UptimeRobot.
+- **`/api/health` skipped by the middleware matcher** (commit `4588e1c`). Verified in production: `/api/health` returns 200 without CSP, `/` and `/login` keep CSP, `/dashboard` and `/api/pets` still redirect to `/login` without a session. tsc clean, 180/180 tests.
+- **Account review:** last 30 days total 4h12 (awesome 2h51, pitsypet 56m, the-watchtower 13m, resume 9m, project-intelligence-system 2m). The awesome Hermes keepalive also moved to 12 hours the same day. Estimated rate after both fixes: 40 to 55 min per month.
+
+### IN PROGRESS (not finished)
+- Confirm the lower rate in Vercel Usage > Fluid Active CPU in 1 to 2 days. The Supabase log query returned HTTP 500 three times at the end of the session, so the drop in pings is not yet verified.
+
+### BLOCKED
+- None.
+
+### FILES MODIFIED
+- `src/middleware.ts` - matcher skips `api/health`.
+- `src/lib/supabase/middleware.ts` - removed the now unreachable `/api/health` public check.
+- `src/app/api/health/route.ts` - comment updated to the 12 hour interval.
+
+### NEXT SESSION MUST START WITH
+1. Check the daily Fluid Active CPU chart for pitsypet (expected near 4 s per day) and awesome. If awesome stays high, inspect `/api/mcp` in Observability > Functions.
+2. Otherwise continue the Session 48 queue.
+
+### DECISIONS / NOTES
+- **Do not remove the monitor.** It keeps Supabase from pausing and the free Upstash database from being deleted for inactivity. The price of 12 hours is that an outage can take up to 12 hours to alert.
+- **Middleware counts as Fluid Active CPU** on this account (Edge Middleware Invocations reads 0, and Usage shows `middleware` under Fluid Active CPU). Function Invocations includes middleware runs.
+- **On Hobby the Vercel APIs for observability, firewall, analytics and billing return 404, and the CLI is not logged in here.** The dashboard has the data: Observability > Functions (per route, 12 h maximum), Logs > CDN Requests (user agent per request, 1 h), and `usage/vercel-functions-fluid-cpu-duration?view=Type` (daily, 30 days).
+- **Functions run in `iad1` while Supabase is in Sydney.** This does not change Active CPU much, but it slows every page. Moving to `syd1` is a separate speed improvement, not done.
+---

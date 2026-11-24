@@ -501,7 +501,7 @@ export default async function Home() {
                     <p className="mb-1 text-xs font-bold tracking-widest text-brand uppercase">
                       Email us
                     </p>
-                    <p className="text-lg">support@pitsypet.com.au</p>
+                    <p className="text-lg">andreshenao.tech@gmail.com</p>
                   </div>
                 </div>
                 <div className="group flex items-center gap-6">

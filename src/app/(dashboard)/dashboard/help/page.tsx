@@ -21,7 +21,7 @@ export default function DashboardHelpPage() {
         </p>
         <p className="flex items-center gap-2 pt-1 text-sm text-on-surface-variant">
           <Mail className="size-4 text-brand" aria-hidden />
-          support@pitsypet.com.au
+          andreshenao.tech@gmail.com
         </p>
         <Image
           src="/cartoon10.webp"
