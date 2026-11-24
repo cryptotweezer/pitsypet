@@ -42,7 +42,9 @@
 
 **Current phase:** Phase 8 — UI/UX Polish & Accessibility. The active rapid-edit pass covers the public landing and branded legal/account surfaces; visual verification is explicitly delegated to the user.
 
-**Latest completed (Session 48):** a user-directed UI and documentation pass, all pushed to `main` (`5bf7bfe`, `7a7fcc5`). Every landing, auth and brand image is now **WebP** and the duplicate PNGs are deleted, so there is one format per asset. The landing footer became the shared `src/components/landing/landing-footer.tsx`, used by `/`, `/privacy` and `/terms`, with LinkedIn as the first social icon, the PitsyPet logo beside the wordmark and a bold "Developed by Andres Henao" credit carrying the `logo_black.png` brand mark and the cv link. New decorative cartoons sit in the `/privacy` and `/terms` heroes and in Dashboard > Help. The app navbar no longer hides the wordmark on mobile. The **README** was corrected (broken logo path, 165 to the real 180 tests, the provisional 121-chunk corpus described alongside the empty-by-design repository) and, at the user's explicit request, its status section now presents PitsyPet as a **finished product in production** rather than a phase tracker. **That framing is README-only: this file and the `CLAUDE.md` roadmap stay the honest internal record, and the audits listed under "Immediate next" are still outstanding.**
+**Latest completed (Session 50):** responsive audit of the whole app (320 to 1920 px, three overflow fixes), the new AH logo and favicon, footer/auth/contact tweaks, and a Remotion **product demo video** under the hero (desktop window + vertical mobile cut, muted loop, opt-in sound). The middleware matcher now skips mp4/webm so the video loads for logged-out visitors. Pushed to `main` through `5973585`. Lighthouse/WCAG is still open.
+
+**Session 48:** a user-directed UI and documentation pass, all pushed to `main` (`5bf7bfe`, `7a7fcc5`). Every landing, auth and brand image is now **WebP** and the duplicate PNGs are deleted, so there is one format per asset. The landing footer became the shared `src/components/landing/landing-footer.tsx`, used by `/`, `/privacy` and `/terms`, with LinkedIn as the first social icon, the PitsyPet logo beside the wordmark and a bold "Developed by Andres Henao" credit carrying the `logo_black.png` brand mark and the cv link. New decorative cartoons sit in the `/privacy` and `/terms` heroes and in Dashboard > Help. The app navbar no longer hides the wordmark on mobile. The **README** was corrected (broken logo path, 165 to the real 180 tests, the provisional 121-chunk corpus described alongside the empty-by-design repository) and, at the user's explicit request, its status section now presents PitsyPet as a **finished product in production** rather than a phase tracker. **That framing is README-only: this file and the `CLAUDE.md` roadmap stay the honest internal record, and the audits listed under "Immediate next" are still outstanding.**
 
 **Session 47:** the **User Manual is FINISHED and exported**, so both written deliverables are now done. New file `capstone_2/manual.md`: nine sections, 48 figures, 10,510 words, 57 pages. It follows the unit guideline's order with setup before product use, carries a single continuous worked example on one pet through section 5, and covers every loose requirement the guideline lists, including the ZIP and extraction steps, the setup checklist, beginner testing evidence and a version history. A new section 3.6 documents the knowledge base ingestion: `npm run ingest`, the `scripts/sources/` folder, why it ships empty, and that skipping it is normal because retrieval fails soft. Audited against `NIT3004 Final Project Delivery Rubrics.md` with thirteen corrections applied; figures correlative, tables consistent, step numbering unbroken, contents matching the real headings, zero em dashes. Exported with a two pass static contents whose nine section page numbers were each verified against the final PDF, to `C:\Users\crypt\Downloads\NIT3004 User Manual - Andres Henao s8103043 - Group 7` in both `.docx` and `.pdf`. Also this session: `docs/vet_calibration_notes.md` was translated from Spanish to English with every clinical value carried across unchanged, and the three cross references to its governing section were updated. **The remaining deliverables are the e-Poster, the demonstration video and the oral presentation, and the user will say which comes next.**
 
@@ -2045,4 +2047,49 @@ Also: `aria-label` on the step wrapper `<div>` (a no-op for AT on a role-less di
 - **Middleware counts as Fluid Active CPU** on this account (Edge Middleware Invocations reads 0, and Usage shows `middleware` under Fluid Active CPU). Function Invocations includes middleware runs.
 - **On Hobby the Vercel APIs for observability, firewall, analytics and billing return 404, and the CLI is not logged in here.** The dashboard has the data: Observability > Functions (per route, 12 h maximum), Logs > CDN Requests (user agent per request, 1 h), and `usage/vercel-functions-fluid-cpu-duration?view=Type` (daily, 30 days).
 - **Functions run in `iad1` while Supabase is in Sydney.** This does not change Active CPU much, but it slows every page. Moving to `syd1` is a separate speed improvement, not done.
+---
+
+---
+## SESSION 50 - 2026-11-24 - Claude Code (Opus 5.5)
+
+### STARTED WITH
+- Last session left off at: Phase 8 queue (formal responsive/WCAG audit), plus confirming the lower Vercel Active CPU rate from Session 49.
+- Blockers from last session: none.
+
+### COMPLETED THIS SESSION
+- **Responsive audit of the whole app** at 320, 375, 390, 768, 1024, 1440 and 1920 px (public and authenticated pages, headless Playwright with a saved session). Three overflow fixes: vet contacts email wraps (`vet-contacts-manager.tsx`), the pet header buttons wrap (`pets/[slug]/page.tsx`), and active-symptom rows stack on mobile (`active-symptoms-section.tsx`). Clean at every width afterwards. This covers the layout half of the Phase 8 responsive item; the Lighthouse/WCAG pass is still open.
+- **New brand mark:** the "AH" monogram (`public/pitsy_logo.webp`, trimmed) replaces `logo.webp` in the sidebar, navbar, landing header/footer and README. Favicon via `src/app/icon.png` + `apple-icon.png`; `favicon.ico` deleted. Brand purple confirmed as `#450076` (`--color-brand`).
+- **Footer:** Instagram, Twitter and Facebook removed; GitHub (cryptotweezer) added after LinkedIn.
+- **Login/register:** the cat and dog cartoons beside the forms removed.
+- **Contact email** changed to andreshenao.tech@gmail.com on the landing "Get in touch" and Dashboard > Help.
+- **Product demo video below the hero** (`#demo` section, `src/components/landing/demo-video.tsx`). Built with Remotion in the separate folder `C:\AI_Workspace\pitsypet_video` (not a git repo): a real assessment from first message to results, with the three emergency clinics and the "Search emergency vet near me" button, plus a 1080x1920 mobile cut that mirrors the 390 px layout. Royalty-free music (blesksound "product video"). Placement copied from Microburbs `PromoVideo`: browser-style window on desktop, rounded card on mobile, muted loop, lazy load near the viewport, plays only while 40% visible, play/pause and opt-in sound, respects reduced motion. Files in `public/video/` (`demo-16x9`, `demo-9x16`, mp4 about 2.5 MB each + webp posters).
+- **Production fix:** the middleware matcher now skips `.mp4`/`.webm`. Before, logged-out visitors got a 307 to `/login` for the video, so it never played in production (it worked locally only because the session was logged in).
+- **Mobile video flicker fixed:** Remotion's parallel render randomly dropped the greeting bubble and the Send button on single frames, and the intro fade flashed dark on every loop. Re-rendered with `--concurrency=1` and without the fade; all 870 frames scanned, no glitches. Desktop scanned too, clean.
+- Commits: `a772860`, `3e2a732`, `5c8a827`, `5973585`, all pushed to `main`. 180/180 tests, tsc and lint clean.
+
+### IN PROGRESS (not finished)
+- None from this session. Session 49's Vercel Active CPU confirmation was not rechecked.
+
+### BLOCKED
+- None.
+
+### FILES MODIFIED
+- `src/app/page.tsx` - demo section under the hero; contact email.
+- `src/components/landing/demo-video.tsx` - new.
+- `public/video/*` - new demo videos and posters.
+- `src/middleware.ts` - matcher skips mp4/webm.
+- `src/components/landing/landing-footer.tsx`, `landing-header.tsx`, `src/components/shared/navbar.tsx`, `sidebar.tsx`, `README.md` - new logo; footer socials.
+- `src/app/icon.png`, `src/app/apple-icon.png` (new), `src/app/favicon.ico` and `public/logo.webp` (deleted).
+- `src/app/(auth)/login/page.tsx`, `register/page.tsx` - cartoons removed.
+- `src/app/(dashboard)/dashboard/help/page.tsx` - contact email.
+- `src/components/vet/vet-contacts-manager.tsx`, `src/app/(app)/pets/[slug]/page.tsx`, `src/components/pets/active-symptoms-section.tsx` - responsive fixes.
+
+### NEXT SESSION MUST START WITH
+1. Check the Vercel Active CPU chart (Session 49 item 1).
+2. Continue Phase 8: Lighthouse/WCAG pass and loading/error/empty states; then the Phase 9 to 12 queue.
+
+### DECISIONS / NOTES
+- **Video source lives outside the repo** in `C:\AI_Workspace\pitsypet_video`. To change it: edit `src/AssessmentDemo.tsx` / `src/MobileDemo.tsx`, render with `npm run render` (now `--concurrency=1`; parallel rendering causes flicker) and `--browser-executable` pointing at Playwright's `chromium-1255`, then compress with ffmpeg (720p, crf 27, faststart) into `public/video/`. The video uses `jane@example.com`, never real user data. `--gl=swangle` produces broken frames; do not use it.
+- **Any new public static file type must be added to the middleware matcher**, or logged-out visitors are redirected to `/login`.
+- `public/pitsy_logo.png` (the original source PNG) stays untracked on purpose. `cartoon13.webp`/`cartoon14.webp` are now unused; the user has not said whether to delete them.
 ---
